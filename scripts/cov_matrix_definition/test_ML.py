@@ -1,92 +1,79 @@
 import numpy as np
 from scipy.stats import norm, uniform, multivariate_normal
 import pylab as plt
+import sys
 
-# data
+# Parameters
 a = 1.0                                                 # angular coefficient
 b = 2.5                                                 # linear coefficient
 sig = 100
 
-n           = []
+# Data
+n_D = 50                                                 # Dimension of data vector
+x1 = uniform.rvs(loc=-100, scale=200, size=n_D)        # exploratory variable
+x1.sort()
+
+yreal = a * x1 + b
+cov = np.diag([sig for i in range(n_D)])
+
+
+n           = []                                        # number of simulations
 sigma_ML    = []
 sigma_m1_ML = []
 
-#for nobs in range(50, 1000, 50):
-for nobs in range(2, 100, 1):
+for n_S in range(n_D+3, n_D+50, 1):
 
-    n.append(nobs)                                             # number of data points
+    n.append(n_S)                                             # number of data points
 
-    x1 = uniform.rvs(loc=-100, scale=200, size=nobs)        # exploratory variable
-    x1.sort()
+    y2 = multivariate_normal.rvs(mean=yreal, cov=cov, size=n_S)
+    # y2[:,j] = realisations for j-th data entry
+    # y2[i,:] = data vector for i-th realisation
 
-    y1_err = norm.rvs(loc=0, scale=10, size=nobs)           # noise
-
-    yreal = a * x1 + b
-    y1 = yreal + y1_err
-    cov = np.diag([sig for i in range(nobs)])
-    y2 = multivariate_normal.rvs(mean=yreal, cov=cov)
+    # Estimate mean (ML)
+    ymean = np.mean(y2, axis=0)
 
     # calculate covariance matrix
-    cov_est = []
-    for i in range(nobs):
-        line = []
-        for j in range(nobs):
-            line.append((y2[i] - yreal[i]) * (y2[j] - yreal[j]))
-        cov_est.append(line)
+    cov_est = np.cov(y2,rowvar=False)
 
-    cov_est = np.array(cov_est)
+    # Double check that it's the same as calculating 'by hand'
+    cov_est2 = np.zeros(shape=(n_D, n_D))
+    if n_D > 1:
+        for i in range(n_D):
+            for j in range(n_D):
+                cov_est2[i,j] = sum((y2[:,i] - ymean[i]) * (y2[:,j] - ymean[j])) / (n_S - 1.0)
+    else:
+        cov_est2[0,0] = sum((y2 - ymean) * (y2 - ymean)) / (n_S - 1.0)
+        cov_est = [[cov_est]]
 
-
-    this_sigma_ML = sum(np.diag(cov_est))/(nobs-1)
-    this_sigma_m1_ML = 1 / this_sigma_ML
+    # Normalised trace
+    this_sigma_ML = np.trace(cov_est) / n_D
     sigma_ML.append(this_sigma_ML)
+
+    cov_est_inv = np.linalg.inv(cov_est)
+
+    this_sigma_m1_ML = np.trace(cov_est_inv) / n_D
     sigma_m1_ML.append(this_sigma_m1_ML)
 
-    print(nobs, this_sigma_ML, this_sigma_m1_ML)
+    print n_S, this_sigma_ML, this_sigma_m1_ML
+
 
 plt.figure()
+plt.suptitle('Covariance of n_D = {} dimensional data'.format(n_D))
+
 plt.subplot(1, 2, 1)
-plt.plot(n, sigma_ML)
+plt.plot(n, sigma_ML, 'b.')
 plt.plot([n[0], n[-1]], [sig, sig], 'r-')
-plt.xlabel('nobs')
-plt.ylabel('sigma ML')
+plt.xlabel('n_S')
+plt.ylabel('normalised trace of ML covariance')
 
 plt.subplot(1, 2, 2)
-plt.plot(n, sigma_m1_ML)
+plt.plot(n, sigma_m1_ML, 'b.')
 plt.plot([n[0], n[-1]], [1.0/sig, 1.0/sig], 'r-')
-plt.xlabel('nobs')
-plt.ylabel('inverse sigma ML')
+bias = [(n_S-1.0)/(n_S-n_D-2.0)/sig for n_S in n]
+plt.plot(n, bias, 'g-.')
+plt.xlabel('n_S')
+plt.ylabel('normalised trace of inverse of ML covariance')
 
 plt.savefig('sigma_ML')
 
-
-# plot
-plt.figure()
-plt.suptitle('Model 1: independent realizations')
-plt.subplot(1,2,1)
-plt.scatter(x1, y1, s=2.0, label='data', alpha=0.25)
-plt.plot(x1, yreal,'--', color='green', label = 'model')
-plt.xlabel('x')
-plt.ylabel('y')
-plt.legend(loc='upper left', frameon=False)
-
-plt.subplot(1,2,2)
-plt.hist(y1_err)
-plt.xlabel('$\epsilon$')
-plt.savefig('test_normal.png')
-
-
-plt.figure()
-plt.suptitle('Model 2: considering covariance matrix')
-plt.subplot(1,2,1)
-plt.scatter(x1, y2, s=2.0, label='data', alpha=0.25)
-plt.plot(x1, yreal,'--', color='green', label = 'model')
-plt.xlabel('x')
-plt.ylabel('y')
-plt.legend(loc='upper left', frameon=False)
-
-plt.subplot(1,2,2)
-plt.hist(y2-yreal)
-plt.xlabel('measured - model')
-plt.savefig('test_multi_normal.png')
 
