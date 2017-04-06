@@ -3,6 +3,43 @@ from scipy.stats import norm, uniform, multivariate_normal
 import pylab as plt
 import sys
 
+
+def get_cov_ML_by_hand(mean, cov, size):
+
+    cov_est = np.zeros(shape=(size, size))
+    if size > 1:
+        for i in range(size):
+            for j in range(size):
+                cov_est[i,j] = sum((y2[:,i] - ymean[i]) * (y2[:,j] - ymean[j])) / (size - 1.0)
+    else:
+        cov_est[0,0] = sum((y2 - ymean) * (y2 - ymean)) / (size - 1.0)
+
+    return cov_est
+
+
+
+def get_cov_ML(mean, cov, size):
+
+    y2 = multivariate_normal.rvs(mean=mean, cov=cov, size=size)
+    # y2[:,j] = realisations for j-th data entry
+    # y2[i,:] = data vector for i-th realisation
+
+    # Estimate mean (ML)
+    ymean = np.mean(y2, axis=0)
+
+    # calculate covariance matrix
+    cov_est = np.cov(y2, rowvar=False)
+
+    # Double check that it's the same as calculating 'by hand'
+    if size > 1:
+        pass
+    else:
+        cov_est = [[cov_est]]
+
+    return cov_est
+
+
+
 # Parameters
 a = 1.0                                                 # angular coefficient
 b = 2.5                                                 # linear coefficient
@@ -25,25 +62,7 @@ for n_S in range(n_D+3, n_D+50, 1):
 
     n.append(n_S)                                             # number of data points
 
-    y2 = multivariate_normal.rvs(mean=yreal, cov=cov, size=n_S)
-    # y2[:,j] = realisations for j-th data entry
-    # y2[i,:] = data vector for i-th realisation
-
-    # Estimate mean (ML)
-    ymean = np.mean(y2, axis=0)
-
-    # calculate covariance matrix
-    cov_est = np.cov(y2,rowvar=False)
-
-    # Double check that it's the same as calculating 'by hand'
-    cov_est2 = np.zeros(shape=(n_D, n_D))
-    if n_D > 1:
-        for i in range(n_D):
-            for j in range(n_D):
-                cov_est2[i,j] = sum((y2[:,i] - ymean[i]) * (y2[:,j] - ymean[j])) / (n_S - 1.0)
-    else:
-        cov_est2[0,0] = sum((y2 - ymean) * (y2 - ymean)) / (n_S - 1.0)
-        cov_est = [[cov_est]]
+    cov_est = get_cov_ML(yreal, cov, n_S)
 
     # Normalised trace
     this_sigma_ML = np.trace(cov_est) / n_D
