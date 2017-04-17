@@ -43,7 +43,7 @@ def get_cov_ML(mean, cov, size):
 
 
 
-def plot_sigma_ML(n, sigma_ML, sigma_m1_ML, sig):
+def plot_sigma_ML(n, sigma_ML, sigma_m1_ML, sig, out_name='sigma_ML'):
 
     plt.figure()
     plt.suptitle('Covariance of n_D = {} dimensional data'.format(n_D))
@@ -57,12 +57,70 @@ def plot_sigma_ML(n, sigma_ML, sigma_m1_ML, sig):
     plt.subplot(1, 2, 2)
     plt.plot(n, sigma_m1_ML, 'b.')
     plt.plot([n[0], n[-1]], [1.0/sig, 1.0/sig], 'r-')
-    bias = [(n_S-1.0)/(n_S-n_D-2.0)/sig for n_S in n]
-    plt.plot(n, bias, 'g-.')
+    n_fine = np.arange(n[0], n[-1], len(n)/10.0)
+    bias = [(n_S-1.0)/(n_S-n_D-2.0)/sig for n_S in n_fine]
+    plt.plot(n_fine, bias, 'g-.')
     plt.xlabel('n_S')
     plt.ylabel('normalised trace of inverse of ML covariance')
+    plt.ylim(90, 110)
 
-    plt.savefig('sigma_ML')
+    plt.savefig('{}.pdf'.format(out_name))
+
+    f = open('{}.txt'.format(out_name), 'w')
+    print >>f, '# sig={}, n_D={}'.format(sig, n_D)
+    print >>f, '# n sigma 1/sigma'
+    for i in range(len(n)):
+        print >>f, '{} {} {}'.format(n[i], sigma_ML[i], sigma_m1_ML[i])
+    f.close()
+
+
+def plot_mean_std(n, fit_res, out_name='line_mean_std', a=1, b=2.5):
+    """Plot mean and std from MCMC fits versus number of
+       realisations n
+
+    Parameters
+    ----------
+    n: array of integer
+        number of realisations for ML covariance
+    fit_res: pystan.stan return object
+        contains fit results
+    a: float
+        input value for intercept, default=1
+    b: floag
+        input value for slope, default=2.5
+    out_name: string
+        output file name base, default='line_mean_std'
+
+    Returns
+    -------
+    None
+    """
+
+    plt.figure()
+    plt.suptitle('Fit of straight line with $n_{{\\rm D}}$ = {} data points'.format(n_D))
+
+    plt.subplot(1, 2, 1)
+    plt.plot(n, fit_res['a_mean'], 'b.')
+    plt.plot([n[0], n[-1]], [a, a], 'r-')
+    plt.plot(n, fit_res['b_mean'], 'bD', markersize=0.3)
+    plt.plot([n[0], n[-1]], [b, b], 'r-')
+    plt.xlabel('n_S')
+    plt.ylabel('mean of intercept, slope')
+
+    plt.subplot(1, 2, 2)
+    plt.plot(n, fit_res['a_std'], 'b.')
+    plt.plot(n, fit_res['b_std'], 'bD')
+    plt.xlabel('n_S')
+    plt.ylabel('std of intercept, slope')
+
+    plt.savefig('{}.pdf'.format(out_name))
+
+    f = open('{}.txt'.format(out_name), 'w')
+    print >>f, '# n a a_std b b_std'
+    for i in range(len(n)):
+        print >>f, '{} {} {} {} {}'.format(n[i], fit_res['a_mean'][i], 
+                fit_res['a_std'][i], fit_res['b_mean'][i], fit_res['b_std'][i])
+    f.close()
 
 
 
@@ -107,11 +165,13 @@ def fit(x1, cov):
     return fit
 
 
+# Main program
 
 # Parameters
 a = 1.0                                                 # angular coefficient
 b = 2.5                                                 # linear coefficient
 sig = 100
+do_fit_stan = False
 
 # Data
 n_D = 50                                                 # Dimension of data vector
@@ -126,8 +186,9 @@ n           = []                                        # number of simulations
 sigma_ML    = []
 sigma_m1_ML = []
 fit_res     = {}
-fit_res['a_mean'] = []
-fit_res['a_std'] = []
+for var in ['a', 'b']:
+    for t in ['mean', 'std']:
+        fit_res['{}_{}'.format(var, t)] = []
 
 for n_S in range(n_D+3, n_D+50, 10):
 
@@ -144,18 +205,20 @@ for n_S in range(n_D+3, n_D+50, 10):
     this_sigma_m1_ML = np.trace(cov_est_inv) / n_D
     sigma_m1_ML.append(this_sigma_m1_ML)
 
-    #print n_S, n_D, len(x1), this_sigma_ML, this_sigma_m1_ML
+    # MCMC fit of Parameters
+    if do_fit_stan == True:
+        res = fit(x1, cov)
+        la  = res.extract(permuted=True)
+        fit_res['a_mean'].append(np.mean(la['a']))
+        fit_res['a_std'].append(np.std(la['a']))
+        fit_res['b_mean'].append(np.mean(la['b']))
+        fit_res['b_std'].append(np.std(la['b']))
 
-    # MCMC fit of parameters
-    res = fit(x1, cov)
-    la  = res.extract(permuted=True)
-    fit_res['a_mean'].append(np.mean(la['a']))
-    fit_res['a_std'].append(np.std(la['a']))
 
+plot_sigma_ML(n, sigma_ML, sigma_m1_ML, sig, out_name='sigma_ML')
 
-plot_sigma_ML(n, sigma_ML, sigma_m1_ML, sig)
+if do_fit_stan == True:
+    plot_mean_std(n, fit_res, out_name='line_mean_std', a=a, b=b)
 
-print(fit_res['a_mean'])
-print(fit_res['a_std'])
 
 
