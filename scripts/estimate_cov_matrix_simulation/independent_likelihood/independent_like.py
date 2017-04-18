@@ -66,6 +66,11 @@ nlines = 8                     # number of lines in screen output
 output = str(fit).split('\n')
 for item in output[:nlines]:
     print(item)   
+# MK testing output of stan
+la  = fit.extract(permuted=True)
+print('a = {} +- {}'.format(np.mean(la['a']), np.std(la['a'])))
+print('sig = {} +- {}'.format(np.mean(la['sigma']), np.std(la['sigma'])))
+
 
 
 # Plot
