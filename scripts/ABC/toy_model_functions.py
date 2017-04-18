@@ -21,9 +21,10 @@ import numpy as np
 import os
 from scipy.stats import norm,  multivariate_normal
 from scipy.stats import uniform
-from scipy import interpolate
+from scipy import stats
 
-def model(x, p):
+
+def model(p):
     """Linear model.
 
     input: p - dict: keywords 
@@ -36,9 +37,14 @@ def model(x, p):
     output: y, array - draw from normal distribution with mean
                         a*x + b and scatter sig          
     """
-    y = np.array([norm.rvs(loc=p['a']*x[i] + p['b'], scale=p['sig']) for i in range(len(x))])
+    x = uniform.rvs(loc=p['xmin'], scale=p['xmax'] - p['xmin'], size=int(p['nobs']))
+    
+    x.sort()
+    ytrue = p['a']*x + p['b']
+ 
+    y = np.array([norm.rvs(loc=ytrue[i], scale=p['sig']) for i in range(int(p['nobs']))])
 
-    return np.atleast_2d(y)
+    return np.array([[x[i], y[i]] for i in range(int(p['nobs']))])
 
 
 def sim_linear_ind(v):
@@ -61,14 +67,14 @@ def sim_linear_ind(v):
         v['xaxis'] = np.readtxt(v['xaxis'][0])
 
         # simulate response variable
-        y = v['a']* v['xaxis'] + v['b']
+        y = np.array([model(v['xaxis'][i], v) for i in range(len(v['xaxis']))])
 
     else:
         # simulate xaxis values
         v['xaxis'] = np.random.uniform(v['xmin'], v['xmax'], size=int(v['nobs']))
 
         # simulate response variable
-        y = model(v['xaxis'], v)
+        y = np.array([model(v['xaxis'][i], v) for i in range(len(v['xaxis']))])
 
         # write xaxis data
         op1 = open('xaxis.dat', 'w')
@@ -76,12 +82,8 @@ def sim_linear_ind(v):
             op1.write(str(v['xaxis'][i]) + '\n')
         op1.close()
 
-    dist = [norm(loc=y[i], scale=v['sig']) for i in range(len(y))]
 
-    l1 = np.array([dist[i].rvs() for i in range(len(y))])
-
-
-    return v['xaxis'], np.atleast_2d(l1).T
+    return v['xaxis'], np.atleast_2d(y).T
 
 def gaussian_prior(par, func=False):
     """
@@ -122,28 +124,16 @@ def linear_dist(d2, p):
     output: list of 1 scalar (distance)
     """
 
-    y_obs = p['dataset1'][1].flatten()
-    y_sim = d2[1].flatten()
-    x = p['dataset1'][0].flatten()
+    y_obs = p['dataset1'][:,1]
+    x = p['dataset1'][:,0]
 
-    print y_obs.shape
-    print y_sim.shape
-    print x.shape
+    slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(d2[:,0],d2[:,1])
+    slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(x,y_obs)
 
-    f_obs = interpolate.interp1d(x, y_obs, kind='cubic')
-    f_sim = interpolate.interp1d(x, y_sim, kind='cubic')
- 
-
-    # test angular coefficient
-    ang = sum([(y_obs[i] - y_sim[i]) ** 2 for i in range(len(y_sim))])
+    ang = np.sqrt((slope1 - slope2) ** 2  + (intercept1 - intercept2) ** 2)
    
-    # test linear coefficient
-    lin = (f_obs(0) - f_sim(0)) ** 2
 
-    # test scatter
-    s = np.std(y_obs - f_sim(x)) + np.std(y_sim - f_obs(x))
-
-    return s, lin, ang
+    return np.atleast_1d(ang)
     
   
     
