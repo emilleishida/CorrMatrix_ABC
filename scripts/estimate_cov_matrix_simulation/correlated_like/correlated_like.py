@@ -12,6 +12,7 @@ import statsmodels.api as sm
 import pystan
 from scipy.stats import uniform, multivariate_normal
 import time
+import pylab as plt
 
 # Data
 np.random.seed(1056)                 # set seed to replicate example

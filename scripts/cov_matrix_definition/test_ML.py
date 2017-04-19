@@ -5,6 +5,102 @@ import sys
 import pystan
 import time
 
+# Gaussian likelihood function
+# chi^2 = -2 log L = (y - mu)^t Psi (y - mu).
+# y: n_D dimensional data vector, simulated as y(x) ~ N(mu(x), sigma)
+#    with mu(x) = b + a * x
+# x: x ~ Uniform(-100, 100)
+# mu: mean, mu(x) = b + a * x, with parameters b, a
+# Psi: estimated inverse covariance, Phi^-1 times correction factor
+# Phi: estimate of true covariance C, ML estimate from n_S realisations of y.
+# C = diag(sig, ..., sig)
+# Fisher matrix
+# F_rs = 1/2 ( dmu^t/dr Psi dmu/ds + dmu^t/ds Psi dmu/dr)
+#      = 1/2 |2 x^t Psi x               x^t Psi 1 + 1^t Psi x| 
+#            |1^t Psi x + x^t Psi 1     2 1^t Psi 1|
+# e.g. F_11 = F_aa = x Psi x^t
+
+def Fisher_ana_ele(r, s, y, Psi):
+    """Return analytical Fisher matrix element (r, s).
+
+    Parameters
+    ----------
+    r, s: integer
+        indices of matrix, r,s in {0,1}
+    y: array of float
+        data vector
+    Psi: matrix
+        precision matrix
+
+    Returns
+    -------
+    f_rs: float
+        Fisher matrix element (r, s)
+    """
+
+    n_D = len(y)
+    v = np.zeros(shape = (2, n_D))
+    for i in (r, s):
+        if i == 0:
+            v[i] = y
+        elif i == 1:
+            v[i] = np.ones(shape=n_D)
+        else:
+            print('Invalid index {}'.format(i))
+            sys.exit(1)
+
+    #f_rs = np.einsum('i,ij,j', v[r,], Psi, v[s,]) # Not the same as below (?)
+    f_rs = 0
+    for i in range(n_D):
+        for j in range(n_D):
+            f_rs += v[r,i] * Psi[i, j] * v[s, j]
+
+    return f_rs
+
+
+def Fisher_error(F):
+    """Return errors (Cramer-Rao bounds) from Fisher matrix
+
+    Parameters
+    ----------
+    F: matrix of float
+        Fisher matrix
+
+    Returns
+    -------
+    d: array of float
+        vector of parameter errors
+    """
+
+    Finv = np.linalg.inv(F)
+
+    return np.sqrt(np.diag(Finv))
+
+
+
+def Fisher_ana(y, Psi):
+    """Return analytical Fisher matrix
+
+    Parameters
+    ----------
+     y: array of float
+        data vector
+    Psi: matrix
+        precision matrix
+
+    Returns
+    -------
+    f: matrix
+        Fisher matrix
+    """
+
+    f = np.zeros(shape = (2, 2))
+    for r in (0, 1):
+        for s in (0, 1):
+            f[r,s] = Fisher_ana_ele(r, s, y, Psi)
+
+    return f
+
 
 
 def get_cov_ML_by_hand(mean, cov, size):
@@ -56,7 +152,7 @@ def get_cov_ML(mean, cov, size):
 
 
 
-def plot_sigma_ML(n, sigma_ML, sigma_m1_ML, sig):
+def plot_sigma_ML(n, sigma_ML, sigma_m1_ML, sig, out_name='sigma_ML'):
 
     plt.figure()
     plt.suptitle('Covariance of n_D = {} dimensional data'.format(n_D))
@@ -70,12 +166,70 @@ def plot_sigma_ML(n, sigma_ML, sigma_m1_ML, sig):
     plt.subplot(1, 2, 2)
     plt.plot(n, sigma_m1_ML, 'b.')
     plt.plot([n[0], n[-1]], [1.0/sig, 1.0/sig], 'r-')
-    bias = [(n_S-1.0)/(n_S-n_D-2.0)/sig for n_S in n]
-    plt.plot(n, bias, 'g-.')
+    n_fine = np.arange(n[0], n[-1], len(n)/10.0)
+    bias = [(n_S-1.0)/(n_S-n_D-2.0)/sig for n_S in n_fine]
+    plt.plot(n_fine, bias, 'g-.')
     plt.xlabel('n_S')
     plt.ylabel('normalised trace of inverse of ML covariance')
+    plt.ylim(90, 110)
 
-    plt.savefig('sigma_ML')
+    plt.savefig('{}.pdf'.format(out_name))
+
+    f = open('{}.txt'.format(out_name), 'w')
+    print >>f, '# sig={}, n_D={}'.format(sig, n_D)
+    print >>f, '# n sigma 1/sigma'
+    for i in range(len(n)):
+        print >>f, '{} {} {}'.format(n[i], sigma_ML[i], sigma_m1_ML[i])
+    f.close()
+
+
+def plot_mean_std(n, fit_res, out_name='line_mean_std', a=1, b=0):
+    """Plot mean and std from MCMC fits versus number of
+       realisations n
+
+    Parameters
+    ----------
+    n: array of integer
+        number of realisations for ML covariance
+    fit_res: pystan.stan return object
+        contains fit results
+    a: float
+        input value for intercept, default=1
+    b: floag
+        input value for slope, default=2.5
+    out_name: string
+        output file name base, default='line_mean_std'
+
+    Returns
+    -------
+    None
+    """
+
+    plt.figure()
+    plt.suptitle('Fit of straight line with $n_{{\\rm D}}$ = {} data points'.format(n_D))
+
+    plt.subplot(1, 2, 1)
+    plt.plot(n, fit_res['a_mean'], 'b.')
+    plt.plot([n[0], n[-1]], [a, a], 'r-')
+    plt.plot(n, fit_res['b_mean'], 'bD', markersize=0.3)
+    plt.plot([n[0], n[-1]], [b, b], 'r-')
+    plt.xlabel('n_S')
+    plt.ylabel('mean of intercept, slope')
+
+    plt.subplot(1, 2, 2)
+    plt.plot(n, fit_res['a_std'], 'b.')
+    plt.plot(n, fit_res['b_std'], 'bD')
+    plt.xlabel('n_S')
+    plt.ylabel('std of intercept, slope')
+
+    plt.savefig('{}.pdf'.format(out_name))
+
+    f = open('{}.txt'.format(out_name), 'w')
+    print >>f, '# n a a_std b b_std'
+    for i in range(len(n)):
+        print >>f, '{} {} {} {} {}'.format(n[i], fit_res['a_mean'][i], 
+                fit_res['a_std'][i], fit_res['b_mean'][i], fit_res['b_std'][i])
+    f.close()
 
 
 
@@ -189,11 +343,14 @@ def fit_corr(x1, cov_true, cov_estimated):
     return fit
 
 
+# Main program
 
 # Parameters
 a = 1.0                                                 # angular coefficient
 b = 0                                                 # linear coefficient
-sig = 1                                               # *** cov of the data! ***
+sig = 100
+do_fit_stan = False
+
 
 # Data
 n_D = 50                                                 # Dimension of data vector
@@ -208,9 +365,15 @@ n           = []                                        # number of simulations
 sigma_ML    = []
 sigma_m1_ML = []
 fit_res     = {}
+
 fit_res['a_mean'] = []
 fit_res['a_std'] = []
 fit_res['b_mean'] = []
+=======
+for var in ['a', 'b']:
+    for t in ['mean', 'std']:
+        fit_res['{}_{}'.format(var, t)] = []
+
 
 for n_S in range(n_D+3, n_D+200, 10):
 
@@ -227,36 +390,24 @@ for n_S in range(n_D+3, n_D+200, 10):
     this_sigma_m1_ML = np.trace(cov_est_inv) / n_D
     sigma_m1_ML.append(this_sigma_m1_ML)
 
-    #print n_S, n_D, len(x1), this_sigma_ML, this_sigma_m1_ML
+    # Fisher matrix
+    F = Fisher_ana(yreal, cov_est_inv)
+    da, db = Fisher_error(F)
+    print(da, db)
 
-    # MCMC fit of parameters
-    res = fit_corr(x1, cov, cov_est)
-    la  = res.extract(permuted=True)
-    fit_res['a_mean'].append(np.mean(la['a']))
-    fit_res['a_std'].append(np.std(la['a']))
-    fit_res['b_mean'].append(np.mean(la['b']))
+    # MCMC fit of Parameters
+    if do_fit_stan == True:
+        res = fit(x1, cov)
+        la  = res.extract(permuted=True)
+        fit_res['a_mean'].append(np.mean(la['a']))
+        fit_res['a_std'].append(np.std(la['a']))
+        fit_res['b_mean'].append(np.mean(la['b']))
+        fit_res['b_std'].append(np.std(la['b']))
 
 
-plot_sigma_ML(n, sigma_ML, sigma_m1_ML, sig)
+plot_sigma_ML(n, sigma_ML, sigma_m1_ML, sig, out_name='sigma_ML')
 
-print(fit_res['a_mean'])
-print(fit_res['a_std'])
-print(fit_res['b_mean'])
-
-plt.figure()
-plt.subplot(1,2,1)
-plt.scatter(n, fit_res['a_mean'], color='b')
-plt.plot([n[0], n[-1]], [a, a], color='r', label='true value')
-plt.xlabel('n_S')
-plt.ylabel('a_mean')
-plt.ylim(min(fit_res['b_mean']) - 1, max(fit_res['b_mean'])+1)
-
-plt.subplot(1,2,2)
-plt.scatter(n, fit_res['b_mean'], color='b')
-plt.plot([n[0], n[-1]], [b, b], color='r', label='true value')
-plt.xlabel('n_S')
-plt.ylabel('b_mean')
-plt.ylim(min(fit_res['b_mean']) - 1, max(fit_res['b_mean'])+1)
-plt.savefig('output_from_Stan.png')
+if do_fit_stan == True:
+    plot_mean_std(n, fit_res, out_name='line_mean_std', a=a, b=b)
 
 
