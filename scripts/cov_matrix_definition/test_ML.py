@@ -49,11 +49,12 @@ def Fisher_ana_ele(r, s, y, Psi):
             print('Invalid index {}'.format(i))
             sys.exit(1)
 
-    #f_rs = np.einsum('i,ij,j', v[r,], Psi, v[s,]) # Not the same as below (?)
-    f_rs = 0
-    for i in range(n_D):
-        for j in range(n_D):
-            f_rs += v[r,i] * Psi[i, j] * v[s, j]
+    f_rs = np.einsum('i,ij,j', v[r], Psi, v[s])
+    # Check result by hand
+    #f_rs = 0
+    #for i in range(n_D):
+        #for j in range(n_D):
+            #f_rs += v[r,i] * Psi[i, j] * v[s, j]
 
     return f_rs
 
@@ -268,6 +269,9 @@ a = 1.0                                                 # angular coefficient
 b = 2.5                                                 # linear coefficient
 sig = 100
 do_fit_stan = False
+
+#np.random.seed(1056)                 # set seed to replicate example
+
 
 # Data
 n_D = 50                                                 # Dimension of data vector
