@@ -5,6 +5,102 @@ import sys
 import pystan
 import time
 
+# Gaussian likelihood function
+# chi^2 = -2 log L = (y - mu)^t Psi (y - mu).
+# y: n_D dimensional data vector, simulated as y(x) ~ N(mu(x), sigma)
+#    with mu(x) = b + a * x
+# x: x ~ Uniform(-100, 100)
+# mu: mean, mu(x) = b + a * x, with parameters b, a
+# Psi: estimated inverse covariance, Phi^-1 times correction factor
+# Phi: estimate of true covariance C, ML estimate from n_S realisations of y.
+# C = diag(sig, ..., sig)
+# Fisher matrix
+# F_rs = 1/2 ( dmu^t/dr Psi dmu/ds + dmu^t/ds Psi dmu/dr)
+#      = 1/2 |2 x^t Psi x               x^t Psi 1 + 1^t Psi x| 
+#            |1^t Psi x + x^t Psi 1     2 1^t Psi 1|
+# e.g. F_11 = F_aa = x Psi x^t
+
+def Fisher_ana_ele(r, s, y, Psi):
+    """Return analytical Fisher matrix element (r, s).
+
+    Parameters
+    ----------
+    r, s: integer
+        indices of matrix, r,s in {0,1}
+    y: array of float
+        data vector
+    Psi: matrix
+        precision matrix
+
+    Returns
+    -------
+    f_rs: float
+        Fisher matrix element (r, s)
+    """
+
+    n_D = len(y)
+    v = np.zeros(shape = (2, n_D))
+    for i in (r, s):
+        if i == 0:
+            v[i] = y
+        elif i == 1:
+            v[i] = np.ones(shape=n_D)
+        else:
+            print('Invalid index {}'.format(i))
+            sys.exit(1)
+
+    #f_rs = np.einsum('i,ij,j', v[r,], Psi, v[s,]) # Not the same as below (?)
+    f_rs = 0
+    for i in range(n_D):
+        for j in range(n_D):
+            f_rs += v[r,i] * Psi[i, j] * v[s, j]
+
+    return f_rs
+
+
+def Fisher_error(F):
+    """Return errors (Cramer-Rao bounds) from Fisher matrix
+
+    Parameters
+    ----------
+    F: matrix of float
+        Fisher matrix
+
+    Returns
+    -------
+    d: array of float
+        vector of parameter errors
+    """
+
+    Finv = np.linalg.inv(F)
+
+    return np.sqrt(np.diag(Finv))
+
+
+
+def Fisher_ana(y, Psi):
+    """Return analytical Fisher matrix
+
+    Parameters
+    ----------
+     y: array of float
+        data vector
+    Psi: matrix
+        precision matrix
+
+    Returns
+    -------
+    f: matrix
+        Fisher matrix
+    """
+
+    f = np.zeros(shape = (2, 2))
+    for r in (0, 1):
+        for s in (0, 1):
+            f[r,s] = Fisher_ana_ele(r, s, y, Psi)
+
+    return f
+
 
 
 def get_cov_ML_by_hand(mean, cov, size):
@@ -204,6 +300,11 @@ for n_S in range(n_D+3, n_D+50, 10):
 
     this_sigma_m1_ML = np.trace(cov_est_inv) / n_D
     sigma_m1_ML.append(this_sigma_m1_ML)
+
+    # Fisher matrix
+    F = Fisher_ana(yreal, cov_est_inv)
+    da, db = Fisher_error(F)
+    print(da, db)
 
     # MCMC fit of Parameters
     if do_fit_stan == True:
