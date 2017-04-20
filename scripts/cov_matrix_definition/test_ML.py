@@ -49,11 +49,12 @@ def Fisher_ana_ele(r, s, y, Psi):
             print('Invalid index {}'.format(i))
             sys.exit(1)
 
-    #f_rs = np.einsum('i,ij,j', v[r,], Psi, v[s,]) # Not the same as below (?)
-    f_rs = 0
-    for i in range(n_D):
-        for j in range(n_D):
-            f_rs += v[r,i] * Psi[i, j] * v[s, j]
+    f_rs = np.einsum('i,ij,j', v[r], Psi, v[s])
+    # Check result by hand
+    #f_rs = 0
+    #for i in range(n_D):
+        #for j in range(n_D):
+            #f_rs += v[r,i] * Psi[i, j] * v[s, j]
 
     return f_rs
 
@@ -119,20 +120,7 @@ def get_cov_ML_by_hand(mean, cov, size):
 
 
 def get_cov_ML(mean, cov, size):
-    """
-    *** covariance of the data! ***
-    Simulate a set of catalogs from  a multivariate gaussian with given mean,
-    covariance and number of observations. 
-    Then extract the mean and covariance from the simulated values.
 
-    input: mean, expected mean of observations - array of floats
-           cov, covariance matrix  - matrix of floats
-           size, number of observations in the catalog - int
-
-    output: cov_est, the estimated covariance matrix - matrix of floats
-    """
-
-    # simulate catalog
     y2 = multivariate_normal.rvs(mean=mean, cov=cov, size=size)
     # y2[:,j] = realisations for j-th data entry
     # y2[i,:] = data vector for i-th realisation
@@ -183,7 +171,7 @@ def plot_sigma_ML(n, sigma_ML, sigma_m1_ML, sig, out_name='sigma_ML'):
     f.close()
 
 
-def plot_mean_std(n, fit_res, out_name='line_mean_std', a=1, b=0):
+def plot_mean_std(n, fit_res, out_name='line_mean_std', a=1, b=2.5):
     """Plot mean and std from MCMC fits versus number of
        realisations n
 
@@ -351,6 +339,8 @@ b = 0                                                 # linear coefficient
 sig = 100
 do_fit_stan = False
 
+#np.random.seed(1056)                 # set seed to replicate example
+
 
 # Data
 n_D = 500                                                 # Dimension of data vector
@@ -366,10 +356,6 @@ sigma_ML    = []
 sigma_m1_ML = []
 fit_res     = {}
 
-fit_res['a_mean'] = []
-fit_res['a_std'] = []
-fit_res['b_mean'] = []
-=======
 for var in ['a', 'b']:
     for t in ['mean', 'std']:
         fit_res['{}_{}'.format(var, t)] = []
