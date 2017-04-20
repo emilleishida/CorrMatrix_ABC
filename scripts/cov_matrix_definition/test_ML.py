@@ -353,7 +353,7 @@ do_fit_stan = False
 
 
 # Data
-n_D = 50                                                 # Dimension of data vector
+n_D = 500                                                 # Dimension of data vector
 x1 = uniform.rvs(loc=-100, scale=200, size=n_D)        # exploratory variable
 x1.sort()
 
@@ -397,7 +397,7 @@ for n_S in range(n_D+3, n_D+200, 10):
 
     # MCMC fit of Parameters
     if do_fit_stan == True:
-        res = fit(x1, cov)
+        res = fit_corr(x1, cov, cov_est)
         la  = res.extract(permuted=True)
         fit_res['a_mean'].append(np.mean(la['a']))
         fit_res['a_std'].append(np.std(la['a']))
