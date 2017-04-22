@@ -322,7 +322,7 @@ def fit_corr(x1, cov_true, cov_estimated):
     """
 
     start = time.time()
-    fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2500, chains=3, verbose=False, n_jobs=3)
+    fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=3, verbose=False, n_jobs=3)
     end = time.time()
 
     #elapsed = end - start
@@ -336,14 +336,14 @@ def fit_corr(x1, cov_true, cov_estimated):
 # Parameters
 a = 1.0                                                 # angular coefficient
 b = 0                                                 # linear coefficient
-sig = 100
-do_fit_stan = False
+sig = 5
+do_fit_stan = True
 
 #np.random.seed(1056)                 # set seed to replicate example
 
 
 # Data
-n_D = 500                                                 # Dimension of data vector
+n_D = 750                                                 # Dimension of data vector
 x1 = uniform.rvs(loc=-100, scale=200, size=n_D)        # exploratory variable
 x1.sort()
 
@@ -361,7 +361,7 @@ for var in ['a', 'b']:
         fit_res['{}_{}'.format(var, t)] = []
 
 
-for n_S in range(n_D+3, n_D+200, 10):
+for n_S in range(n_D+3, n_D+2750, 50):
 
     n.append(n_S)                                             # number of data points
 
