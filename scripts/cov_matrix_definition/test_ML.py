@@ -59,6 +59,48 @@ def Fisher_ana_ele(r, s, y, Psi):
     return f_rs
 
 
+
+def Fisher_num_ele(r, s, x, a, b, Psi):
+    """Return numerical Fisher matrix element (r, s).
+
+    Parameters
+    ----------
+    r, s: integer
+        indices of matrix, r,s in {0,1}
+    x: array of float
+        x-values on which data vector is evaluated
+    a, b: double
+        parameters
+    Psi: matrix
+        precision matrix
+
+    Returns
+    -------
+    f_rs: float
+        Fisher matrix element (r, s)
+    """
+
+
+    if r == 0:
+        h = 0.1 * a
+        dy_dr = (a+h * x + b - (a-h * x + b)) / (2*h)
+    else:
+        h = 0.1
+        dy_dr = (a * x + b+h - (a * x + b-h)) / (2*h)
+
+    if s == 0:
+        h = 0.1 * a
+        dy_ds = (a+h * x + b - (a-h * x + b)) / (2*h)
+    else:
+        h = 0.1
+        dy_ds = (a * x + b+h - (a * x + b-h)) / (2*h)
+
+    f_rs = np.einsum('i,ij,j', dy_dr, Psi, dy_ds)
+
+    return f_rs
+
+
+
 def Fisher_error(F):
     """Return errors (Cramer-Rao bounds) from Fisher matrix
 
@@ -104,6 +146,33 @@ def Fisher_ana(y, Psi):
 
 
 
+def Fisher_num(x, a, b, Psi):
+    """Return numerical Fisher matrix
+
+    Parameters
+    ----------
+    x: array of float
+        x-values of data vector
+    a, b: double
+        parameters
+    Psi: matrix
+        precision matrix
+
+    Returns
+    -------
+    f: matrix
+        Fisher matrix
+    """
+
+    f = np.zeros(shape = (2, 2))
+    for r in (0, 1):
+        for s in (0, 1):
+            f[r,s] = Fisher_num_ele(r, s, x, a, b, Psi)
+
+    return f
+
+
+
 def get_cov_ML_by_hand(mean, cov, size):
     """ Double check that get_cov_ML is the same as calculating 'by hand'"""
 
@@ -140,7 +209,7 @@ def get_cov_ML(mean, cov, size):
 
 
 
-def plot_sigma_ML(n, sigma_ML, sigma_m1_ML, sig, out_name='sigma_ML'):
+def plot_sigma_ML(n, n_D, sigma_ML, sigma_m1_ML, sig, out_name='sigma_ML'):
 
     plt.figure()
     plt.suptitle('Covariance of n_D = {} dimensional data'.format(n_D))
@@ -172,14 +241,16 @@ def plot_sigma_ML(n, sigma_ML, sigma_m1_ML, sig, out_name='sigma_ML'):
     f.close()
 
 
-def plot_mean_std(n, fit_res, out_name='line_mean_std', a=1, b=2.5):
+def plot_mean_std(n, n_D, fit_res, out_name='line_mean_std', a=1, b=2.5):
     """Plot mean and std from MCMC fits versus number of
        realisations n
 
     Parameters
     ----------
     n: array of integer
-        number of realisations for ML covariance
+        number of realisations {n_S} for ML covariance
+    n_D: integer
+        dimension of data vector
     fit_res: pystan.stan return object
         contains fit results
     a: float
@@ -197,13 +268,14 @@ def plot_mean_std(n, fit_res, out_name='line_mean_std', a=1, b=2.5):
     plt.figure()
     plt.suptitle('Fit of straight line with $n_{{\\rm D}}$ = {} data points'.format(n_D))
 
-    plt.subplot(1, 2, 1)
-    plt.plot(n, fit_res['a_mean'], 'b.')
-    plt.plot([n[0], n[-1]], [a, a], 'r-')
-    plt.plot(n, fit_res['b_mean'], 'bD', markersize=0.3)
-    plt.plot([n[0], n[-1]], [b, b], 'r-')
-    plt.xlabel('n_S')
-    plt.ylabel('mean of intercept, slope')
+    if 'a_mean' in fit_res:
+        plt.subplot(1, 2, 1)
+        plt.plot(n, fit_res['a_mean'], 'b.')
+        plt.plot([n[0], n[-1]], [a, a], 'r-')
+        plt.plot(n, fit_res['b_mean'], 'bD', markersize=0.3)
+        plt.plot([n[0], n[-1]], [b, b], 'r-')
+        plt.xlabel('n_S')
+        plt.ylabel('mean of intercept, slope')
 
     plt.subplot(1, 2, 2)
     plt.plot(n, fit_res['a_std'], 'b.')
@@ -213,16 +285,23 @@ def plot_mean_std(n, fit_res, out_name='line_mean_std', a=1, b=2.5):
 
     plt.savefig('{}.pdf'.format(out_name))
 
-    f = open('{}.txt'.format(out_name), 'w')
-    print >>f, '# n a a_std b b_std'
+    if 'a_mean' in fit_res:
+        f = open('{}_mean.txt'.format(out_name), 'w')
+        print >>f, '# n a b'
+        for i in range(len(n)):
+            print >>f, '{} {} {}'.format(n[i], fit_res['a_mean'][i], 
+                    fit_res['b_mean'][i])
+        f.close()
+
+    f = open('{}_std.txt'.format(out_name), 'w')
+    print >>f, '# n a_std b_std'
     for i in range(len(n)):
-        print >>f, '{} {} {} {} {}'.format(n[i], fit_res['a_mean'][i], 
-                fit_res['a_std'][i], fit_res['b_mean'][i], fit_res['b_std'][i])
+        print >>f, '{} {} {}'.format(n[i], fit_res['a_std'][i], fit_res['b_std'][i])
     f.close()
 
 
 
-def fit(x1, cov):
+def fit(x1, cov, n_jobs=3):
     """
     Generates one draw from a multivariate normal distribution
     and performs the linear fit  without taking the correlation into
@@ -230,6 +309,7 @@ def fit(x1, cov):
 
     input:  x1, mean of multivariate normal distribution - vector of floats
             cov, square covariance matrix for the multivariate normal
+            n_jobs, number of parallel jobs
 
     output: fit, Stan fitting object
     """
@@ -267,7 +347,7 @@ def fit(x1, cov):
     """
 
     start = time.time()
-    fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2500, chains=3, verbose=False, n_jobs=3)
+    fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2500, chains=3, verbose=False, n_jobs=n_jobs)
     end = time.time()
 
     #elapsed = end - start
@@ -275,7 +355,7 @@ def fit(x1, cov):
 
     return fit
 
-def fit_corr(x1, cov_true, cov_estimated):
+def fit_corr(x1, cov_true, cov_estimated, n_jobs=3):
     """
     Generates one draw from a multivariate normal distribution
     and performs the linear fit taking the correlation estimated 
@@ -284,6 +364,7 @@ def fit_corr(x1, cov_true, cov_estimated):
     input:  x1, mean of multivariate normal distribution - vector of floats
             cov_true, square covariance matrix for the simulation
             cov_estimated, square covariance matrix for the fitting
+            n_jobs, number of parallel jobs
 
     output: fit, Stan fitting object
     """
@@ -323,7 +404,7 @@ def fit_corr(x1, cov_true, cov_estimated):
     """
 
     start = time.time()
-    fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=3, verbose=False, n_jobs=3)
+    fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=3, verbose=False, n_jobs=n_jobs)
     end = time.time()
 
     #elapsed = end - start
@@ -338,8 +419,10 @@ def fit_corr(x1, cov_true, cov_estimated):
 a = 1.0                                                 # angular coefficient
 b = 0                                                 # linear coefficient
 sig = 5
-do_fit_stan = True
-#do_fit_stan = False
+
+#do_fit_stan = True
+do_fit_stan = False
+n_jobs = 1
 
 #np.random.seed(1056)                 # set seed to replicate example
 
@@ -357,6 +440,7 @@ n           = []                                        # number of simulations
 sigma_ML    = []
 sigma_m1_ML = []
 fit_res     = {}
+fish_res    = {'a_std': [], 'b_std': []}
 
 for var in ['a', 'b']:
     for t in ['mean', 'std']:
@@ -381,11 +465,17 @@ for n_S in range(n_D+3, n_D+2750, 500):
     # Fisher matrix
     F = Fisher_ana(yreal, cov_est_inv)
     da, db = Fisher_error(F)
+    fish_res['a_std'].append(da)
+    fish_res['b_std'].append(db)
+    #print(da, db)
+
+    F = Fisher_num(x1, a, b, cov_est_inv)
+    da, db = Fisher_error(F)
     #print(da, db)
 
     # MCMC fit of Parameters
     if do_fit_stan == True:
-        res = fit_corr(x1, cov, cov_est)
+        res = fit_corr(x1, cov, cov_est, n_jobs=n_jobs)
         la  = res.extract(permuted=True)
         fit_res['a_mean'].append(np.mean(la['a']))
         fit_res['a_std'].append(np.std(la['a']))
@@ -393,9 +483,11 @@ for n_S in range(n_D+3, n_D+2750, 500):
         fit_res['b_std'].append(np.std(la['b']))
 
 
-plot_sigma_ML(n, sigma_ML, sigma_m1_ML, sig, out_name='sigma_ML')
+plot_sigma_ML(n, n_D, sigma_ML, sigma_m1_ML, sig, out_name='sigma_ML')
+
+plot_mean_std(n, n_D, fish_res, out_name='std_Fisher', a=a, b=b)
 
 if do_fit_stan == True:
-    plot_mean_std(n, fit_res, out_name='line_mean_std', a=a, b=b)
+    plot_mean_std(n, n_D, fit_res, out_name='mean_std_MCMC', a=a, b=b)
 
 
