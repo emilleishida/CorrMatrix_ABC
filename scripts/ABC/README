@@ -27,7 +27,7 @@ inside the cosmoabc folder do, in the command line
 >> python setup.py install
 
 return to this directory and test the distance definition
->> test_ABC_distance.py -i toy_model.input -f toy_model_function.py
+>> test_ABC_distance.py -i toy_model.input -f toy_model_functions.py
 
 Run the ABC analysis
->> run_ABC.py -i toy_model.input -f toy_model_function.py
+>> run_ABC.py -i toy_model.input -f toy_model_functions.py
