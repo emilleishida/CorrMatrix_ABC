@@ -151,7 +151,7 @@ def plot_sigma_ML(n, sigma_ML, sigma_m1_ML, sig, out_name='sigma_ML'):
     plt.xlabel('n_S')
     plt.ylabel('normalised trace of ML covariance')
 
-    plt.subplot(1, 2, 2)
+    ax = plt.subplot(1, 2, 2)
     plt.plot(n, sigma_m1_ML, 'b.')
     plt.plot([n[0], n[-1]], [1.0/sig, 1.0/sig], 'r-')
     n_fine = np.arange(n[0], n[-1], len(n)/10.0)
@@ -159,7 +159,8 @@ def plot_sigma_ML(n, sigma_ML, sigma_m1_ML, sig, out_name='sigma_ML'):
     plt.plot(n_fine, bias, 'g-.')
     plt.xlabel('n_S')
     plt.ylabel('normalised trace of inverse of ML covariance')
-    plt.ylim(90, 110)
+    #plt.ylim(90, 110)
+    ax.set_yscale('log')
 
     plt.savefig('{}.pdf'.format(out_name))
 
@@ -338,6 +339,7 @@ a = 1.0                                                 # angular coefficient
 b = 0                                                 # linear coefficient
 sig = 5
 do_fit_stan = True
+#do_fit_stan = False
 
 #np.random.seed(1056)                 # set seed to replicate example
 
@@ -361,7 +363,7 @@ for var in ['a', 'b']:
         fit_res['{}_{}'.format(var, t)] = []
 
 
-for n_S in range(n_D+3, n_D+2750, 50):
+for n_S in range(n_D+3, n_D+2750, 500):
 
     n.append(n_S)                                             # number of data points
 
@@ -379,7 +381,7 @@ for n_S in range(n_D+3, n_D+2750, 50):
     # Fisher matrix
     F = Fisher_ana(yreal, cov_est_inv)
     da, db = Fisher_error(F)
-    print(da, db)
+    #print(da, db)
 
     # MCMC fit of Parameters
     if do_fit_stan == True:
