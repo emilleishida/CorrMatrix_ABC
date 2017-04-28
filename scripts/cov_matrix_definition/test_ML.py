@@ -209,6 +209,19 @@ def get_cov_ML(mean, cov, size):
 
 
 
+def debias_cov(cov_est_inv, n_S):
+    """Return debiased inverse covariance estimate
+    """
+
+    n_D   = cov_est_inv.shape[0]
+    if n_S - n_D - 2 <= 0:
+        print('Number of simulations {} too small for data dimension = {}, resulting in singular covariance'.format(n_S, n_D))
+    alpha = (n_S - n_D - 2.0) / (n_S - 1.0)
+
+    return alpha * cov_est_inv
+
+
+
 def plot_sigma_ML(n, n_D, sigma_ML, sigma_m1_ML, sig, out_name='sigma_ML'):
 
     plt.figure()
@@ -268,7 +281,7 @@ def plot_mean_std(n, n_D, fit_res, out_name='line_mean_std', a=1, b=2.5):
     plt.figure()
     plt.suptitle('Fit of straight line with $n_{{\\rm D}}$ = {} data points'.format(n_D))
 
-    if 'a_mean' in fit_res:
+    if 'a_mean' in fit_res and len(fit_res['a_mean']) > 0:
         plt.subplot(1, 2, 1)
         plt.plot(n, fit_res['a_mean'], 'b.')
         plt.plot([n[0], n[-1]], [a, a], 'r-')
@@ -277,15 +290,16 @@ def plot_mean_std(n, n_D, fit_res, out_name='line_mean_std', a=1, b=2.5):
         plt.xlabel('n_S')
         plt.ylabel('mean of intercept, slope')
 
-    plt.subplot(1, 2, 2)
+    ax= plt.subplot(1, 2, 2)
     plt.plot(n, fit_res['a_std'], 'b.')
     plt.plot(n, fit_res['b_std'], 'bD')
     plt.xlabel('n_S')
     plt.ylabel('std of intercept, slope')
+    ax.set_yscale('log')
 
     plt.savefig('{}.pdf'.format(out_name))
 
-    if 'a_mean' in fit_res:
+    if 'a_mean' in fit_res and len(fit_res['a_mean']) > 0:
         f = open('{}_mean.txt'.format(out_name), 'w')
         print >>f, '# n a b'
         for i in range(len(n)):
@@ -436,18 +450,23 @@ yreal = a * x1 + b
 cov = np.diag([sig for i in range(n_D)])            # *** cov of the data in the same catalog! ***
 
 
-n           = []                                        # number of simulations
-sigma_ML    = []
-sigma_m1_ML = []
-fit_res     = {}
-fish_res    = {'a_std': [], 'b_std': []}
+n            = []                                        # number of simulations
+sigma_ML     = []
+sigma_m1_ML  = []
+fit_res      = {}
+fish_ana_res = {}
+fish_num_res = {}
+fish_deb_res = {}
 
 for var in ['a', 'b']:
     for t in ['mean', 'std']:
         fit_res['{}_{}'.format(var, t)] = []
+        fish_ana_res['{}_{}'.format(var, t)] = []
+        fish_num_res['{}_{}'.format(var, t)] = []
+        fish_deb_res['{}_{}'.format(var, t)] = []
 
 
-for n_S in range(n_D+3, n_D+2750, 500):
+for n_S in range(n_D+3, n_D+1250, 250):
 
     n.append(n_S)                                             # number of data points
 
@@ -462,16 +481,25 @@ for n_S in range(n_D+3, n_D+2750, 500):
     this_sigma_m1_ML = np.trace(cov_est_inv) / n_D
     sigma_m1_ML.append(this_sigma_m1_ML)
 
-    # Fisher matrix
+    ### Fisher matrix ###
+    # analytical
     F = Fisher_ana(yreal, cov_est_inv)
-    da, db = Fisher_error(F)
-    fish_res['a_std'].append(da)
-    fish_res['b_std'].append(db)
-    #print(da, db)
+    da_ana, db_ana = Fisher_error(F)
+    fish_ana_res['a_std'].append(da_ana)
+    fish_ana_res['b_std'].append(db_ana)
 
+    # numerical
     F = Fisher_num(x1, a, b, cov_est_inv)
-    da, db = Fisher_error(F)
-    #print(da, db)
+    da_num, db_num = Fisher_error(F)
+    fish_num_res['a_std'].append(da_num)
+    fish_num_res['b_std'].append(db_num)
+
+    # using debiased inverse covariance estimate
+    cov_est_inv_debiased = debias_cov(cov_est_inv, n_S)
+    F = Fisher_num(x1, a, b, cov_est_inv_debiased)
+    da_deb, db_deb = Fisher_error(F)
+    fish_deb_res['a_std'].append(da_deb)
+    fish_deb_res['b_std'].append(db_deb)
 
     # MCMC fit of Parameters
     if do_fit_stan == True:
@@ -485,7 +513,9 @@ for n_S in range(n_D+3, n_D+2750, 500):
 
 plot_sigma_ML(n, n_D, sigma_ML, sigma_m1_ML, sig, out_name='sigma_ML')
 
-plot_mean_std(n, n_D, fish_res, out_name='std_Fisher', a=a, b=b)
+plot_mean_std(n, n_D, fish_ana_res, out_name='std_Fisher_ana', a=a, b=b)
+plot_mean_std(n, n_D, fish_num_res, out_name='std_Fisher_num', a=a, b=b)
+plot_mean_std(n, n_D, fish_deb_res, out_name='std_Fisher_deb', a=a, b=b)
 
 if do_fit_stan == True:
     plot_mean_std(n, n_D, fit_res, out_name='mean_std_MCMC', a=a, b=b)
