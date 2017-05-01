@@ -315,6 +315,8 @@ def plot_mean_std(n, n_D, fit_res, out_name='line_mean_std', a=1, b=2.5):
 
 
 
+
+
 def fit(x1, cov, n_jobs=3):
     """
     Generates one draw from a multivariate normal distribution
@@ -453,71 +455,170 @@ cov = np.diag([sig for i in range(n_D)])            # *** cov of the data in the
 n            = []                                        # number of simulations
 sigma_ML     = []
 sigma_m1_ML  = []
-fit_res      = {}
-fish_ana_res = {}
-fish_num_res = {}
-fish_deb_res = {}
 
-for var in ['a', 'b']:
-    for t in ['mean', 'std']:
-        fit_res['{}_{}'.format(var, t)] = []
-        fish_ana_res['{}_{}'.format(var, t)] = []
-        fish_num_res['{}_{}'.format(var, t)] = []
-        fish_deb_res['{}_{}'.format(var, t)] = []
+class Results:
+    """Store results of sampling
+    """
+
+    def __init__(self, par_name, n_n_S, n_R):
+        """Set arrays for mean and std storing all n_S simulation cases
+           with n_R runs each
+        """
+
+        self.mean = {}
+        self.std  = {}
+        for p in par_name:
+            self.mean[p] = np.zeros(shape = (n_n_S, n_R))
+            self.std[p]  = np.zeros(shape = (n_n_S, n_R))
 
 
-for n_S in range(n_D+3, n_D+1250, 250):
+    def set_mean(self, par, par_name, i, run):
+        """Set mean for all parameteres for simulation #i and run #run
+        """
+
+        for j, p in enumerate(par_name):
+            self.mean[p][i][run] = par[j]
+
+
+    def set_std(self, dpar, par_name, i, run):
+        """Set std for all parameteres for simulation #i and run #run
+        """
+
+        for j, p in enumerate(par_name):
+            self.std[p][i][run] = dpar[j]
+
+
+    def plot_mean_std(self, n, n_D, par=[1, 2.5], par_name=['a', 'b'], out_name='mean_std'):
+        """Plot mean and std versus number of realisations n
+
+        Parameters
+        ----------
+        n: array of integer
+            number of realisations {n_S} for ML covariance
+        n_D: integer
+            dimension of data vector
+        par: array of float, optional
+            input parameter values, default=[1, 2.5]
+            input value for slope, default=2.5
+        par_name: array of string, optional
+            parameter names, default=['a', 'b']
+        out_name: string, optional
+            output file name base, default='mean_std'
+
+        Returns
+        -------
+        None
+        """
+
+        marker = ['b.', 'bD']
+
+        plot_sth = False
+        plt.figure()
+        plt.suptitle('$n_{{\\rm d}}={}$ data points, $n_{{\\rm r}}={}$ runs'.format(n_D, n_R))
+
+        for i, p in enumerate(par_name):
+            if self.mean[p].any():
+                plt.subplot(1, 2, 1)
+                plt.plot(n, self.mean[p].mean(axis=1), marker[i])
+                plt.plot([n[0], n[-1]], [par[i], par[i]], 'r-')
+                plt.xlabel('n_S')
+                plt.ylabel('<mean>')
+                plot_sth = True
+
+            if self.std[p].any():
+                ax = plt.subplot(1, 2, 2)
+                plt.plot(n, self.std[p].mean(axis=1), marker[i])
+                plt.xlabel('n_S')
+                plt.ylabel('<std>')
+                ax.set_yscale('log')
+                plot_sth = True
+
+        if plot_sth == True:
+            plt.savefig('{}.pdf'.format(out_name))
+
+
+
+par_name = ['a', 'b']            # Parameter list
+tr_name  = ['tr']
+
+# Number of simulations
+start = n_D + 3
+stop  = n_D + 1250
+n_S_arr = np.logspace(np.log10(start), np.log10(stop), 10, dtype='int')
+#n_S_arr = np.arange(n_D+1, n_D+1250, 250)
+n_n_S = len(n_S_arr)
+
+# Number of runs per simulation
+n_R = 10
+
+# Results
+sigma_ML    = Results(tr_name, n_n_S, n_R)
+sigma_m1_ML = Results(tr_name, n_n_S, n_R)
+
+fish_ana = Results(par_name, n_n_S, n_R)
+fish_num = Results(par_name, n_n_S, n_R)
+fish_deb = Results(par_name, n_n_S, n_R)
+fit      = Results(par_name, n_n_S, n_R)
+
+
+print('Creating {} simulations with {} runs each'.format(n_n_S, n_R))
+
+# Go through number of simulations
+for i, n_S in enumerate(n_S_arr):
+
+    print('{}/{}: n_S={}'.format(i, n_n_S, n_S))
 
     n.append(n_S)                                             # number of data points
 
-    cov_est = get_cov_ML(yreal, cov, n_S)
+    # Loop over realisations
+    for run in range(n_R):
 
-    # Normalised trace
-    this_sigma_ML = np.trace(cov_est) / n_D
-    sigma_ML.append(this_sigma_ML)
+        cov_est = get_cov_ML(yreal, cov, n_S)
 
-    cov_est_inv = np.linalg.inv(cov_est)
+        # Normalised trace
+        this_sigma_ML = np.trace(cov_est) / n_D
+        sigma_ML.set_mean([this_sigma_ML], tr_name, i, run)
 
-    this_sigma_m1_ML = np.trace(cov_est_inv) / n_D
-    sigma_m1_ML.append(this_sigma_m1_ML)
+        cov_est_inv = np.linalg.inv(cov_est)
 
-    ### Fisher matrix ###
-    # analytical
-    F = Fisher_ana(yreal, cov_est_inv)
-    da_ana, db_ana = Fisher_error(F)
-    fish_ana_res['a_std'].append(da_ana)
-    fish_ana_res['b_std'].append(db_ana)
+        this_sigma_m1_ML = np.trace(cov_est_inv) / n_D
+        sigma_m1_ML.set_mean([this_sigma_m1_ML], tr_name, i, run)
 
-    # numerical
-    F = Fisher_num(x1, a, b, cov_est_inv)
-    da_num, db_num = Fisher_error(F)
-    fish_num_res['a_std'].append(da_num)
-    fish_num_res['b_std'].append(db_num)
+        ### Fisher matrix ###
+        # analytical
+        F = Fisher_ana(yreal, cov_est_inv)
+        dpar = Fisher_error(F)
+        fish_ana.set_std(dpar, par_name, i, run)
 
-    # using debiased inverse covariance estimate
-    cov_est_inv_debiased = debias_cov(cov_est_inv, n_S)
-    F = Fisher_num(x1, a, b, cov_est_inv_debiased)
-    da_deb, db_deb = Fisher_error(F)
-    fish_deb_res['a_std'].append(da_deb)
-    fish_deb_res['b_std'].append(db_deb)
+        # numerical
+        F = Fisher_num(x1, a, b, cov_est_inv)
+        dpar = Fisher_error(F)
+        fish_num.set_std(dpar, par_name, i, run)
 
-    # MCMC fit of Parameters
-    if do_fit_stan == True:
-        res = fit_corr(x1, cov, cov_est, n_jobs=n_jobs)
-        la  = res.extract(permuted=True)
-        fit_res['a_mean'].append(np.mean(la['a']))
-        fit_res['a_std'].append(np.std(la['a']))
-        fit_res['b_mean'].append(np.mean(la['b']))
-        fit_res['b_std'].append(np.std(la['b']))
+        # using debiased inverse covariance estimate
+        cov_est_inv_debiased = debias_cov(cov_est_inv, n_S)
+        F = Fisher_num(x1, a, b, cov_est_inv_debiased)
+        dpar = Fisher_error(F)
+        fish_deb.set_std(dpar, par_name, i, run)
+
+        # MCMC fit of Parameters
+        if do_fit_stan == True:
+            res = fit_corr(x1, cov, cov_est, n_jobs=n_jobs)
+            la  = res.extract(permuted=True)
+            par  = []
+            dpar = []
+            for p in par_name:
+                par.append(np.mean(la[p]))
+                dpar.append(np.std(la[p]))
+            fit.set_mean(par, par_name, i, run)
+            fit.set_std(dpar, par_name, i, run)
 
 
-plot_sigma_ML(n, n_D, sigma_ML, sigma_m1_ML, sig, out_name='sigma_ML')
+plot_sigma_ML(n, n_D, sigma_ML.mean['tr'].mean(axis=1), sigma_m1_ML.mean['tr'].mean(axis=1), sig, out_name='sigma_ML')
 
-plot_mean_std(n, n_D, fish_ana_res, out_name='std_Fisher_ana', a=a, b=b)
-plot_mean_std(n, n_D, fish_num_res, out_name='std_Fisher_num', a=a, b=b)
-plot_mean_std(n, n_D, fish_deb_res, out_name='std_Fisher_deb', a=a, b=b)
-
-if do_fit_stan == True:
-    plot_mean_std(n, n_D, fit_res, out_name='mean_std_MCMC', a=a, b=b)
+fit.plot_mean_std(n, n_D, out_name='mean_std_MCMC', par=[a, b], par_name=par_name)
+fish_num.plot_mean_std(n, n_D, out_name='std_Fisher_num', par=[a, b], par_name=par_name)
+fish_ana.plot_mean_std(n, n_D, out_name='std_Fisher_ana', par=[a, b], par_name=par_name)
+fish_deb.plot_mean_std(n, n_D, out_name='std_Fisher_deb', par=[a, b], par_name=par_name)
 
 
