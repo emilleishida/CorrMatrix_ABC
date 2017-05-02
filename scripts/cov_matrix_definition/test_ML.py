@@ -405,8 +405,9 @@ class Results:
            with n_R runs each
         """
 
-        self.mean = {}
-        self.std  = {}
+        self.mean     = {}
+        self.std      = {}
+        self.par_name = par_name
         for p in par_name:
             self.mean[p] = np.zeros(shape = (n_n_S, n_R))
             self.std[p]  = np.zeros(shape = (n_n_S, n_R))
@@ -426,6 +427,15 @@ class Results:
 
         for j, p in enumerate(par_name):
             self.std[p][i][run] = dpar[j]
+
+
+    def write_mean_std(self, n, out_name='mean_std'):
+        """Write mean and std to file
+        """
+
+        f = open(out_name, 'w')
+        n_n_S, n_R = self.mean[0] 
+        for i in range(len(n)_:
 
 
     def plot_mean_std(self, n, n_D, par=[1, 2.5], par_name=['a', 'b'], out_name='mean_std'):
