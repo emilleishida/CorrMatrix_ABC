@@ -254,68 +254,6 @@ def plot_sigma_ML(n, n_D, sigma_ML, sigma_m1_ML, sig, out_name='sigma_ML'):
     f.close()
 
 
-def plot_mean_std(n, n_D, fit_res, out_name='line_mean_std', a=1, b=2.5):
-    """Plot mean and std from MCMC fits versus number of
-       realisations n
-
-    Parameters
-    ----------
-    n: array of integer
-        number of realisations {n_S} for ML covariance
-    n_D: integer
-        dimension of data vector
-    fit_res: pystan.stan return object
-        contains fit results
-    a: float
-        input value for intercept, default=1
-    b: floag
-        input value for slope, default=2.5
-    out_name: string
-        output file name base, default='line_mean_std'
-
-    Returns
-    -------
-    None
-    """
-
-    plt.figure()
-    plt.suptitle('Fit of straight line with $n_{{\\rm D}}$ = {} data points'.format(n_D))
-
-    if 'a_mean' in fit_res and len(fit_res['a_mean']) > 0:
-        plt.subplot(1, 2, 1)
-        plt.plot(n, fit_res['a_mean'], 'b.')
-        plt.plot([n[0], n[-1]], [a, a], 'r-')
-        plt.plot(n, fit_res['b_mean'], 'bD', markersize=0.3)
-        plt.plot([n[0], n[-1]], [b, b], 'r-')
-        plt.xlabel('n_S')
-        plt.ylabel('mean of intercept, slope')
-
-    ax= plt.subplot(1, 2, 2)
-    plt.plot(n, fit_res['a_std'], 'b.')
-    plt.plot(n, fit_res['b_std'], 'bD')
-    plt.xlabel('n_S')
-    plt.ylabel('std of intercept, slope')
-    ax.set_yscale('log')
-
-    plt.savefig('{}.pdf'.format(out_name))
-
-    if 'a_mean' in fit_res and len(fit_res['a_mean']) > 0:
-        f = open('{}_mean.txt'.format(out_name), 'w')
-        print >>f, '# n a b'
-        for i in range(len(n)):
-            print >>f, '{} {} {}'.format(n[i], fit_res['a_mean'][i], 
-                    fit_res['b_mean'][i])
-        f.close()
-
-    f = open('{}_std.txt'.format(out_name), 'w')
-    print >>f, '# n a_std b_std'
-    for i in range(len(n)):
-        print >>f, '{} {} {}'.format(n[i], fit_res['a_std'][i], fit_res['b_std'][i])
-    f.close()
-
-
-
-
 
 def fit(x1, cov, n_jobs=3):
     """
@@ -440,6 +378,8 @@ sig = 5
 do_fit_stan = False
 n_jobs = 1
 
+do_fish_ana = False
+
 #np.random.seed(1056)                 # set seed to replicate example
 
 
@@ -510,16 +450,21 @@ class Results:
         None
         """
 
-        marker = ['b.', 'bD']
+        marker     = ['b.', 'bD']
+        markersize = [2] * len(marker)
+        color      = ['b', 'g']
 
         plot_sth = False
         plt.figure()
         plt.suptitle('$n_{{\\rm d}}={}$ data points, $n_{{\\rm r}}={}$ runs'.format(n_D, n_R))
 
+        box_width = (n[1] - n[0]) / 2   # Shouldn't really make sense for log-points in x, but seems to work anyway...
+
         for i, p in enumerate(par_name):
             if self.mean[p].any():
                 plt.subplot(1, 2, 1)
-                plt.plot(n, self.mean[p].mean(axis=1), marker[i])
+                plt.plot(n, self.mean[p].mean(axis=1), marker[i], ms=markersize[i], color=color[i])
+                plt.boxplot(self.mean[p].transpose(), positions=n, sym='.', widths=box_width)
                 plt.plot([n[0], n[-1]], [par[i], par[i]], 'r-')
                 plt.xlabel('n_S')
                 plt.ylabel('<mean>')
@@ -527,10 +472,11 @@ class Results:
 
             if self.std[p].any():
                 ax = plt.subplot(1, 2, 2)
-                plt.plot(n, self.std[p].mean(axis=1), marker[i])
+                plt.plot(n, self.std[p].mean(axis=1), marker[i], ms=markersize[i], color=color[i])
+                plt.boxplot(self.std[p].transpose(), positions=n, sym='.', widths=box_width)
                 plt.xlabel('n_S')
                 plt.ylabel('<std>')
-                ax.set_yscale('log')
+                #ax.set_yscale('log')
                 plot_sth = True
 
         if plot_sth == True:
@@ -549,7 +495,7 @@ n_S_arr = np.logspace(np.log10(start), np.log10(stop), 10, dtype='int')
 n_n_S = len(n_S_arr)
 
 # Number of runs per simulation
-n_R = 10
+n_R = 100
 
 # Results
 sigma_ML    = Results(tr_name, n_n_S, n_R)
@@ -586,9 +532,10 @@ for i, n_S in enumerate(n_S_arr):
 
         ### Fisher matrix ###
         # analytical
-        F = Fisher_ana(yreal, cov_est_inv)
-        dpar = Fisher_error(F)
-        fish_ana.set_std(dpar, par_name, i, run)
+        if do_fish_ana == True:
+            F = Fisher_ana(yreal, cov_est_inv)
+            dpar = Fisher_error(F)
+            fish_ana.set_std(dpar, par_name, i, run)
 
         # numerical
         F = Fisher_num(x1, a, b, cov_est_inv)
