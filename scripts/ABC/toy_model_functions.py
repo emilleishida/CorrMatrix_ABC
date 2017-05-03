@@ -31,8 +31,10 @@ def model(p):
                 a, scalar - angular coefficient
                 b, scalar - linear coefficient
                 sig, scalar - scatter
-
-          x, array
+                xmin, xmax, int - bounderies for explanatory variable
+                nobs, int - number of observations in a catalog
+                cov, matrix - covariance matrix between observations
+                
 
     output: y, array - draw from normal distribution with mean
                         a*x + b and scatter sig          
@@ -40,50 +42,13 @@ def model(p):
     x = uniform.rvs(loc=p['xmin'], scale=p['xmax'] - p['xmin'], size=int(p['nobs']))
     
     x.sort()
-    ytrue = p['a']*x + p['b']
+    ytrue = np.array(p['a']*x + p['b'])
  
-    y = np.array([norm.rvs(loc=ytrue[i], scale=p['sig']) for i in range(int(p['nobs']))])
+    y = multivariate_normal.rvs(mean=ytrue, cov=p['cov'], size=1)
 
     return np.array([[x[i], y[i]] for i in range(int(p['nobs']))])
 
 
-def sim_linear_ind(v):
-    """
-    Linear model simulator.
-    Samples a normally distributed random variable 
-    v['n'] times, having  mean =  v['a'] * v['xaxis'] + v['b'] and 
-    variance = v['sigma']. 
-
-    input: v -> dictionary of input parameters
-           if v['xaxis'] is a file name, read data for x axis
-           else simulate and store in 'xaxis.dat'
-
-    output: array 
-    """
-
-    # check if observed xaxis exits, simulate if not
-    if os.path.isfile(str(v['xaxis'][0])):
-        # read xaxis values
-        v['xaxis'] = np.readtxt(v['xaxis'][0])
-
-        # simulate response variable
-        y = np.array([model(v['xaxis'][i], v) for i in range(len(v['xaxis']))])
-
-    else:
-        # simulate xaxis values
-        v['xaxis'] = np.random.uniform(v['xmin'], v['xmax'], size=int(v['nobs']))
-
-        # simulate response variable
-        y = np.array([model(v['xaxis'][i], v) for i in range(len(v['xaxis']))])
-
-        # write xaxis data
-        op1 = open('xaxis.dat', 'w')
-        for i in range(int(v['nobs'])):
-            op1.write(str(v['xaxis'][i]) + '\n')
-        op1.close()
-
-
-    return v['xaxis'], np.atleast_2d(y).T
 
 def gaussian_prior(par, func=False):
     """
@@ -137,5 +102,45 @@ def linear_dist(d2, p):
     
   
     
+
+"""
+def sim_linear_ind(v):
+    ""
+    Linear model simulator.
+    Samples a normally distributed random variable 
+    v['n'] times, having  mean =  v['a'] * v['xaxis'] + v['b'] and 
+    variance = v['sigma']. 
+
+    input: v -> dictionary of input parameters
+           if v['xaxis'] is a file name, read data for x axis
+           else simulate and store in 'xaxis.dat'
+
+    output: array 
+    ""
+
+    # check if observed xaxis exits, simulate if not
+    if os.path.isfile(str(v['xaxis'][0])):
+        # read xaxis values
+        v['xaxis'] = np.readtxt(v['xaxis'][0])
+
+        # simulate response variable
+        y = np.array([model(v['xaxis'][i], v) for i in range(len(v['xaxis']))])
+
+    else:
+        # simulate xaxis values
+        v['xaxis'] = np.random.uniform(v['xmin'], v['xmax'], size=int(v['nobs']))
+
+        # simulate response variable
+        y = np.array([model(v['xaxis'][i], v) for i in range(len(v['xaxis']))])
+
+        # write xaxis data
+        op1 = open('xaxis.dat', 'w')
+        for i in range(int(v['nobs'])):
+            op1.write(str(v['xaxis'][i]) + '\n')
+        op1.close()
+
+
+    return v['xaxis'], np.atleast_2d(y).T
+"""
 
     
