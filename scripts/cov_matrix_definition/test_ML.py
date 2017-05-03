@@ -190,6 +190,7 @@ class Results:
         """
 
         n_R = self.mean[self.par_name[0]].shape[1]
+        color = ['g', 'm']
 
         plot_sth = False
         plt.figure()
@@ -199,11 +200,11 @@ class Results:
         for i, p in enumerate(self.par_name):
             y = self.stdstd[p]
             if y.any():
-                plt.plot(n, y, marker='o', color='c')
+                plt.plot(n, y, marker='o', color=color[i])
 
                 if self.fct is not None and par is not None:
                     n_fine = np.arange(n[0], n[-1], len(n)/10.0)
-                    plt.plot(n_fine, self.fct['stdstd'](n_fine, n_D, par[i]), 'g-.')
+                    plt.plot(n_fine, self.fct['stdstd'](n_fine, n_D, par[i]), '-', color=color[i])
 
                 plt.xlabel('n_S')
                 plt.ylabel('std(std)')
@@ -1003,7 +1004,7 @@ def main(argv=None):
     tr_name  = ['tr']                # For cov plots
 
     # Number of simulations
-    start = options.n_D + 3
+    start = options.n_D + 5
     stop  = options.n_D * 2
     n_S_arr = np.logspace(np.log10(start), np.log10(stop), 10, dtype='int')
     #n_S_arr = np.arange(n_D+1, n_D+1250, 250)
@@ -1045,6 +1046,7 @@ def main(argv=None):
     cov_inv    = np.diag([1.0 / options.sig for i in range(options.n_D)])
     F_exact    = Fisher_ana(yreal, cov_inv)
     dpar_exact = Fisher_error(F_exact)
+    print('dpar_exact = ', dpar_exact)
 
     if options.do_fish_ana == True:
         fish_ana.plot_mean_std(n_S_arr, options.n_D, par=dpar_exact)
