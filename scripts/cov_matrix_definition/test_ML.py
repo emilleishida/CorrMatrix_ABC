@@ -64,7 +64,6 @@ class Results:
 
         self.mean      = {}
         self.std       = {}
-        self.stdstd    = {}
         self.par_name  = par_name
         self.file_base = file_base
         self.yscale    = yscale
@@ -72,7 +71,6 @@ class Results:
         for p in par_name:
             self.mean[p]   = np.zeros(shape = (n_n_S, n_R))
             self.std[p]    = np.zeros(shape = (n_n_S, n_R))
-            self.stdstd[p] = np.zeros(shape = (n_n_S))
 
 
     def set(self, par, i, run, which='mean'):
@@ -84,14 +82,16 @@ class Results:
             w[p][i][run] = par[j]
 
 
-    def set_stdstd(self):
-        """Set standard deviation of standard deviation over all runs
+    def get_stdstd(self, p):
+        """Return standard deviation of standard deviation over all runs
         """
 
         n_n_S = self.mean[self.par_name[0]].shape[0]
-        for p in self.par_name:
-            for i in range(n_n_S):
-                self.stdstd[p][i] = np.std(self.std[p][i])
+        stdstd = np.zeros(shape = n_n_S)
+        for i in range(n_n_S):
+            stdstd[i] = np.std(self.std[p][i])
+
+        return stdstd
 
 
     def read_mean_std(self, format='ascii'):
@@ -128,6 +128,42 @@ class Results:
             ascii.write(t, f, delimiter='\t')
             f.close()
 
+    def append(self, new, verbose=False):
+        """Append new result to self.
+
+        Parameters
+        ----------
+        self, new: class Result
+            previous and new result
+        verbose: bool, optional
+            verbose mode
+
+        Returns
+        -------
+        res: bool
+            True for success
+        """
+
+        n_n_S, n_R         = self.mean[self.par_name[0]].shape
+        n_n_S_new, n_R_new = new.mean[new.par_name[0]].shape
+        if n_n_S != n_n_S_new:
+            error( \
+                'Number of simulations different for previous ({}) and new ({}), skipping append...'.format( \
+                n_n_S, n_n_S_new), stop=False, verbose=verbose)
+
+            return False
+
+        for p in self.par_name:
+            mean      = self.mean[p]
+            std       = self.std[p]
+
+            self.mean[p]   = np.zeros(shape = (n_n_S, n_R + n_R_new))
+            self.std[p]    = np.zeros(shape = (n_n_S, n_R + n_R_new))
+            for n_S in range(n_n_S):
+                self.mean[p][n_S]   = np.append(mean[n_S], new.mean[p][n_S])
+                self.std[p][n_S]    = np.append(std[n_S], new.std[p][n_S])
+
+        return True
 
 
     def plot_mean_std(self, n, n_D, par=[1, 2.5]):
@@ -198,7 +234,7 @@ class Results:
         ax = plt.subplot(1, 1, 1)
 
         for i, p in enumerate(self.par_name):
-            y = self.stdstd[p]
+            y = self.get_stdstd(p)
             if y.any():
                 plt.plot(n, y, marker='o', color=color[i])
 
@@ -356,14 +392,14 @@ def error(str, val=1, stop=True, verbose=True):
     """
 
     if verbose is True:
-        print_color('red', str, file=sys.stderr, end='')
+        print>>sys.stderr, "\x1b[31m{}\x1b[0m".format(str),
 
     if stop is False:
         if verbose is True:
-            print_color('red', ', continuing', file=sys.stderr)
+            print>>sys.stderr,  "\x1b[31m{}, continuing...\x1b[0m".format(str),
     else:
         if verbose is True:
-            print_color('red', '', file=sys.stderr)
+            print>>sys.stderr, ''
         sys.exit(val)
 
 
@@ -384,6 +420,7 @@ def params_default():
     p_def = param(
         n_D = 750,
         n_R = 10,
+        n_n_S = 10,
         spar = '1.0 0.0',
         sig = 5.0,
         do_fit_stan = False,
@@ -420,6 +457,8 @@ def parse_options(p_def):
         help='Number of data points, default={}'.format(p_def.n_D))
     parser.add_option('-R', '--n_R', dest='n_R', type='int', default=p_def.n_R,
         help='Number of runs per simulation, default={}'.format(p_def.n_R))
+    parser.add_option('', '--n_n_S', dest='n_n_S', type='int', default=p_def.n_n_S,
+        help='Number of n_S, where n_S is the number of simulation, default={}'.format(p_def.n_n_S))
     parser.add_option('-p', '--par', dest='spar', type='string', default=p_def.spar,
         help='list of parameter values, default=\'{}\''.format(p_def.spar))
     parser.add_option('-s', '--sig', dest='sig', type='float', default=p_def.sig,
@@ -432,6 +471,7 @@ def parse_options(p_def):
         help='Number of parallel jobs, default={}'.format(p_def.n_jobs))
     parser.add_option('-m', '--mode', dest='mode', type='string', default=p_def.mode,
         help='Mode: \'s\'=simulate, \'r\'=read, default={}'.format(p_def.mode))
+    parser.add_option('-a', '--add_simulations', dest='add_simulations', action='store_true', help='add simulations to existing files')
     parser.add_option('-r', '--random_seed', dest='random_seed', action='store_true', help='random seed')
     parser.add_option('-v', '--verbose', dest='verbose', action='store_true', help='verbose output')
 
@@ -454,6 +494,15 @@ def check_options(options):
     erg: bool
         Result of option check. False if invalid option value.
     """
+
+    if options.add_simulations == True:
+        if options.random_seed is False:
+            error('Adding simulations (-a) only possible with random seed (-r)')
+        if re.search('r', options.mode) is not None:
+            error('Adding simulations (-a) is not  possible in read mode (-m r)')
+
+    if re.search('s', options.mode) is not None and re.search('r', options.mode) is not None:
+        error('Simulation and read mode (-m rs) not possible simultaneously') 
 
     see_help = 'See option \'-h\' for help.'
 
@@ -496,6 +545,22 @@ def update_param(p_def, options):
     options.b = options.par[1]
 
     return param
+
+
+
+def numbers_from_file(file_base, npar):
+    """Return number of simulation and runs as read from simulation file"""
+
+    dat = ascii.read('{}.txt'.format(file_base))
+
+    # Number of simulation cases = number of rows in file
+    n_n_S = len(dat['n_S'])
+
+    # Number of runs: number of columns, subtract one (n_S), divide by 2 (mean+std),
+    # devide by number of parameters
+    n_R   = (len(dat.keys()) - 1) / 2 / npar
+
+    return n_n_S, n_R
 
 
 
@@ -876,7 +941,7 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish
     for i, n_S in enumerate(n_S_arr):
 
         if verbose == True:
-            print('{}/{}: n_S={}'.format(i, len(n_S_arr), n_S))
+            print('{}/{}: n_S={}'.format(i+1, len(n_S_arr), n_S))
 
         # Loop over realisations
         for run in range(options.n_R):
@@ -912,7 +977,7 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish
 
             # MCMC fit of Parameters
             if options.do_fit_stan == True:
-                res = fit_corr(x1, cov, cov_est, n_jobs=options.jobs)
+                res = fit_corr(x1, cov, cov_est, n_jobs=options.n_jobs)
                 la  = res.extract(permuted=True)
                 par  = []
                 dpar = []
@@ -927,6 +992,30 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish
 def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit, options, verbose=False):
     """Write simulated runs to files"""
 
+
+    if options.add_simulations == True:
+        if verbose == True:
+            print('Reading previous simulations from disk')
+
+        # Initialise results
+        n_n_S, n_R  = numbers_from_file(sigma_ML.file_base, 1)
+        sigma_ML_prev    = Results(sigma_ML.par_name, n_n_S, n_R, file_base=sigma_ML.file_base, fct=sigma_ML.fct)
+        sigma_m1_ML_prev = Results(sigma_m1_ML.par_name, n_n_S, n_R, file_base=sigma_m1_ML.file_base, yscale='log', fct=sigma_m1_ML.fct)
+        fish_ana_prev    = Results(fish_ana.par_name, n_n_S, n_R, file_base=fish_ana.file_base, fct=fish_ana.fct)
+        fish_num_prev    = Results(fish_num.par_name, n_n_S, n_R, file_base=fish_num.file_base, fct=fish_num.fct, yscale='linear')
+        fish_deb_prev    = Results(fish_deb.par_name, n_n_S, n_R, file_base=fish_deb.file_base, fct=fish_deb.fct)
+        fit_prev         = Results(fit.par_name, n_n_S, n_R, file_base=fit.file_base)
+        # Full results from files
+        read_from_file(sigma_ML_prev, sigma_m1_ML_prev, fish_ana_prev, fish_num_prev, fish_deb_prev, fit_prev, options, verbose=options.verbose)
+
+        # Add new results
+        sigma_ML.append(sigma_ML_prev)
+        sigma_m1_ML.append(sigma_m1_ML_prev)
+        fish_ana.append(fish_ana_prev)
+        fish_num.append(fish_num_prev)
+        fish_deb.append(fish_deb_prev)
+        fit.append(fit_prev)
+
     if verbose == True:
         print('Writing simulations to disk')
 
@@ -935,7 +1024,7 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, 
     fish_num.write_mean_std(n_S_arr)
     fish_deb.write_mean_std(n_S_arr)
     if options.do_fit_stan == True:
-        fit.write_mean_std(n_S_arr, par=options.par)
+        fit.write_mean_std(n_S_arr)
 
     sigma_ML.write_mean_std(n_S_arr)
     sigma_m1_ML.write_mean_std(n_S_arr)
@@ -1006,7 +1095,7 @@ def main(argv=None):
     # Number of simulations
     start = options.n_D + 5
     stop  = options.n_D * 2
-    n_S_arr = np.logspace(np.log10(start), np.log10(stop), 10, dtype='int')
+    n_S_arr = np.logspace(np.log10(start), np.log10(stop), options.n_n_S, dtype='int')
     #n_S_arr = np.arange(n_D+1, n_D+1250, 250)
     n_n_S = len(n_S_arr)
 
@@ -1040,13 +1129,12 @@ def main(argv=None):
 
 
     # Plot results
-    plot_sigma_ML(n_S_arr, options.n_D, sigma_ML.mean['tr'].mean(axis=1), sigma_m1_ML.mean['tr'].mean(axis=1), options.sig, out_name='sigma_both')
+    #plot_sigma_ML(n_S_arr, options.n_D, sigma_ML.mean['tr'].mean(axis=1), sigma_m1_ML.mean['tr'].mean(axis=1), options.sig, out_name='sigma_both')
 
     # Exact inverse covariance
     cov_inv    = np.diag([1.0 / options.sig for i in range(options.n_D)])
     F_exact    = Fisher_ana(yreal, cov_inv)
     dpar_exact = Fisher_error(F_exact)
-    print('dpar_exact = ', dpar_exact)
 
     if options.do_fish_ana == True:
         fish_ana.plot_mean_std(n_S_arr, options.n_D, par=dpar_exact)
@@ -1055,10 +1143,7 @@ def main(argv=None):
     if options.do_fit_stan == True:
         fit.plot_mean_std(n_S_arr, options.n_D, par=options.par)
 
-    fish_num.set_stdstd()
     fish_num.plot_stdstd(n_S_arr, options.n_D)
-
-    fish_deb.set_stdstd()
     fish_deb.plot_stdstd(n_S_arr, options.n_D, par=dpar_exact)
 
     sigma_ML.plot_mean_std(n_S_arr, options.n_D, par=[options.sig])
