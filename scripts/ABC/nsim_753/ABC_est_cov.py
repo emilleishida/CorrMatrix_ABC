@@ -81,4 +81,4 @@ sys1 = sampler_ABC.BuildFirstPSystem()
 sampler_ABC.fullABC()
 
 #plot results
-plot_2p( sampler_ABC.T, 'results_correct_cov.pdf' , Parameters)
+plot_2p( sampler_ABC.T, 'results_nsim_' + str(Parameters['nsim']) + '.pdf' , Parameters)
