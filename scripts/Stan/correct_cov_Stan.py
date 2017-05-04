@@ -1,5 +1,6 @@
 import pystan
 import numpy as np
+import pylab as plt
 from scipy.stats import norm, uniform, multivariate_normal
 
 # Parameters
@@ -51,6 +52,8 @@ fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=3, verb
 
 print(fit)
 
+fit.traceplot()
+plt.savefig('stan_correct_cov.pdf')
 
 # this returns the result bellow, so we see that when we use the same covariance matrix 
 # for simulation and for the fitting with 750 data points and sig=5 the results
