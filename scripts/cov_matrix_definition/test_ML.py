@@ -12,6 +12,8 @@ from astropy.io import ascii
 from optparse import OptionParser
 from optparse import OptionGroup
 
+import pdb
+
 """The following functions correspond to the expectation values for Gaussian
    distributions. See Taylor, Joachimi & Kitching (2013), TKB13
 """
@@ -21,6 +23,7 @@ def no_bias(n, n_D, par):
     """Unbiased estimator of par.
        For example maximum-likelihood estimate of covariance normalised trace,
        TKJ13 (17).
+       Or Fisher matrix errors from debiased estimate of inverse covariance.
     """
 
     return np.asarray([par] * len(n))
@@ -38,18 +41,27 @@ def tr_N_m1_ML(n, n_D, par):
 
 def par_fish(n, n_D, par):
     """Fisher matrix parameter, not defined for mean.
-       TJK13 (55)
+       Expectation value of TJK13 (43), follows from (25).
     """
 
-    return [np.sqrt((n_S - n_D - 2.0)/(n_S - 1.0))*par for n_S in n]
+    return [np.sqrt((n_S - n_D - 2.0)/(n_S - 1.0)) * par for n_S in n]
 
 
-def std_fish(n, n_D, par):
-    """Fisher matrix error on error.
-       TJK13 (55)
+def std_fish_deb(n, n_D, par):
+    """Error on variance from Fisher matrix with debiased inverse covariance estimate.
+       TJK13 (55), follows from (33)
     """
 
     return [np.sqrt(2.0 / (n_S - n_D - 4.0)) * par for n_S in n]
+
+
+def std_fish_biased(n, n_D, par):
+    """Error on variance from Fisher matrix with biased inverse covariance estimate.
+       From TJK13 (49) with A (27) instead of A_corr (28) in (49)
+    """
+
+    return [np.sqrt(2.0 * (n_S - 1.0)**2 / ((n_S - n_D - 2.0)**2 * (n_S - n_D - 4.0))) * par for n_S in n]
+
 
 
 
@@ -82,16 +94,16 @@ class Results:
             w[p][i][run] = par[j]
 
 
-    def get_stdstd(self, p):
-        """Return standard deviation of standard deviation over all runs
+    def get_std_var(self, p):
+        """Return standard deviation of the variance over all runs
         """
 
         n_n_S = self.mean[self.par_name[0]].shape[0]
-        stdstd = np.zeros(shape = n_n_S)
+        std_var = np.zeros(shape = n_n_S)
         for i in range(n_n_S):
-            stdstd[i] = np.std(self.std[p][i])
+            std_var[i] = np.std(self.std[p][i]**2)
 
-        return stdstd
+        return std_var
 
 
     def read_mean_std(self, format='ascii'):
@@ -195,7 +207,7 @@ class Results:
         plt.figure()
         plt.suptitle('$n_{{\\rm d}}={}$ data points, $n_{{\\rm r}}={}$ runs'.format(n_D, n_R))
 
-        box_width = (n[1] - n[0]) / 2   # Shouldn't really make sense for log-points in x, but seems to work anyway...
+        box_width = (n[1] - n[0]) / 2
 
         for j, which in enumerate(['mean', 'std']):
             for i, p in enumerate(self.par_name):
@@ -221,8 +233,8 @@ class Results:
             plt.savefig('{}.pdf'.format(self.file_base))
 
 
-    def plot_stdstd(self, n, n_D, par=None):
-        """Plot standard deviation of standard deviation.
+    def plot_std_var(self, n, n_D, par=None):
+        """Plot standard deviation of Fisher parameter variance
         """
 
         n_R = self.mean[self.par_name[0]].shape[1]
@@ -234,21 +246,22 @@ class Results:
         ax = plt.subplot(1, 1, 1)
 
         for i, p in enumerate(self.par_name):
-            y = self.get_stdstd(p)
+            y = self.get_std_var(p)
             if y.any():
-                plt.plot(n, y, marker='o', color=color[i])
+                plt.plot(n, y, marker='o', color=color[i], label='$\sigma[\sigma^2({})]$'.format(p))
 
                 if self.fct is not None and par is not None:
                     n_fine = np.arange(n[0], n[-1], len(n)/10.0)
-                    plt.plot(n_fine, self.fct['stdstd'](n_fine, n_D, par[i]), '-', color=color[i])
+                    plt.plot(n_fine, self.fct['std_var'](n_fine, n_D, par[i]), '-', color=color[i])
 
                 plt.xlabel('n_S')
-                plt.ylabel('std(std)')
+                plt.ylabel('std(var)')
+                plt.legend(loc='best', numpoints=1, frameon=False)
                 ax.set_yscale('log')
                 plot_sth = True
 
         if plot_sth == True:
-            plt.savefig('std_{}.pdf'.format(self.file_base))
+            plt.savefig('std_2{}.pdf'.format(self.file_base))
 
 class param:
     """General class to store (default) variables
@@ -675,8 +688,9 @@ def Fisher_error(F):
     """
 
     Finv = np.linalg.inv(F)
+    d    = np.sqrt(np.diag(Finv))
 
-    return np.sqrt(np.diag(Finv))
+    return d
 
 
 
@@ -1094,7 +1108,7 @@ def main(argv=None):
 
     # Number of simulations
     start = options.n_D + 5
-    stop  = options.n_D * 2
+    stop  = options.n_D * 10
     n_S_arr = np.logspace(np.log10(start), np.log10(stop), options.n_n_S, dtype='int')
     #n_S_arr = np.arange(n_D+1, n_D+1250, 250)
     n_n_S = len(n_S_arr)
@@ -1105,8 +1119,8 @@ def main(argv=None):
     sigma_m1_ML = Results(tr_name, n_n_S, options.n_R, file_base='sigma_m1_ML', yscale='log', fct={'mean': tr_N_m1_ML})
 
     fish_ana = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_ana', fct={'std': par_fish})
-    fish_num = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_num', fct={'std': par_fish}, yscale='linear')
-    fish_deb = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_deb', fct={'std': no_bias, 'stdstd': std_fish})
+    fish_num = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_num', fct={'std': par_fish, 'std_var': std_fish_biased}, yscale='linear')
+    fish_deb = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_deb', fct={'std': no_bias, 'std_var': std_fish_deb})
     fit      = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit')
 
     # Data
@@ -1135,6 +1149,7 @@ def main(argv=None):
     cov_inv    = np.diag([1.0 / options.sig for i in range(options.n_D)])
     F_exact    = Fisher_ana(yreal, cov_inv)
     dpar_exact = Fisher_error(F_exact)
+    print(dpar_exact)
 
     if options.do_fish_ana == True:
         fish_ana.plot_mean_std(n_S_arr, options.n_D, par=dpar_exact)
@@ -1143,8 +1158,9 @@ def main(argv=None):
     if options.do_fit_stan == True:
         fit.plot_mean_std(n_S_arr, options.n_D, par=options.par)
 
-    fish_num.plot_stdstd(n_S_arr, options.n_D)
-    fish_deb.plot_stdstd(n_S_arr, options.n_D, par=dpar_exact)
+    par = dpar_exact**2
+    fish_num.plot_std_var(n_S_arr, options.n_D, par=par)
+    fish_deb.plot_std_var(n_S_arr, options.n_D, par=par)
 
     sigma_ML.plot_mean_std(n_S_arr, options.n_D, par=[options.sig])
     sigma_m1_ML.plot_mean_std(n_S_arr, options.n_D, par=[options.sig])
