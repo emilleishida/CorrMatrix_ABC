@@ -1,0 +1,45 @@
+path_to_obs		= None   	           # path to observed data 
+
+param_to_fit 		= a b          # parameters to fit
+param_to_sim    	= a b sig  xmin xmax nobs nsim cov        # parameters needed for simulation
+
+prior_func	        = gaussian_prior gaussian_prior      # one prior function for each parameter
+                                                   # under consideration 
+
+simulation_func = model                      # simulation function
+distance_func	= linear_dist                      # distance function
+
+dist_dim = 1              #
+
+a_prior_par_name      = pmean pstd               # parameters for prior distribution  
+a_prior_par_val       = 2.0  4.0                 # values for prior distribution   
+
+b_prior_par_name       = pmean  pstd              # parameters for prior distribution
+b_prior_par_val        =  1.0  5.0                # values for prior distribution
+
+	
+a_lim                  = -2.0  4.0               # extreme limits for parametes
+b_lim                  = -3.0  5.0                # 
+	          
+sig		= 1.0                              #  fiducial scatter
+a               = 1.0                              #  angular coefficient
+b               = 0.0                              #  linear coefficient
+xmin            = -100                             #   min value for exploratory variable
+xmax            = 100                              #   max value for exploratory variable
+nobs            = 750                              #   number of observations
+nsim            = 753                              #   number of simulations
+cov             = 1                                #   covariance matrix to be determined in Python file
+
+M 		= 100				   # number of particle in each particle system
+Mini            = 200                              # number of draws for 1st particle system
+delta 		= 0.25				   # convergence criteria
+qthreshold 	= 0.75				   # quantile in distance threshold 
+
+file_root 	= linear_PS                     # root to output files names 
+screen          = 1			           # rather (1) or not (0) to screen outputs
+ncores          = 4				   # number of cores
+split_output    = 1                                # number of intermediate steps written to file
+
+
+
+
