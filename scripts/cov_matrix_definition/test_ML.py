@@ -12,6 +12,21 @@ from astropy.io import ascii
 from optparse import OptionParser
 from optparse import OptionGroup
 
+"""
+test_ML.py.
+
+Example run to create simulations:
+test_ML.py   -D 750   -p   1_0   -s   5   -v   -m s  -r   -n   4   --n_n_S   10   -R 100
+
+Add more simulations:
+test_ML.py   -D 750   -p   1_0   -s   5   -v   -m s  -r   -n   4   --n_n_S   10   -R 100 -a
+
+Read existing simulations:
+test_ML.py   -D 750   -p   1_0   -s   5   -v   -m r  -r   -n   4   --n_n_S   10   -R 100
+"""
+
+
+
 import pdb
 
 """The following functions correspond to the expectation values for Gaussian
