@@ -3,7 +3,8 @@ import pylab as plt
 
 
 nsim = ['753', '1000', '2000', '3000', '4000', '5000']
-sig = 2.5
+sig = 1.0
+xlim = 50
 
 xnsim = []
 a = []
@@ -12,7 +13,7 @@ b = []
 bstd = []
 
 for item in nsim:
-    op1 = open('nsim_' + item + '/sig_' + str(sig) + '/num_res_nsim_' + item + '.dat', 'r')
+    op1 = open('nsim_' + item + '/sig_' + str(sig) + '_xlim_'+ str(xlim) +'/num_res_nsim_' + item + '.dat', 'r')
     lin1 = op1.readlines()
     op1.close()
 
@@ -24,7 +25,7 @@ for item in nsim:
     bstd.append(float(data1[5][1]))
     xnsim.append(int(item))
 
-op2 = open('correct_covariance/sig_' + str(sig) + '/num_res_corr_cov.dat', 'r')
+op2 = open('correct_covariance/sig_' + str(sig) + '_xlim_'+ str(xlim) + '/num_res_corr_cov.dat', 'r')
 lin2 = op2.readlines()
 op2.close()
 
@@ -60,5 +61,5 @@ plt.yticks(fontsize=4)
 plt.ylabel('std of intercept, slope', fontsize=10)
 
 fig.subplots_adjust(left=0.075, right=0.99, bottom=0.09, top=0.975, hspace=0.15, wspace=0.25)
-plt.savefig('line_mean_std_ABC_sig' + str(sig) + '.pdf')
+plt.savefig('line_mean_std_ABC_sig' + str(sig) + '_xlim_'+ str(xlim)  + '.pdf')
     
