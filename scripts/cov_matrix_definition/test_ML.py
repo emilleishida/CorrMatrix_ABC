@@ -45,6 +45,7 @@ def no_bias(n, n_D, par):
 
 
 
+
 def tr_N_m1_ML(n, n_D, par):
     """Maximum-likelihood estimate of inverse covariance normalised trace.
        TJK13 (24)
@@ -193,7 +194,7 @@ class Results:
         return True
 
 
-    def plot_mean_std(self, n, n_D, par=[1, 2.5]):
+    def plot_mean_std(self, n, n_D, par=None):
         """Plot mean and std versus number of realisations n
 
         Parameters
@@ -202,9 +203,8 @@ class Results:
             number of realisations {n_S} for ML covariance
         n_D: integer
             dimension of data vector
-        par: array of float, optional
-            input parameter values, default=[1, 2.5]
-            input value for slope, default=2.5
+        par: dictionary of array of float, optional
+            input parameter values and errors, default=None
 
         Returns
         -------
@@ -213,6 +213,7 @@ class Results:
 
         n_R = self.mean[self.par_name[0]].shape[1]
 
+        #marker     = ['.', 'D']
         marker     = ['.', 'D']
         markersize = [2] * len(marker)
         color      = ['b', 'g']
@@ -229,14 +230,17 @@ class Results:
                 y = getattr(self, which)[p]   # mean or std for parameter p
                 if y.any():
                     ax = plt.subplot(1, 2, j+1)
-                    plt.plot(n, y.mean(axis=1), marker[i], ms=markersize[i], color=color[i])
+                    #plt.plot(n, y.mean(axis=1), marker[i], ms=markersize[i], color=color[i])
 
                     if y.shape[1] > 1:
-                        plt.boxplot(y.transpose(), positions=n, sym='.', widths=box_width)
+                        plt.boxplot(y.transpose(), positions=n, sym='.', widths=box_width, meanline=False)
 
                     if self.fct is not None:
                         n_fine = np.arange(n[0], n[-1], len(n)/10.0)
-                        plt.plot(n_fine, self.fct[which](n_fine, n_D, par[i]), 'g-.')
+                        my_par = par[which]
+                        if which == 'mean':
+                            print('mean: ', my_par)
+                        plt.plot(n_fine, self.fct[which](n_fine, n_D, my_par[i]), 'g-.')
 
                     plt.xlabel('n_S')
                     plt.ylabel('<{}>'.format(which))
@@ -249,7 +253,7 @@ class Results:
 
 
     def plot_std_var(self, n, n_D, par=None):
-        """Plot standard deviation of Fisher parameter variance
+        """Plot standard deviation of parameter variance
         """
 
         n_R = self.mean[self.par_name[0]].shape[1]
@@ -1033,7 +1037,7 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, 
         fish_ana_prev    = Results(fish_ana.par_name, n_n_S, n_R, file_base=fish_ana.file_base, fct=fish_ana.fct)
         fish_num_prev    = Results(fish_num.par_name, n_n_S, n_R, file_base=fish_num.file_base, fct=fish_num.fct, yscale='linear')
         fish_deb_prev    = Results(fish_deb.par_name, n_n_S, n_R, file_base=fish_deb.file_base, fct=fish_deb.fct)
-        fit_prev         = Results(fit.par_name, n_n_S, n_R, file_base=fit.file_base)
+        fit_prev         = Results(fit.par_name, n_n_S, n_R, file_base=fit.file_base, fct=fit.fct)
         # Full results from files
         read_from_file(sigma_ML_prev, sigma_m1_ML_prev, fish_ana_prev, fish_num_prev, fish_deb_prev, fit_prev, options, verbose=options.verbose)
 
@@ -1136,7 +1140,7 @@ def main(argv=None):
     fish_ana = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_ana', fct={'std': par_fish})
     fish_num = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_num', fct={'std': par_fish, 'std_var': std_fish_biased}, yscale='linear')
     fish_deb = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_deb', fct={'std': no_bias, 'std_var': std_fish_deb})
-    fit      = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit')
+    fit      = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit', fct={'mean': no_bias, 'std': par_fish, 'std_var': std_fish_biased})
 
     # Data
     x1 = uniform.rvs(loc=-100, scale=200, size=options.n_D)        # exploratory variable
@@ -1164,21 +1168,23 @@ def main(argv=None):
     cov_inv    = np.diag([1.0 / options.sig for i in range(options.n_D)])
     F_exact    = Fisher_ana(yreal, cov_inv)
     dpar_exact = Fisher_error(F_exact)
-    print(dpar_exact)
+    print('Parameter error (from exact Fisher)', dpar_exact)
 
     if options.do_fish_ana == True:
-        fish_ana.plot_mean_std(n_S_arr, options.n_D, par=dpar_exact)
-    fish_num.plot_mean_std(n_S_arr, options.n_D, par=dpar_exact)
-    fish_deb.plot_mean_std(n_S_arr, options.n_D, par=dpar_exact)
+        fish_ana.plot_mean_std(n_S_arr, options.n_D, par={'std': dpar_exact})
+    fish_num.plot_mean_std(n_S_arr, options.n_D, par={'std': dpar_exact})
+    fish_deb.plot_mean_std(n_S_arr, options.n_D, par={'std': dpar_exact})
     if options.do_fit_stan == True:
-        fit.plot_mean_std(n_S_arr, options.n_D, par=options.par)
+        fit.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact})
 
-    par = dpar_exact**2
-    fish_num.plot_std_var(n_S_arr, options.n_D, par=par)
-    fish_deb.plot_std_var(n_S_arr, options.n_D, par=par)
+    dpar2 = dpar_exact**2
+    fish_num.plot_std_var(n_S_arr, options.n_D, par=dpar2)
+    fish_deb.plot_std_var(n_S_arr, options.n_D, par=dpar2)
+    if options.do_fit_stan == True:
+        fit.plot_std_var(n_S_arr, options.n_D, par=dpar2)
 
-    sigma_ML.plot_mean_std(n_S_arr, options.n_D, par=[options.sig])
-    sigma_m1_ML.plot_mean_std(n_S_arr, options.n_D, par=[options.sig])
+    sigma_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [options.sig]})
+    sigma_m1_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [options.sig]})
 
     ### End main program
 
