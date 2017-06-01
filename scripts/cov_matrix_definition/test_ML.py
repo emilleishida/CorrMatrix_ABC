@@ -4,7 +4,6 @@ import pylab as plt
 import sys
 import os
 import re
-import pystan
 import time
 import copy
 from astropy.table import Table, Column
@@ -51,7 +50,7 @@ def tr_N_m1_ML(n, n_D, par):
        TJK13 (24)
     """
 
-    return [(n_S - 1.0)/(n_S - n_D - 2.0)/par for n_S in n]
+    return [(n_S - 1.0)/(n_S - n_D - 2.0) * par for n_S in n]
 
 
 
@@ -233,14 +232,14 @@ class Results:
                     #plt.plot(n, y.mean(axis=1), marker[i], ms=markersize[i], color=color[i])
 
                     if y.shape[1] > 1:
-                        plt.boxplot(y.transpose(), positions=n, sym='.', widths=box_width, meanline=False)
+                        plt.boxplot(y.transpose(), positions=n, sym='.', widths=box_width)
 
-                    if self.fct is not None:
+                    my_par = par[which]
+                    if self.fct is not None and which in self.fct:
+                        # Define high-resolution array for smoother lines
                         n_fine = np.arange(n[0], n[-1], len(n)/10.0)
-                        my_par = par[which]
-                        if which == 'mean':
-                            print('mean: ', my_par)
                         plt.plot(n_fine, self.fct[which](n_fine, n_D, my_par[i]), 'g-.')
+                    plt.plot(n, no_bias(n, n_D, my_par[i]), 'r-')
 
                     plt.xlabel('n_S')
                     plt.ylabel('<{}>'.format(which))
@@ -392,7 +391,7 @@ def log_command(argv, name=None, close_no_return=True):
             a = '\"{}\"'.format(a)
 
         print>>f, a,
-        print>>f, ' ',
+        #print>>f, ' ',
 
     print>>f, ''
 
@@ -893,6 +892,7 @@ def fit(x1, cov, n_jobs=3):
     }
     """
 
+    import pystan
     start = time.time()
     fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2500, chains=3, verbose=False, n_jobs=n_jobs)
     end = time.time()
@@ -952,6 +952,7 @@ def fit_corr(x1, cov_true, cov_estimated, n_jobs=3):
     }
     """
 
+    import pystan
     start = time.time()
     fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=3, verbose=False, n_jobs=n_jobs)
     end = time.time()
@@ -1134,13 +1135,13 @@ def main(argv=None):
 
 
     # Initialisation of results
-    sigma_ML    = Results(tr_name, n_n_S, options.n_R, file_base='sigma_ML', fct={'mean': no_bias})
+    sigma_ML    = Results(tr_name, n_n_S, options.n_R, file_base='sigma_ML')
     sigma_m1_ML = Results(tr_name, n_n_S, options.n_R, file_base='sigma_m1_ML', yscale='log', fct={'mean': tr_N_m1_ML})
 
     fish_ana = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_ana', fct={'std': par_fish})
     fish_num = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_num', fct={'std': par_fish, 'std_var': std_fish_biased}, yscale='linear')
     fish_deb = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_deb', fct={'std': no_bias, 'std_var': std_fish_deb})
-    fit      = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit', fct={'mean': no_bias, 'std': par_fish, 'std_var': std_fish_biased})
+    fit      = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit', fct={'std': par_fish, 'std_var': std_fish_biased})
 
     # Data
     x1 = uniform.rvs(loc=-100, scale=200, size=options.n_D)        # exploratory variable
@@ -1184,7 +1185,7 @@ def main(argv=None):
         fit.plot_std_var(n_S_arr, options.n_D, par=dpar2)
 
     sigma_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [options.sig]})
-    sigma_m1_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [options.sig]})
+    sigma_m1_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [1/options.sig]})
 
     ### End main program
 
