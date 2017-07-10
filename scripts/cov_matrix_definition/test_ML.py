@@ -952,6 +952,10 @@ def fit_corr(x1, cov_true, cov_estimated, n_jobs=3):
     }
     """
 
+    # Sellentin & Heavens debiasing scheme:
+    # Replace normal likelihood with t-distribution
+    # y ~ (1 + (log_normal(mu, cov_est)) / (1 + n_S))^(n_S/2)  
+
     import pystan
     start = time.time()
     fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=3, verbose=False, n_jobs=n_jobs)
