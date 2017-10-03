@@ -64,10 +64,21 @@ def par_fish(n, n_D, par):
 
 def std_fish_deb(n, n_D, par):
     """Error on variance from Fisher matrix with debiased inverse covariance estimate.
-       TJK13 (55), follows from (33)
+       TJK13 (50, 55)
     """
 
     return [np.sqrt(2.0 / (n_S - n_D - 4.0)) * par for n_S in n]
+
+
+
+def A(n_S, n_D):
+    """Return TJK13 (27)
+    """
+
+    A = (n_S - 1.0)**2 / ((n_S - n_D - 1.0) * (n_S - n_D - 2.0)**2 * (n_S - n_D - 4.0))
+
+    return A
+
 
 
 def std_fish_biased(n, n_D, par):
@@ -75,7 +86,7 @@ def std_fish_biased(n, n_D, par):
        From TJK13 (49) with A (27) instead of A_corr (28) in (49)
     """
 
-    return [np.sqrt(2.0 * (n_S - 1.0)**2 / ((n_S - n_D - 2.0)**2 * (n_S - n_D - 4.0))) * par for n_S in n]
+    return [np.sqrt(2 * A(n_S, n_D) * (1.0 + (n_S - n_D - 2))) * par for n_S in n]
 
 
 
@@ -117,6 +128,7 @@ class Results:
         std_var = np.zeros(shape = n_n_S)
         for i in range(n_n_S):
             std_var[i] = np.std(self.std[p][i]**2)
+            #std_var[i] = np.std(self.std[p][i]) # for testing
 
         return std_var
 
@@ -154,6 +166,7 @@ class Results:
             f = open('{}.txt'.format(self.file_base), 'w')
             ascii.write(t, f, delimiter='\t')
             f.close()
+
 
     def append(self, new, verbose=False):
         """Append new result to self.
@@ -224,11 +237,23 @@ class Results:
 
         box_width = (n[1] - n[0]) / 2
 
+        Ax = {}
         for j, which in enumerate(['mean', 'std']):
             for i, p in enumerate(self.par_name):
                 y = getattr(self, which)[p]   # mean or std for parameter p
                 if y.any():
-                    ax = plt.subplot(1, 2, j+1)
+                    Ax[which] = plt.subplot(1, 2, j+1)
+
+        if len(Ax) == 1:   # Only one plot to do: Use entire canvas
+            Ax[Ax.keys()[0]] = plt.subplot(1, 1, 1)
+        
+
+        for j, which in enumerate(['mean', 'std']):
+            for i, p in enumerate(self.par_name):
+                y = getattr(self, which)[p]   # mean or std for parameter p
+                if y.any():
+                    #ax = plt.subplot(1, 2, j+1)
+                    ax = Ax[which]
                     #plt.plot(n, y.mean(axis=1), marker[i], ms=markersize[i], color=color[i])
 
                     if y.shape[1] > 1:
@@ -241,7 +266,7 @@ class Results:
                         plt.plot(n_fine, self.fct[which](n_fine, n_D, my_par[i]), 'g-.')
                     plt.plot(n, no_bias(n, n_D, my_par[i]), 'r-')
 
-                    plt.xlabel('n_S')
+                    plt.xlabel('$n_{\\rm s}$')
                     plt.ylabel('<{}>'.format(which))
                     plt.xlim(n[0]/fac_xlim, n[-1]*fac_xlim)
                     ax.set_yscale(self.yscale)
@@ -454,10 +479,11 @@ def params_default():
         n_n_S = 10,
         spar = '1.0 0.0',
         sig = 5.0,
+        mode   = 's',
         do_fit_stan = False,
         do_fish_ana = False,
+        likelihood  = 'norm',
         n_jobs = 1,
-        mode   = 's',
         random_seed = True,
     )
 
@@ -490,20 +516,27 @@ def parse_options(p_def):
         help='Number of runs per simulation, default={}'.format(p_def.n_R))
     parser.add_option('', '--n_n_S', dest='n_n_S', type='int', default=p_def.n_n_S,
         help='Number of n_S, where n_S is the number of simulation, default={}'.format(p_def.n_n_S))
+
     parser.add_option('-p', '--par', dest='spar', type='string', default=p_def.spar,
         help='list of parameter values, default=\'{}\''.format(p_def.spar))
     parser.add_option('-s', '--sig', dest='sig', type='float', default=p_def.sig,
         help='standard deviation of Gaussian, default=\'{}\''.format(p_def.sig))
+
     parser.add_option('', '--fit_stan', dest='do_fit_stan', action='store_true',
         help='Run stan for MCMC fitting, default={}'.format(p_def.do_fit_stan))
     parser.add_option('', '--fish_ana', dest='do_fish_ana', action='store_true',
         help='Calculate analytical Fisher matrix, default={}'.format(p_def.do_fish_ana))
-    parser.add_option('-n', '--n_jobs', dest='n_jobs', type='int', default=p_def.n_jobs,
-        help='Number of parallel jobs, default={}'.format(p_def.n_jobs))
+    parser.add_option('-L', '--like', dest='likelihood', type='string', default=p_def.likelihood,
+        help='Likelihoo for MCMC, one in \'norm\'|\'ST\', default=\'{}\''.format(p_def.likelihood))
+
     parser.add_option('-m', '--mode', dest='mode', type='string', default=p_def.mode,
         help='Mode: \'s\'=simulate, \'r\'=read, default={}'.format(p_def.mode))
     parser.add_option('-a', '--add_simulations', dest='add_simulations', action='store_true', help='add simulations to existing files')
     parser.add_option('-r', '--random_seed', dest='random_seed', action='store_true', help='random seed')
+
+    parser.add_option('-n', '--n_jobs', dest='n_jobs', type='int', default=p_def.n_jobs,
+        help='Number of parallel jobs, default={}'.format(p_def.n_jobs))
+
     parser.add_option('-v', '--verbose', dest='verbose', action='store_true', help='verbose output')
 
     options, args = parser.parse_args()
@@ -847,64 +880,7 @@ def plot_sigma_ML(n, n_D, sigma_ML, sigma_m1_ML, sig, out_name='sigma_ML'):
 
 
 
-def fit(x1, cov, n_jobs=3):
-    """
-    Generates one draw from a multivariate normal distribution
-    and performs the linear fit  without taking the correlation into
-    consideration.
-
-    input:  x1, mean of multivariate normal distribution - vector of floats
-            cov, square covariance matrix for the multivariate normal
-            n_jobs, number of parallel jobs
-
-    output: fit, Stan fitting object
-    """
-
-    # Fit
-    toy_data = {}                  # build data dictionary
-    toy_data['nobs'] = len(x1)     # sample size = n_D
-    toy_data['x'] = x1             # explanatory variable
-
-    # cov = covariance of the data!
-    y = multivariate_normal.rvs(mean=x1, cov=cov, size=1)
-    toy_data['y'] = y                        # response variable, here one realisation
-    toy_data['sigma'] = np.sqrt(cov[0][0])   # scatter is not a parameter to be estimated
-
-    # STAN code
-    # the fitting code does not believe that observations are correlated!
-    stan_code = """
-    data {
-        int<lower=0> nobs; 
-        real<lower=0> sigma;                                
-        vector[nobs] x;                       
-        vector[nobs] y;                       
-    }
-    parameters {
-        real a;
-        real b;                                                              
-    }
-    model {
-        vector[nobs] mu;
-
-        mu = b + a * x;
-
-        y ~ normal(mu, sigma);             # Likelihood function
-    }
-    """
-
-    import pystan
-    start = time.time()
-    fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2500, chains=3, verbose=False, n_jobs=n_jobs)
-    end = time.time()
-
-    #elapsed = end - start
-    #print 'elapsed time = ' + str(elapsed)
-
-    return fit
-
-
-
-def fit_corr(x1, cov_true, cov_estimated, n_jobs=3):
+def fit_corr(x1, cov_true, cov_est, n_jobs=3):
     """
     Generates one draw from a multivariate normal distribution
     and performs the linear fit taking the correlation estimated 
@@ -912,7 +888,7 @@ def fit_corr(x1, cov_true, cov_estimated, n_jobs=3):
 
     input:  x1, mean of multivariate normal distribution - vector of floats
             cov_true, square covariance matrix for the simulation
-            cov_estimated, square covariance matrix for the fitting
+            cov_est, square covariance matrix for the fitting
             n_jobs, number of parallel jobs
 
     output: fit, Stan fitting object
@@ -928,7 +904,7 @@ def fit_corr(x1, cov_true, cov_estimated, n_jobs=3):
     toy_data['y'] = y              # response variable, here one realisation
 
     # set estimated covariance matrix for fitting
-    toy_data['cov_est'] = cov_estimated
+    toy_data['cov_est'] = cov_est
 
     # STAN code
     # the fitting code does not believe that observations are correlated!
@@ -952,9 +928,73 @@ def fit_corr(x1, cov_true, cov_estimated, n_jobs=3):
     }
     """
 
-    # Sellentin & Heavens debiasing scheme:
-    # Replace normal likelihood with t-distribution
-    # y ~ (1 + (log_normal(mu, cov_est)) / (1 + n_S))^(n_S/2)  
+    import pystan
+    start = time.time()
+    fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=3, verbose=False, n_jobs=n_jobs)
+    end = time.time()
+
+    #elapsed = end - start
+    #print 'elapsed time = ' + str(elapsed)
+
+    return fit
+
+
+def fit_corr_ST(x1, cov_true, cov_est_inv, n_jobs=3):
+    """
+    Generates one draw from a multivariate student-t distribution
+    (see Sellentin & Heavens 2015)
+    and performs the linear fit taking the correlation estimated 
+    from simulations into consideration.
+
+    input:  x1, mean of multivariate normal distribution - vector of floats
+            cov_true, square covariance matrix for the simulation
+            cov_est_inv, inverse square covariance matrix for the fitting
+            n_jobs, number of parallel jobs
+
+    output: fit, Stan fitting object
+    """
+
+    # Fit
+    toy_data = {}                  # build data dictionary
+    toy_data['nobs'] = len(x1)     # sample size = n_D
+    toy_data['x'] = x1             # explanatory variable
+
+    # cov = covariance of the data!
+    y = multivariate_normal.rvs(mean=x1, cov=cov_true, size=1)
+    toy_data['y'] = y              # response variable, here one realisation
+
+    # set estimated inverse covariance matrix for fitting
+    toy_data['cov_est_inv'] = cov_est_inv
+
+    # STAN code
+    # the fitting code does not believe that observations are correlated!
+    stan_code = """
+    data {
+        int<lower=0> nobs;                                 
+        vector[nobs] x;                       
+        vector[nobs] y;   
+        matrix[nobs, nobs] cov_est_inv;                    
+    }
+    parameters {
+        real a;
+        real b;                                                              
+    }
+    model {
+        vector[nobs] mu;
+        real chi2;
+
+        mu = b + a * x;
+
+        # Sellentin & Heavens debiasing scheme:
+        # Replace normal likelihood with t-distribution
+        # y ~ (1 + (log_normal(mu, cov_est)) / (1 + n_S))^(-n_S/2)  
+
+        chi2 = (y - mu)' * cov_est_inv * (y - mu);
+
+        target += pow(1.0 + chi2/(1.0 + nobs), -nobs/2.0);
+    }
+    """
+
 
     import pystan
     start = time.time()
@@ -965,6 +1005,7 @@ def fit_corr(x1, cov_true, cov_estimated, n_jobs=3):
     #print 'elapsed time = ' + str(elapsed)
 
     return fit
+
 
 
 def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit, options, verbose=False):
@@ -1007,6 +1048,9 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish
             dpar = Fisher_error(F)
             fish_num.set(dpar, i, run, which='std')
 
+            # The following also works, if get_std_var is changed at same time
+            #fish_num.set(dpar**2, i, run, which='std')
+
             # using debiased inverse covariance estimate
             cov_est_inv_debiased = debias_cov(cov_est_inv, n_S)
             F = Fisher_num(x1, options.a, options.b, cov_est_inv_debiased)
@@ -1015,7 +1059,17 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish
 
             # MCMC fit of Parameters
             if options.do_fit_stan == True:
-                res = fit_corr(x1, cov, cov_est, n_jobs=options.n_jobs)
+                if options.likelihood == 'norm':
+                    if verbose == True:
+                        print('Running MCMC with mv normal likelihood')
+                    res = fit_corr(x1, cov, cov_est, n_jobs=options.n_jobs)
+                elif options.likelihood == 'ST':
+                    if verbose == True:
+                        print('Running MCMC with Sellentin&Heavens (ST) likelihood')
+                    res = fit_corr_ST(x1, cov, cov_est_inv, n_jobs=options.n_jobs)
+                else:
+                    error('Invalid likelihood \'{}\''.format(options.likelihood))
+
                 la  = res.extract(permuted=True)
                 par  = []
                 dpar = []
@@ -1173,7 +1227,10 @@ def main(argv=None):
     cov_inv    = np.diag([1.0 / options.sig for i in range(options.n_D)])
     F_exact    = Fisher_ana(yreal, cov_inv)
     dpar_exact = Fisher_error(F_exact)
-    print('Parameter error (from exact Fisher)', dpar_exact)
+    #print('Parameter error (from exact Fisher)', dpar_exact)
+
+    if options.verbose == True:
+        print('Creating plots')
 
     if options.do_fish_ana == True:
         fish_ana.plot_mean_std(n_S_arr, options.n_D, par={'std': dpar_exact})
@@ -1183,7 +1240,13 @@ def main(argv=None):
         fit.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact})
 
     dpar2 = dpar_exact**2
+
+    # Problem with this plot, simulation does not agree with analytical formula.
+    # Checked:
+    # 08/09/2017
+    # - std**2 = var, seems to be correct in the code.
     fish_num.plot_std_var(n_S_arr, options.n_D, par=dpar2)
+
     fish_deb.plot_std_var(n_S_arr, options.n_D, par=dpar2)
     if options.do_fit_stan == True:
         fit.plot_std_var(n_S_arr, options.n_D, par=dpar2)
