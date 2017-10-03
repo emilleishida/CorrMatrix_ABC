@@ -467,10 +467,11 @@ def params_default():
         n_n_S = 10,
         spar = '1.0 0.0',
         sig = 5.0,
+        mode   = 's',
         do_fit_stan = False,
         do_fish_ana = False,
+        likelihood  = 'norm',
         n_jobs = 1,
-        mode   = 's',
         random_seed = True,
     )
 
@@ -503,20 +504,27 @@ def parse_options(p_def):
         help='Number of runs per simulation, default={}'.format(p_def.n_R))
     parser.add_option('', '--n_n_S', dest='n_n_S', type='int', default=p_def.n_n_S,
         help='Number of n_S, where n_S is the number of simulation, default={}'.format(p_def.n_n_S))
+
     parser.add_option('-p', '--par', dest='spar', type='string', default=p_def.spar,
         help='list of parameter values, default=\'{}\''.format(p_def.spar))
     parser.add_option('-s', '--sig', dest='sig', type='float', default=p_def.sig,
         help='standard deviation of Gaussian, default=\'{}\''.format(p_def.sig))
+
     parser.add_option('', '--fit_stan', dest='do_fit_stan', action='store_true',
         help='Run stan for MCMC fitting, default={}'.format(p_def.do_fit_stan))
     parser.add_option('', '--fish_ana', dest='do_fish_ana', action='store_true',
         help='Calculate analytical Fisher matrix, default={}'.format(p_def.do_fish_ana))
-    parser.add_option('-n', '--n_jobs', dest='n_jobs', type='int', default=p_def.n_jobs,
-        help='Number of parallel jobs, default={}'.format(p_def.n_jobs))
+    parser.add_option('-L', '--like', dest='likelihood', type='string', default=p_def.likelihood,
+        help='Likelihoo for MCMC, one in \'norm\'|\'ST\', default=\'{}\''.format(p_def.likelihood))
+
     parser.add_option('-m', '--mode', dest='mode', type='string', default=p_def.mode,
         help='Mode: \'s\'=simulate, \'r\'=read, default={}'.format(p_def.mode))
     parser.add_option('-a', '--add_simulations', dest='add_simulations', action='store_true', help='add simulations to existing files')
     parser.add_option('-r', '--random_seed', dest='random_seed', action='store_true', help='random seed')
+
+    parser.add_option('-n', '--n_jobs', dest='n_jobs', type='int', default=p_def.n_jobs,
+        help='Number of parallel jobs, default={}'.format(p_def.n_jobs))
+
     parser.add_option('-v', '--verbose', dest='verbose', action='store_true', help='verbose output')
 
     options, args = parser.parse_args()
@@ -1104,8 +1112,17 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish
 
             # MCMC fit of Parameters
             if options.do_fit_stan == True:
-                #res = fit_corr(x1, cov, cov_est, n_jobs=options.n_jobs)
-                res = fit_corr_ST(x1, cov, cov_est_inv, n_jobs=options.n_jobs)
+                if options.likelihood == 'norm':
+                    if verbose == True:
+                        print('Running MCMC with mv normal likelihood')
+                    res = fit_corr(x1, cov, cov_est, n_jobs=options.n_jobs)
+                elif options.likelihood == 'ST':
+                    if verbose == True:
+                        print('Running MCMC with Sellentin&Heavens (ST) likelihood')
+                    res = fit_corr_ST(x1, cov, cov_est_inv, n_jobs=options.n_jobs)
+                else:
+                    error('Invalid likelihood \'{}\''.format(options.likelihood))
+
                 la  = res.extract(permuted=True)
                 par  = []
                 dpar = []
