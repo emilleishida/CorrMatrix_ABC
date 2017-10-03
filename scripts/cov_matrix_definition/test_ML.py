@@ -237,11 +237,23 @@ class Results:
 
         box_width = (n[1] - n[0]) / 2
 
+        Ax = {}
         for j, which in enumerate(['mean', 'std']):
             for i, p in enumerate(self.par_name):
                 y = getattr(self, which)[p]   # mean or std for parameter p
                 if y.any():
-                    ax = plt.subplot(1, 2, j+1)
+                    Ax[which] = plt.subplot(1, 2, j+1)
+
+        if len(Ax) == 1:   # Only one plot to do: Use entire canvas
+            Ax[Ax.keys()[0]] = plt.subplot(1, 1, 1)
+        
+
+        for j, which in enumerate(['mean', 'std']):
+            for i, p in enumerate(self.par_name):
+                y = getattr(self, which)[p]   # mean or std for parameter p
+                if y.any():
+                    #ax = plt.subplot(1, 2, j+1)
+                    ax = Ax[which]
                     #plt.plot(n, y.mean(axis=1), marker[i], ms=markersize[i], color=color[i])
 
                     if y.shape[1] > 1:
@@ -254,7 +266,7 @@ class Results:
                         plt.plot(n_fine, self.fct[which](n_fine, n_D, my_par[i]), 'g-.')
                     plt.plot(n, no_bias(n, n_D, my_par[i]), 'r-')
 
-                    plt.xlabel('n_S')
+                    plt.xlabel('$n_{\\rm s}$')
                     plt.ylabel('<{}>'.format(which))
                     plt.xlim(n[0]/fac_xlim, n[-1]*fac_xlim)
                     ax.set_yscale(self.yscale)
@@ -868,63 +880,6 @@ def plot_sigma_ML(n, n_D, sigma_ML, sigma_m1_ML, sig, out_name='sigma_ML'):
 
 
 
-def fit(x1, cov, n_jobs=3):
-    """
-    Generates one draw from a multivariate normal distribution
-    and performs the linear fit  without taking the correlation into
-    consideration.
-
-    input:  x1, mean of multivariate normal distribution - vector of floats
-            cov, square covariance matrix for the multivariate normal
-            n_jobs, number of parallel jobs
-
-    output: fit, Stan fitting object
-    """
-
-    # Fit
-    toy_data = {}                  # build data dictionary
-    toy_data['nobs'] = len(x1)     # sample size = n_D
-    toy_data['x'] = x1             # explanatory variable
-
-    # cov = covariance of the data!
-    y = multivariate_normal.rvs(mean=x1, cov=cov, size=1)
-    toy_data['y'] = y                        # response variable, here one realisation
-    toy_data['sigma'] = np.sqrt(cov[0][0])   # scatter is not a parameter to be estimated
-
-    # STAN code
-    # the fitting code does not believe that observations are correlated!
-    stan_code = """
-    data {
-        int<lower=0> nobs; 
-        real<lower=0> sigma;                                
-        vector[nobs] x;                       
-        vector[nobs] y;                       
-    }
-    parameters {
-        real a;
-        real b;                                                              
-    }
-    model {
-        vector[nobs] mu;
-
-        mu = b + a * x;
-
-        y ~ normal(mu, sigma);             # Likelihood function
-    }
-    """
-
-    import pystan
-    start = time.time()
-    fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2500, chains=3, verbose=False, n_jobs=n_jobs)
-    end = time.time()
-
-    #elapsed = end - start
-    #print 'elapsed time = ' + str(elapsed)
-
-    return fit
-
-
-
 def fit_corr(x1, cov_true, cov_est, n_jobs=3):
     """
     Generates one draw from a multivariate normal distribution
@@ -963,14 +918,6 @@ def fit_corr(x1, cov_true, cov_est, n_jobs=3):
     parameters {
         real a;
         real b;                                                              
-    }
-    model {
-        matrix[nobs, nobs] loglike;
-
-        for (i in 1:nobs) {
-            for (j in 1:nobs) {
-                loglike[i,j] <- mu[i] * cov_est[i,j] *
-        }
     }
     model {
         vector[nobs] mu;
@@ -1280,7 +1227,10 @@ def main(argv=None):
     cov_inv    = np.diag([1.0 / options.sig for i in range(options.n_D)])
     F_exact    = Fisher_ana(yreal, cov_inv)
     dpar_exact = Fisher_error(F_exact)
-    print('Parameter error (from exact Fisher)', dpar_exact)
+    #print('Parameter error (from exact Fisher)', dpar_exact)
+
+    if options.verbose == True:
+        print('Creating plots')
 
     if options.do_fish_ana == True:
         fish_ana.plot_mean_std(n_S_arr, options.n_D, par={'std': dpar_exact})
