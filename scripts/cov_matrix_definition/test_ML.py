@@ -630,13 +630,13 @@ def numbers_from_file(file_base, npar):
 
 # Gaussian likelihood function
 # chi^2 = -2 log L = (y - mu)^t Psi (y - mu).
-# y: n_D dimensional data vector, simulated as y(x) ~ N(mu(x), sigma)
+# y: n_D dimensional data vector, simulated as y(x) ~ N(mu(x), C)
 #    with mu(x) = b + a * x
 # x: x ~ Uniform(-100, 100)
 # mu: mean, mu(x) = b + a * x, with parameters b, a
 # Psi: estimated inverse covariance, Phi^-1 times correction factor
 # Phi: estimate of true covariance C, ML estimate from n_S realisations of y.
-# C = diag(sig, ..., sig)
+# C = diag(sig^2, ..., sig^2)
 # Fisher matrix
 # F_rs = 1/2 ( dmu^t/dr Psi dmu/ds + dmu^t/ds Psi dmu/dr)
 #      = 1/2 |2 x^t Psi x               x^t Psi 1 + 1^t Psi x| 
