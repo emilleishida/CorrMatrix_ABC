@@ -478,7 +478,7 @@ def params_default():
         n_R = 10,
         n_n_S = 10,
         spar = '1.0 0.0',
-        sig = 5.0,
+        sig2 = 5.0,
         mode   = 's',
         do_fit_stan = False,
         do_fish_ana = False,
@@ -519,8 +519,8 @@ def parse_options(p_def):
 
     parser.add_option('-p', '--par', dest='spar', type='string', default=p_def.spar,
         help='list of parameter values, default=\'{}\''.format(p_def.spar))
-    parser.add_option('-s', '--sig', dest='sig', type='float', default=p_def.sig,
-        help='standard deviation of Gaussian, default=\'{}\''.format(p_def.sig))
+    parser.add_option('-s', '--sig2', dest='sig2', type='float', default=p_def.sig2,
+        help='variance of Gaussian, default=\'{}\''.format(p_def.sig2))
 
     parser.add_option('', '--fit_stan', dest='do_fit_stan', action='store_true',
         help='Run stan for MCMC fitting, default={}'.format(p_def.do_fit_stan))
@@ -846,7 +846,7 @@ def debias_cov(cov_est_inv, n_S):
 
 
 
-def plot_sigma_ML(n, n_D, sigma_ML, sigma_m1_ML, sig, out_name='sigma_ML'):
+def plot_sigma_ML(n, n_D, sigma_ML, sigma_m1_ML, sig2, out_name='sigma_ML'):
     """Obsolete, use class method instead.
     """
 
@@ -855,15 +855,15 @@ def plot_sigma_ML(n, n_D, sigma_ML, sigma_m1_ML, sig, out_name='sigma_ML'):
 
     plt.subplot(1, 2, 1)
     plt.plot(n, sigma_ML, 'b.')
-    plt.plot([n[0], n[-1]], [sig, sig], 'r-')
+    plt.plot([n[0], n[-1]], [sig2, sig2], 'r-')
     plt.xlabel('n_S')
     plt.ylabel('normalised trace of ML covariance')
 
     ax = plt.subplot(1, 2, 2)
     plt.plot(n, sigma_m1_ML, 'b.')
-    plt.plot([n[0], n[-1]], [1.0/sig, 1.0/sig], 'r-')
+    plt.plot([n[0], n[-1]], [1.0/sig2, 1.0/sig2], 'r-')
     n_fine = np.arange(n[0], n[-1], len(n)/10.0)
-    bias = [(n_S-1.0)/(n_S-n_D-2.0)/sig for n_S in n_fine]
+    bias = [(n_S-1.0)/(n_S-n_D-2.0)/sig2 for n_S in n_fine]
     plt.plot(n_fine, bias, 'g-.')
     plt.xlabel('n_S')
     plt.ylabel('normalised trace of inverse of ML covariance')
@@ -872,7 +872,7 @@ def plot_sigma_ML(n, n_D, sigma_ML, sigma_m1_ML, sig, out_name='sigma_ML'):
     plt.savefig('{}.pdf'.format(out_name))
 
     f = open('{}.txt'.format(out_name), 'w')
-    print >>f, '# sig={}, n_D={}'.format(sig, n_D)
+    print >>f, '# sig2={}, n_D={}'.format(sig2, n_D)
     print >>f, '# n sigma 1/sigma'
     for i in range(len(n)):
         print >>f, '{} {} {}'.format(n[i], sigma_ML[i], sigma_m1_ML[i])
@@ -1014,7 +1014,7 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish
     if verbose == True:
         print('Creating {} simulations with {} runs each'.format(len(n_S_arr), options.n_R))
 
-    cov = np.diag([options.sig for i in range(options.n_D)])            # *** cov of the data in the same catalog! ***
+    cov = np.diag([options.sig2 for i in range(options.n_D)])            # *** cov of the data in the same catalog! ***
 
     # Go through number of simulations
     for i, n_S in enumerate(n_S_arr):
@@ -1221,10 +1221,10 @@ def main(argv=None):
 
 
     # Plot results
-    #plot_sigma_ML(n_S_arr, options.n_D, sigma_ML.mean['tr'].mean(axis=1), sigma_m1_ML.mean['tr'].mean(axis=1), options.sig, out_name='sigma_both')
+    #plot_sigma_ML(n_S_arr, options.n_D, sigma_ML.mean['tr'].mean(axis=1), sigma_m1_ML.mean['tr'].mean(axis=1), options.sig2, out_name='sigma_both')
 
     # Exact inverse covariance
-    cov_inv    = np.diag([1.0 / options.sig for i in range(options.n_D)])
+    cov_inv    = np.diag([1.0 / options.sig2 for i in range(options.n_D)])
     F_exact    = Fisher_ana(yreal, cov_inv)
     dpar_exact = Fisher_error(F_exact)
     #print('Parameter error (from exact Fisher)', dpar_exact)
@@ -1251,8 +1251,8 @@ def main(argv=None):
     if options.do_fit_stan == True:
         fit.plot_std_var(n_S_arr, options.n_D, par=dpar2)
 
-    sigma_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [options.sig]})
-    sigma_m1_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [1/options.sig]})
+    sigma_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [options.sig2]})
+    sigma_m1_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [1/options.sig2]})
 
     ### End main program
 
