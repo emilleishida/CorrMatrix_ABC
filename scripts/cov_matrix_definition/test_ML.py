@@ -47,7 +47,8 @@ def no_bias(n, n_D, par):
 
 def tr_N_m1_ML(n, n_D, par):
     """Maximum-likelihood estimate of inverse covariance normalised trace.
-       TJK13 (24)
+       TJK13 (24).
+       This is alpha.
     """
 
     return [(n_S - 1.0)/(n_S - n_D - 2.0) * par for n_S in n]
@@ -57,6 +58,7 @@ def tr_N_m1_ML(n, n_D, par):
 def par_fish(n, n_D, par):
     """Fisher matrix parameter, not defined for mean.
        Expectation value of TJK13 (43), follows from (25).
+       This is 1/sqrt(alpha).
     """
 
     return [np.sqrt((n_S - n_D - 2.0)/(n_S - 1.0)) * par for n_S in n]
@@ -227,7 +229,8 @@ class Results:
 
         #marker     = ['.', 'D']
         marker     = ['.', 'D']
-        markersize = [2] * len(marker)
+        #markersize = [2] * len(marker)
+        markersize = [6] * len(marker)
         color      = ['b', 'g']
         fac_xlim   = 1.05
 
@@ -252,25 +255,31 @@ class Results:
             for i, p in enumerate(self.par_name):
                 y = getattr(self, which)[p]   # mean or std for parameter p
                 if y.any():
-                    #ax = plt.subplot(1, 2, j+1)
                     ax = Ax[which]
-                    #plt.plot(n, y.mean(axis=1), marker[i], ms=markersize[i], color=color[i])
 
                     if y.shape[1] > 1:
-                        plt.boxplot(y.transpose(), positions=n, sym='.', widths=box_width)
+                        bplot = plt.boxplot(y.transpose(), positions=n, sym='.', widths=box_width)
+                        for key in bplot:
+                            plt.setp(bplot[key], color=color[i])
+                    else:
+                        plt.plot(n, y.mean(axis=1), marker[i], ms=markersize[i], color=color[i])
 
                     my_par = par[which]
                     if self.fct is not None and which in self.fct:
                         # Define high-resolution array for smoother lines
                         n_fine = np.arange(n[0], n[-1], len(n)/10.0)
-                        plt.plot(n_fine, self.fct[which](n_fine, n_D, my_par[i]), 'g-.')
-                    plt.plot(n, no_bias(n, n_D, my_par[i]), 'r-')
+                        #plt.plot(n_fine, self.fct[which](n_fine, n_D, my_par[i]), 'g-.')
+                        plt.plot(n_fine, self.fct[which](n_fine, n_D, my_par[i]), '{}-.'.format(color[i]))
+                    #plt.plot(n, no_bias(n, n_D, my_par[i]), 'r-')
+                    plt.plot(n, no_bias(n, n_D, my_par[i]), '{}-'.format(color[i]), label='{}$({})$'.format(which, p))
 
                     plt.xlabel('$n_{\\rm s}$')
                     plt.ylabel('<{}>'.format(which))
-                    plt.xlim(n[0]/fac_xlim, n[-1]*fac_xlim)
+                    plt.xlim((n[0]-5)/fac_xlim**2, n[-1]*fac_xlim)
                     ax.set_yscale(self.yscale)
                     plot_sth = True
+
+            plt.legend(loc='lower right', frameon=False)
 
         if plot_sth == True:
             plt.savefig('{}.pdf'.format(self.file_base))
@@ -641,17 +650,21 @@ def numbers_from_file(file_base, npar):
 # F_rs = 1/2 ( dmu^t/dr Psi dmu/ds + dmu^t/ds Psi dmu/dr)
 #      = 1/2 |2 x^t Psi x               x^t Psi 1 + 1^t Psi x| 
 #            |1^t Psi x + x^t Psi 1     2 1^t Psi 1|
+#      =     |x^t Psi x   x^t Psi 1|
+#            |x^t Psi 1   1^1 Psi 1|
+#      =     |sum_ij x_i Psi_ij x_j   sum_ij x_i Psi_ij|
+#            |sum_ij x_i Psi_ij       sum_ij Psi_ij|
 # e.g. F_11 = F_aa = x Psi x^t
 
-def Fisher_ana_ele(r, s, y, Psi):
+def Fisher_ana_ele(r, s, x, Psi):
     """Return analytical Fisher matrix element (r, s).
 
     Parameters
     ----------
     r, s: integer
         indices of matrix, r,s in {0,1}
-    y: array of float
-        data vector
+    x: array of float
+        abcissa for data vector y(x)=a*x+b
     Psi: matrix
         precision matrix
 
@@ -661,11 +674,11 @@ def Fisher_ana_ele(r, s, y, Psi):
         Fisher matrix element (r, s)
     """
 
-    n_D = len(y)
+    n_D = len(x)
     v = np.zeros(shape = (2, n_D))
     for i in (r, s):
         if i == 0:
-            v[i] = y
+            v[i] = x
         elif i == 1:
             v[i] = np.ones(shape=n_D)
         else:
@@ -673,6 +686,7 @@ def Fisher_ana_ele(r, s, y, Psi):
             sys.exit(1)
 
     f_rs = np.einsum('i,ij,j', v[r], Psi, v[s])
+
     # Check result by hand
     #f_rs = 0
     #for i in range(n_D):
@@ -706,14 +720,14 @@ def Fisher_num_ele(r, s, x, a, b, Psi):
 
     if r == 0:
         h = 0.1 * a
-        dy_dr = (a+h * x + b - (a-h * x + b)) / (2*h)
+        dy_dr = ((a+h) * x + b - ((a-h) * x + b)) / (2*h)
     else:
         h = 0.1
         dy_dr = (a * x + b+h - (a * x + b-h)) / (2*h)
 
     if s == 0:
         h = 0.1 * a
-        dy_ds = (a+h * x + b - (a-h * x + b)) / (2*h)
+        dy_ds = ((a+h) * x + b - ((a-h) * x + b)) / (2*h)
     else:
         h = 0.1
         dy_ds = (a * x + b+h - (a * x + b-h)) / (2*h)
@@ -743,6 +757,43 @@ def Fisher_error(F):
 
     return d
 
+
+def Fisher_error_ana(x, sig2, delta):
+    """Return Fisher matrix errors for affine function parameters (a, b)
+    """
+
+    mode = -1
+
+    n_D = len(x)
+
+    # The three following ways to compute the Fisher matrix errors are equivalent.
+    # Note that mode==-1,0 uses the statistical properties mean and variance of the uniform
+    # distribution, whereas more=1,2 uses the actual sample x.
+
+    if mode != -1:
+        if mode == 2:
+            Psi = np.diag([1.0 / sig2 for i in range(n_D)])
+            F_11 = np.einsum('i,ij,j', x, Psi, x)
+            F_22 = np.einsum('i,ij,j', np.ones(shape=n_D), Psi, np.ones(shape=n_D))
+            F_12 = np.einsum('i,ij,j', x, Psi, np.ones(shape=n_D))
+        elif mode == 1:
+            F_11 = sum(x*x) / sig2
+            F_12 = sum(x) / sig2
+            F_22 = n_D / sig2
+        elif mode == 0:
+            F_11 = n_D * delta**2 / 12 / sig2
+            F_12 = 0 
+            F_22 = n_D / sig2
+
+        det = F_11 * F_22 - F_12**2
+        da2 = F_22 / det
+        db2 = F_11 / det
+
+    else:
+        da2 = 12 * sig2 / (n_D * delta**2)
+        db2 = sig2 / n_D
+
+    return np.sqrt([da2, db2])
 
 
 def Fisher_ana(y, Psi):
@@ -1039,7 +1090,7 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish
             ### Fisher matrix ###
             # analytical
             if options.do_fish_ana == True:
-                F = Fisher_ana(yreal, cov_est_inv)
+                F = Fisher_ana(x1, cov_est_inv)   # Bug fix 05/10, 1st arg should be x1, not yreal
                 dpar = Fisher_error(F)
                 fish_ana.set(dpar, i, run, which='std')
 
@@ -1084,20 +1135,21 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish
 def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit, options, verbose=False):
     """Write simulated runs to files"""
 
-
     if options.add_simulations == True:
         if verbose == True:
             print('Reading previous simulations from disk')
 
         # Initialise results
         n_n_S, n_R  = numbers_from_file(sigma_ML.file_base, 1)
-        sigma_ML_prev    = Results(sigma_ML.par_name, n_n_S, n_R, file_base=sigma_ML.file_base, fct=sigma_ML.fct)
-        sigma_m1_ML_prev = Results(sigma_m1_ML.par_name, n_n_S, n_R, file_base=sigma_m1_ML.file_base, yscale='log', fct=sigma_m1_ML.fct)
+        #sigma_ML_prev    = Results(sigma_ML.par_name, n_n_S, n_R, file_base=sigma_ML.file_base, fct=sigma_ML.fct)
+        #sigma_m1_ML_prev = Results(sigma_m1_ML.par_name, n_n_S, n_R, file_base=sigma_m1_ML.file_base, yscale='log', fct=sigma_m1_ML.fct)
+        sigma_ML_prev    = Results(sigma_ML.par_name, n_n_S, n_R, file_base=sigma_ML.file_base)
+        sigma_m1_ML_prev = Results(sigma_m1_ML.par_name, n_n_S, n_R, file_base=sigma_m1_ML.file_base)
         fish_ana_prev    = Results(fish_ana.par_name, n_n_S, n_R, file_base=fish_ana.file_base, fct=fish_ana.fct)
         fish_num_prev    = Results(fish_num.par_name, n_n_S, n_R, file_base=fish_num.file_base, fct=fish_num.fct, yscale='linear')
         fish_deb_prev    = Results(fish_deb.par_name, n_n_S, n_R, file_base=fish_deb.file_base, fct=fish_deb.fct)
         fit_prev         = Results(fit.par_name, n_n_S, n_R, file_base=fit.file_base, fct=fit.fct)
-        # Full results from files
+        # Fill results from files
         read_from_file(sigma_ML_prev, sigma_m1_ML_prev, fish_ana_prev, fish_num_prev, fish_deb_prev, fit_prev, options, verbose=options.verbose)
 
         # Add new results
@@ -1177,18 +1229,14 @@ def main(argv=None):
     if options.random_seed is False:
         np.random.seed(1056)                 # set seed to replicate example
 
-    sigma_ML     = []
-    sigma_m1_ML  = []
-
-
     par_name = ['a', 'b']            # Parameter list
     tr_name  = ['tr']                # For cov plots
+    delta    = 200                   # Width of uniform distribution for x
 
     # Number of simulations
     start = options.n_D + 5
     stop  = options.n_D * 10
     n_S_arr = np.logspace(np.log10(start), np.log10(stop), options.n_n_S, dtype='int')
-    #n_S_arr = np.arange(n_D+1, n_D+1250, 250)
     n_n_S = len(n_S_arr)
 
 
@@ -1196,13 +1244,13 @@ def main(argv=None):
     sigma_ML    = Results(tr_name, n_n_S, options.n_R, file_base='sigma_ML')
     sigma_m1_ML = Results(tr_name, n_n_S, options.n_R, file_base='sigma_m1_ML', yscale='log', fct={'mean': tr_N_m1_ML})
 
-    fish_ana = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_ana', fct={'std': par_fish})
-    fish_num = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_num', fct={'std': par_fish, 'std_var': std_fish_biased}, yscale='linear')
-    fish_deb = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_deb', fct={'std': no_bias, 'std_var': std_fish_deb})
+    fish_ana = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_ana', yscale='log', fct={'std': par_fish})
+    fish_num = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_num', yscale='log', fct={'std': par_fish, 'std_var': std_fish_biased})
+    fish_deb = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_deb', yscale='log', fct={'std': no_bias, 'std_var': std_fish_deb})
     fit      = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit', fct={'std': par_fish, 'std_var': std_fish_biased})
 
     # Data
-    x1 = uniform.rvs(loc=-100, scale=200, size=options.n_D)        # exploratory variable
+    x1 = uniform.rvs(loc=-delta/2, scale=delta, size=options.n_D)        # exploratory variable
     x1.sort()
     yreal = options.a * x1 + options.b
 
@@ -1220,14 +1268,17 @@ def main(argv=None):
         read_from_file(sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit, options, verbose=options.verbose)
 
 
-    # Plot results
+    # Plot results. Obsolete function, now done by class routine.
     #plot_sigma_ML(n_S_arr, options.n_D, sigma_ML.mean['tr'].mean(axis=1), sigma_m1_ML.mean['tr'].mean(axis=1), options.sig2, out_name='sigma_both')
 
+    dpar_exact = Fisher_error_ana(x1, options.sig2, delta)
+    print('Parameter error (analytical Fisher with exact inverse cov)', dpar_exact)
+
     # Exact inverse covariance
-    cov_inv    = np.diag([1.0 / options.sig2 for i in range(options.n_D)])
-    F_exact    = Fisher_ana(yreal, cov_inv)
-    dpar_exact = Fisher_error(F_exact)
-    #print('Parameter error (from exact Fisher)', dpar_exact)
+    #cov_inv    = np.diag([1.0 / options.sig2 for i in range(options.n_D)])
+    #F_exact    = Fisher_ana(x1, cov_inv)    # Bug fixed 05/10
+    #dpar_exact = Fisher_error(F_exact)
+    #print('Parameter error (from exact Fisher_ana)', dpar_exact)
 
     if options.verbose == True:
         print('Creating plots')
