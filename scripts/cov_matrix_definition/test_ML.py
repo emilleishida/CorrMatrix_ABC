@@ -69,7 +69,8 @@ def std_fish_deb(n, n_D, par):
        TJK13 (50, 55)
     """
 
-    return [np.sqrt(2.0 / (n_S - n_D - 4.0)) * par for n_S in n]
+    #return [np.sqrt(2.0 / (n_S - n_D - 4.0)) * par for n_S in n]
+    return [np.sqrt(2 * A_corr(n_S, n_D) * (1.0 + (n_S - n_D - 2))) * par for n_S in n]
 
 
 
@@ -80,6 +81,16 @@ def A(n_S, n_D):
     A = (n_S - 1.0)**2 / ((n_S - n_D - 1.0) * (n_S - n_D - 2.0)**2 * (n_S - n_D - 4.0))
 
     return A
+
+
+def A_corr(n_S, n_D):
+    """Return TJK13 (28)
+    """
+
+    
+    A_c =  1.0 / ((n_S - n_D - 1.0) * (n_S - n_D - 4.0))
+
+    return A_c
 
 
 
@@ -323,6 +334,8 @@ class Results:
                 plt.legend(loc='best', numpoints=1, frameon=False)
                 ax.set_yscale('log')
                 plot_sth = True
+
+        plt.ylim(8e-9, 1e-2)
 
         if plot_sth == True:
             plt.savefig('std_2{}.pdf'.format(self.file_base))
@@ -1316,6 +1329,8 @@ def main(argv=None):
     # Checked:
     # 08/09/2017
     # - std**2 = var, seems to be correct in the code.
+    # To check (again): Does points go -> 0 for n_S very large or stay constant?
+    # Could be higher-order effect at low n_s?
     fish_num.plot_std_var(n_S_arr, options.n_D, par=dpar2)
 
     fish_deb.plot_std_var(n_S_arr, options.n_D, par=dpar2)
