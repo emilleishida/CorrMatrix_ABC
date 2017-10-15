@@ -102,6 +102,36 @@ def std_fish_biased(n, n_D, par):
     return [np.sqrt(2 * A(n_S, n_D) * (1.0 + (n_S - n_D - 2))) * par for n_S in n]
 
 
+def d(x, sig2, delta):
+    """Return determinant of Fisher matrix.
+    """
+
+    dp, det = Fisher_error_ana(x, sig2, delta, mode=2)
+    return det
+
+
+
+def deltaG2(a, x, n_S, sig2, delta):
+    """Return <(Delta G_aa)^2>.
+    """
+
+    n_D = len(x)
+
+    if a==0:
+        dG2 = 2 * A(n_S, n_D) * (n_S - n_D) * (n_D / sig2)**2
+    elif a==1:
+        dG2 = 2 * A(n_S, n_D) / sig2**2 * (n_S - n_D - 1) * (delta**2/12.0)**2
+    else:
+        error('Invalid parameter index {}'.format(a))
+
+    return dG2
+
+
+
+def std_fish_biased_ana(a, n, x, sig2, delta):
+
+    return [np.sqrt(1.0/d(x, sig2, delta)**2 * (deltaG2(a, x, n_S, sig2, delta))) for n_S in n]
+
 
 
 class Results:
@@ -339,6 +369,27 @@ class Results:
 
         if plot_sth == True:
             plt.savefig('std_2{}.pdf'.format(self.file_base))
+
+
+
+def plot_std_fish_biased_ana(par_name, n, x, sig2, delta):
+
+    plt.figure()
+    ax = plt.subplot(1, 1, 1)
+    color = ['g', 'm']
+
+    for i, p in enumerate(par_name):
+        n_fine = np.arange(n[0], n[-1], len(n)/10.0)
+        plt.plot(n_fine, std_fish_biased_ana(i, n_fine, x, sig2, delta), '-', color=color[i],
+                 label='$\sigma[\sigma^2({})] t_1$ '.format(p))
+
+    plt.xlabel('n_S')
+    plt.ylabel('std(var)')
+    plt.legend(loc='best', numpoints=1, frameon=False)
+    ax.set_yscale('log')
+    plt.ylim(8e-9, 1e-2)
+    plt.savefig('{}.pdf'.format('std_var_ana'))
+
 
 class param:
     """General class to store (default) variables
@@ -783,11 +834,9 @@ def Fisher_error(F):
     return d
 
 
-def Fisher_error_ana(x, sig2, delta):
-    """Return Fisher matrix errors for affine function parameters (a, b)
+def Fisher_error_ana(x, sig2, delta, mode=-1):
+    """Return Fisher matrix errors, and detminant if mode==2, for affine function parameters (a, b)
     """
-
-    mode = -1
 
     n_D = len(x)
 
@@ -806,7 +855,7 @@ def Fisher_error_ana(x, sig2, delta):
             F_12 = sum(x) / sig2
             F_22 = n_D / sig2
         elif mode == 0:
-            F_11 = n_D * delta**2 / 12 / sig2
+            F_11 = n_D * delta**2 / 12.0 / sig2
             F_12 = 0 
             F_22 = n_D / sig2
 
@@ -815,10 +864,11 @@ def Fisher_error_ana(x, sig2, delta):
         db2 = F_11 / det
 
     else:
+        det = -1  # Only to set return value
         da2 = 12 * sig2 / (n_D * delta**2)
         db2 = sig2 / n_D
 
-    return np.sqrt([da2, db2])
+    return np.sqrt([da2, db2]), det
 
 
 def Fisher_ana(y, Psi):
@@ -1304,7 +1354,7 @@ def main(argv=None):
     # Plot results. Obsolete function, now done by class routine.
     #plot_sigma_ML(n_S_arr, options.n_D, sigma_ML.mean['tr'].mean(axis=1), sigma_m1_ML.mean['tr'].mean(axis=1), options.sig2, out_name='sigma_both')
 
-    dpar_exact = Fisher_error_ana(x1, options.sig2, delta)
+    dpar_exact, det = Fisher_error_ana(x1, options.sig2, delta, mode=-1)
 
     # Exact inverse covariance
     #cov_inv    = np.diag([1.0 / options.sig2 for i in range(options.n_D)])
@@ -1340,6 +1390,8 @@ def main(argv=None):
 
     sigma_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [options.sig2]})
     sigma_m1_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [1/options.sig2]})
+
+    plot_std_fish_biased_ana(par_name, n_S_arr, x1, options.sig2, delta)
 
     ### End main program
 
