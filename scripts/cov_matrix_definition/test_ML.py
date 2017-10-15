@@ -106,7 +106,12 @@ class Results:
         self.std       = {}
         self.par_name  = par_name
         self.file_base = file_base
-        self.yscale    = yscale
+
+        if np.isscalar(yscale):
+            self.yscale = [yscale, yscale]
+        else:
+            self.yscale = yscale
+
         self.fct       = fct     
         for p in par_name:
             self.mean[p]   = np.zeros(shape = (n_n_S, n_R))
@@ -227,7 +232,6 @@ class Results:
 
         n_R = self.mean[self.par_name[0]].shape[1]
 
-        #marker     = ['.', 'D']
         marker     = ['.', 'D']
         #markersize = [2] * len(marker)
         markersize = [6] * len(marker)
@@ -240,27 +244,31 @@ class Results:
 
         box_width = (n[1] - n[0]) / 2
 
-        Ax = {}
+        # Set the number of required subplots (1 or 2)
+        j_panel = {}
         for j, which in enumerate(['mean', 'std']):
             for i, p in enumerate(self.par_name):
                 y = getattr(self, which)[p]   # mean or std for parameter p
                 if y.any():
-                    Ax[which] = plt.subplot(1, 2, j+1)
+                    n_panel = 2
+                    j_panel[which] = j+1
 
-        if len(Ax) == 1:   # Only one plot to do: Use entire canvas
-            Ax[Ax.keys()[0]] = plt.subplot(1, 1, 1)
+        if len(j_panel) == 1:   # Only one plot to do: Use entire canvas
+            n_panel = 1
+            j_panel[j_panel.keys()[0]] = 1
         
 
         for j, which in enumerate(['mean', 'std']):
             for i, p in enumerate(self.par_name):
                 y = getattr(self, which)[p]   # mean or std for parameter p
                 if y.any():
-                    ax = Ax[which]
+                    ax = plt.subplot(1, n_panel, j_panel[which])
 
                     if y.shape[1] > 1:
                         bplot = plt.boxplot(y.transpose(), positions=n, sym='.', widths=box_width)
                         for key in bplot:
                             plt.setp(bplot[key], color=color[i])
+                        plt.setp(bplot['whiskers'], linestyle='-')
                     else:
                         plt.plot(n, y.mean(axis=1), marker[i], ms=markersize[i], color=color[i])
 
@@ -268,18 +276,22 @@ class Results:
                     if self.fct is not None and which in self.fct:
                         # Define high-resolution array for smoother lines
                         n_fine = np.arange(n[0], n[-1], len(n)/10.0)
-                        #plt.plot(n_fine, self.fct[which](n_fine, n_D, my_par[i]), 'g-.')
                         plt.plot(n_fine, self.fct[which](n_fine, n_D, my_par[i]), '{}-.'.format(color[i]))
-                    #plt.plot(n, no_bias(n, n_D, my_par[i]), 'r-')
+
                     plt.plot(n, no_bias(n, n_D, my_par[i]), '{}-'.format(color[i]), label='{}$({})$'.format(which, p))
 
-                    plt.xlabel('$n_{\\rm s}$')
-                    plt.ylabel('<{}>'.format(which))
-                    plt.xlim((n[0]-5)/fac_xlim**2, n[-1]*fac_xlim)
-                    ax.set_yscale(self.yscale)
-                    plot_sth = True
+        # Finalize plot
+        for j, which in enumerate(['mean', 'std']):
+            if which in j_panel:
+                ax = plt.subplot(1, n_panel, j_panel[which])
+                plt.xlabel('$n_{\\rm s}$')
+                plt.ylabel('<{}>'.format(which))
+                #plt.xticks2()?bo alpha, or n_d / n_s
+                plt.xlim((n[0]-5)/fac_xlim**3, n[-1]*fac_xlim)
+                ax.set_yscale(self.yscale[j])
+                plot_sth = True
 
-            plt.legend(loc='lower right', frameon=False)
+                ax.legend(loc='lower right', frameon=False)
 
         if plot_sth == True:
             plt.savefig('{}.pdf'.format(self.file_base))
@@ -1059,7 +1071,7 @@ def fit_corr_ST(x1, cov_true, cov_est_inv, n_jobs=3):
 
 
 
-def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit, options, verbose=False):
+def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_G, fit_ST, options, verbose=False):
     """Simulate data"""
         
     if verbose == True:
@@ -1114,10 +1126,12 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish
                     if verbose == True:
                         print('Running MCMC with mv normal likelihood')
                     res = fit_corr(x1, cov, cov_est, n_jobs=options.n_jobs)
+                    fit = fit_norm
                 elif options.likelihood == 'ST':
                     if verbose == True:
                         print('Running MCMC with Sellentin&Heavens (ST) likelihood')
                     res = fit_corr_ST(x1, cov, cov_est_inv, n_jobs=options.n_jobs)
+                    fit = fit_ST
                 else:
                     error('Invalid likelihood \'{}\''.format(options.likelihood))
 
@@ -1127,8 +1141,10 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish
                 for p in fit.par_name:
                     par.append(np.mean(la[p]))
                     dpar.append(np.std(la[p]))
+
                 fit.set(par, i, run, which='mean')
                 fit.set(dpar, i, run, which='std')
+
 
 
 
@@ -1175,7 +1191,7 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, 
 
 
 
-def read_from_file(sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit, options, verbose=False):
+def read_from_file(sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_ST, options, verbose=False):
     """Read simulated runs from files"""
 
     if verbose == True:
@@ -1187,7 +1203,8 @@ def read_from_file(sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit, opt
     fish_deb.read_mean_std()
 
     if options.do_fit_stan:
-        fit.read_mean_std()
+        fit_norm.read_mean_std()
+        fit_ST.read_mean_std()
 
     sigma_ML.read_mean_std()
     sigma_m1_ML.read_mean_std()
@@ -1247,7 +1264,10 @@ def main(argv=None):
     fish_ana = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_ana', yscale='log', fct={'std': par_fish})
     fish_num = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_num', yscale='log', fct={'std': par_fish, 'std_var': std_fish_biased})
     fish_deb = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_deb', yscale='log', fct={'std': no_bias, 'std_var': std_fish_deb})
-    fit      = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit', fct={'std': par_fish, 'std_var': std_fish_biased})
+    fit_norm = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_norm', yscale=['linear', 'log'],
+                       fct={'std': par_fish, 'std_var': std_fish_biased})
+    fit_ST   = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_ST', yscale=['linear', 'log'],
+                       fct={'std': par_fish, 'std_var': std_fish_biased})
 
     # Data
     x1 = uniform.rvs(loc=-delta/2, scale=delta, size=options.n_D)        # exploratory variable
@@ -1257,22 +1277,21 @@ def main(argv=None):
     # Create simulations
     if re.search('s', options.mode) is not None:
  
-        simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit, options, verbose=options.verbose) 
+        simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_ST, options, verbose=options.verbose) 
 
-        write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit, options, verbose=options.verbose)
+        write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_ST, options, verbose=options.verbose)
 
 
     # Read simulations
     if re.search('r', options.mode) is not None:
 
-        read_from_file(sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit, options, verbose=options.verbose)
+        read_from_file(sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_ST, options, verbose=options.verbose)
 
 
     # Plot results. Obsolete function, now done by class routine.
     #plot_sigma_ML(n_S_arr, options.n_D, sigma_ML.mean['tr'].mean(axis=1), sigma_m1_ML.mean['tr'].mean(axis=1), options.sig2, out_name='sigma_both')
 
     dpar_exact = Fisher_error_ana(x1, options.sig2, delta)
-    print('Parameter error (analytical Fisher with exact inverse cov)', dpar_exact)
 
     # Exact inverse covariance
     #cov_inv    = np.diag([1.0 / options.sig2 for i in range(options.n_D)])
@@ -1288,7 +1307,8 @@ def main(argv=None):
     fish_num.plot_mean_std(n_S_arr, options.n_D, par={'std': dpar_exact})
     fish_deb.plot_mean_std(n_S_arr, options.n_D, par={'std': dpar_exact})
     if options.do_fit_stan == True:
-        fit.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact})
+        fit_norm.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact})
+        fit_ST.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact})
 
     dpar2 = dpar_exact**2
 
@@ -1300,7 +1320,8 @@ def main(argv=None):
 
     fish_deb.plot_std_var(n_S_arr, options.n_D, par=dpar2)
     if options.do_fit_stan == True:
-        fit.plot_std_var(n_S_arr, options.n_D, par=dpar2)
+        fit_norm.plot_std_var(n_S_arr, options.n_D, par=dpar2)
+        fit_ST.plot_std_var(n_S_arr, options.n_D, par=dpar2)
 
     sigma_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [options.sig2]})
     sigma_m1_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [1/options.sig2]})
