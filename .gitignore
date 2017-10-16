@@ -87,7 +87,4 @@ ENV/
 
 # Rope project settings
 .ropeproject
-line_mean_std.txt
-sigma_ML.pdf
-sigma_ML.txt
 log_test_ML.py
