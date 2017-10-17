@@ -145,12 +145,15 @@ def deltaGd(a, x, n_S, sig2, delta):
 
 
 
-def std_fish_biased_ana(a, n, x, sig2, delta):
+def std_fish_biased_ana(a, n, x, sig2, delta, terms, sign):
+
+    n_D = len(x)
 
     return [np.sqrt(1.0/d(x, sig2, delta)**2 * (
-             deltaG2(a, x, n_S, sig2, delta) 
-             - 2 * deltaGd(a, x, n_S, sig2, delta)
-            )) for n_S in n]
+            sign * (
+               (terms&1) * deltaG2(a, x, n_S, sig2, delta) 
+             - (terms&2) * 2 * deltaGd(a, x, n_S, sig2, delta) / d(x, sig2, delta) * n_D / sig2
+            ))) for n_S in n]
 
 
 
@@ -400,8 +403,12 @@ def plot_std_fish_biased_ana(par_name, n, x, sig2, delta):
 
     for i, p in enumerate(par_name):
         n_fine = np.arange(n[0], n[-1], len(n)/10.0)
-        plt.plot(n_fine, std_fish_biased_ana(i, n_fine, x, sig2, delta), '-', color=color[i],
-                 label='$\sigma[\sigma^2({})] t_1+t_2$ '.format(p))
+        plt.plot(n_fine, std_fish_biased_ana(i, n_fine, x, sig2, delta, 3, +1), '-', color=color[i],
+                 label='$\sigma[\sigma^2({})] \, t_1+t_2$ '.format(p))
+        plt.plot(n_fine, std_fish_biased_ana(i, n_fine, x, sig2, delta, 1, +1), '--', color=color[i],
+                 label='$\sigma[\sigma^2({})] \, t_1$ '.format(p))
+        plt.plot(n_fine, std_fish_biased_ana(i, n_fine, x, sig2, delta, 2, -1), ':', color=color[i],
+                 label='$\sigma[\sigma^2({})] \, -t_2$ '.format(p))
 
     plt.xlabel('n_S')
     plt.ylabel('std(var)')
