@@ -135,7 +135,7 @@ def deltaGd(a, x, n_S, sig2, delta):
     n_D = len(x)
 
     if a==0:
-        dGd = A(n_S, n_D) / sig2**3 * delta**2 / 6 * n_D**3 * (n_S - n_D)
+        dGd = 2 * A(n_S, n_D) / sig2**3 / n_D**3 * (delta*2 / 6 + n_S - n_D - 2)
     elif a==1:
         dGd = 0
     else:
@@ -403,18 +403,25 @@ def plot_std_fish_biased_ana(par_name, n, x, sig2, delta):
 
     for i, p in enumerate(par_name):
         n_fine = np.arange(n[0], n[-1], len(n)/10.0)
-        plt.plot(n_fine, std_fish_biased_ana(i, n_fine, x, sig2, delta, 3, +1), '-', color=color[i],
-                 label='$\sigma[\sigma^2({})] \, t_1+t_2$ '.format(p))
-        plt.plot(n_fine, std_fish_biased_ana(i, n_fine, x, sig2, delta, 1, +1), '--', color=color[i],
+        t_sum  = std_fish_biased_ana(i, n_fine, x, sig2, delta, 3, +1)
+        t_1    = std_fish_biased_ana(i, n_fine, x, sig2, delta, 1, +1)
+        mt_2   = std_fish_biased_ana(i, n_fine, x, sig2, delta, 2, -1)
+        plt.plot(n_fine, t_sum, '-', color=color[i], label='$\sigma[\sigma^2({})] \, t_1+t_2$ '.format(p))
+        plt.plot(n_fine, t_1, '--', color=color[i],
                  label='$\sigma[\sigma^2({})] \, t_1$ '.format(p))
-        plt.plot(n_fine, std_fish_biased_ana(i, n_fine, x, sig2, delta, 2, -1), ':', color=color[i],
+        plt.plot(n_fine, mt_2, ':', color=color[i],
                  label='$\sigma[\sigma^2({})] \, -t_2$ '.format(p))
+
+        print('par={}, t2/t1:'.format(p))
+        for j in range(len(n_fine)):
+            print('{} {:.3e} {:.3e}'.format(n_fine[j], mt_2[j], t_1[j]))
+        
 
     plt.xlabel('n_S')
     plt.ylabel('std(var)')
     plt.legend(loc='best', numpoints=1, frameon=False)
     ax.set_yscale('log')
-    plt.ylim(8e-9, 1e-2)
+    #plt.ylim(8e-9, 1e-2)
     plt.savefig('{}.pdf'.format('std_var_ana'))
 
 
