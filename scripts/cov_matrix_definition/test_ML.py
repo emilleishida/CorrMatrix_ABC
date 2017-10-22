@@ -106,7 +106,7 @@ def d(x, sig2, delta):
     """Return determinant of Fisher matrix.
     """
 
-    dp, det = Fisher_error_ana(x, sig2, delta, mode=2)
+    dp, det = Fisher_error_ana(x, sig2, delta, mode=-1)
     return det
 
 
@@ -118,7 +118,7 @@ def deltaG2(a, x, n_S, sig2, delta):
     n_D = len(x)
 
     if a==0:
-        dG2 = 2 * A(n_S, n_D) * (n_S - n_D) * (n_D / sig2)**2
+        dG2 = 2 * A(n_S, n_D) / sig2**2 * (n_S - n_D - 1) * n_D**2
     elif a==1:
         dG2 = 2 * A(n_S, n_D) / sig2**2 * (n_S - n_D - 1) * (delta**2/12.0)**2
     else:
@@ -128,9 +128,32 @@ def deltaG2(a, x, n_S, sig2, delta):
 
 
 
-def std_fish_biased_ana(a, n, x, sig2, delta):
+def deltaGd(a, x, n_S, sig2, delta):
+    """Return <(Delta G_aa d)>.
+    """
 
-    return [np.sqrt(1.0/d(x, sig2, delta)**2 * (deltaG2(a, x, n_S, sig2, delta))) for n_S in n]
+    n_D = len(x)
+
+    if a==0:
+        dGd = 2 * A(n_S, n_D) / sig2**3 / n_D**3 * (delta*2 / 6 + n_S - n_D - 2)
+    elif a==1:
+        dGd = 0
+    else:
+        error('Invalid parameter index {}'.format(a))
+
+    return dGd
+
+
+
+def std_fish_biased_ana(a, n, x, sig2, delta, terms, sign):
+
+    n_D = len(x)
+
+    return [np.sqrt(1.0/d(x, sig2, delta)**2 * (
+            sign * (
+               (terms&1) * deltaG2(a, x, n_S, sig2, delta) 
+             - (terms&2) * 2 * deltaGd(a, x, n_S, sig2, delta) / d(x, sig2, delta) * n_D / sig2
+            ))) for n_S in n]
 
 
 
@@ -380,14 +403,25 @@ def plot_std_fish_biased_ana(par_name, n, x, sig2, delta):
 
     for i, p in enumerate(par_name):
         n_fine = np.arange(n[0], n[-1], len(n)/10.0)
-        plt.plot(n_fine, std_fish_biased_ana(i, n_fine, x, sig2, delta), '-', color=color[i],
-                 label='$\sigma[\sigma^2({})] t_1$ '.format(p))
+        t_sum  = std_fish_biased_ana(i, n_fine, x, sig2, delta, 3, +1)
+        t_1    = std_fish_biased_ana(i, n_fine, x, sig2, delta, 1, +1)
+        mt_2   = std_fish_biased_ana(i, n_fine, x, sig2, delta, 2, -1)
+        plt.plot(n_fine, t_sum, '-', color=color[i], label='$\sigma[\sigma^2({})] \, t_1+t_2$ '.format(p))
+        plt.plot(n_fine, t_1, '--', color=color[i],
+                 label='$\sigma[\sigma^2({})] \, t_1$ '.format(p))
+        plt.plot(n_fine, mt_2, ':', color=color[i],
+                 label='$\sigma[\sigma^2({})] \, -t_2$ '.format(p))
+
+        print('par={}, t2/t1:'.format(p))
+        for j in range(len(n_fine)):
+            print('{} {:.3e} {:.3e}'.format(n_fine[j], mt_2[j], t_1[j]))
+        
 
     plt.xlabel('n_S')
     plt.ylabel('std(var)')
     plt.legend(loc='best', numpoints=1, frameon=False)
     ax.set_yscale('log')
-    plt.ylim(8e-9, 1e-2)
+    #plt.ylim(8e-9, 1e-2)
     plt.savefig('{}.pdf'.format('std_var_ana'))
 
 
@@ -862,9 +896,9 @@ def Fisher_error_ana(x, sig2, delta, mode=-1):
         det = F_11 * F_22 - F_12**2
         da2 = F_22 / det
         db2 = F_11 / det
-
     else:
-        det = -1  # Only to set return value
+        # mode=-1
+        det = (n_D/sig2)**2 * delta**2/12
         da2 = 12 * sig2 / (n_D * delta**2)
         db2 = sig2 / n_D
 
