@@ -176,10 +176,12 @@ class Results:
         else:
             self.yscale = yscale
 
-        self.fct       = fct     
+        self.fct = fct     
         for p in par_name:
             self.mean[p]   = np.zeros(shape = (n_n_S, n_R))
             self.std[p]    = np.zeros(shape = (n_n_S, n_R))
+
+        self.F = np.zeros(shape = (n_n_S, n_R, 2, 2))
 
 
     def set(self, par, i, run, which='mean'):
@@ -235,6 +237,26 @@ class Results:
                     names.append('std[{0:s}]_run{1:02d}'.format(p, run))
             t = Table(cols, names=names)
             f = open('{}.txt'.format(self.file_base), 'w')
+            ascii.write(t, f, delimiter='\t')
+            f.close()
+
+
+    def write_Fisher(self, n, format='ascii'):
+        """Write Fisher matrix.
+        """
+
+        n_n_S, n_R = self.mean[self.par_name[0]].shape
+        if format == 'ascii': 
+            cols  = [n]
+            names = ['# n_S']
+            for run in range(n_R):
+                for i in (0,1):
+                    for j in (0,1):
+                        Fij = self.F[:, run, i, j]
+                        cols.append(Fij.transpose())
+                        names.append('F[{0:d},{1:d}]_run{2:02d}'.format(i, j, run))
+            t = Table(cols, names=names)
+            f = open('F_{}.txt'.format(self.file_base), 'w')
             ascii.write(t, f, delimiter='\t')
             f.close()
 
@@ -297,7 +319,6 @@ class Results:
         n_R = self.mean[self.par_name[0]].shape[1]
 
         marker     = ['.', 'D']
-        #markersize = [2] * len(marker)
         markersize = [6] * len(marker)
         color      = ['b', 'g']
         fac_xlim   = 1.05
@@ -421,7 +442,6 @@ def plot_std_fish_biased_ana(par_name, n, x, sig2, delta):
     plt.ylabel('std(var)')
     plt.legend(loc='best', numpoints=1, frameon=False)
     ax.set_yscale('log')
-    #plt.ylim(8e-9, 1e-2)
     plt.savefig('{}.pdf'.format('std_var_ana'))
 
 
@@ -1168,10 +1188,10 @@ def fit_corr_ST(x1, cov_true, cov_est_inv, n_jobs=3):
 
 
 
-def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_G, fit_ST, options, verbose=False):
+def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_G, fit_ST, options):
     """Simulate data"""
         
-    if verbose == True:
+    if options.verbose == True:
         print('Creating {} simulations with {} runs each'.format(len(n_S_arr), options.n_R))
 
     cov = np.diag([options.sig2 for i in range(options.n_D)])            # *** cov of the data in the same catalog! ***
@@ -1179,7 +1199,7 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish
     # Go through number of simulations
     for i, n_S in enumerate(n_S_arr):
 
-        if verbose == True:
+        if options.verbose == True:
             print('{}/{}: n_S={}'.format(i+1, len(n_S_arr), n_S))
 
         # Loop over realisations
@@ -1207,6 +1227,7 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish
             F = Fisher_num(x1, options.a, options.b, cov_est_inv)
             dpar = Fisher_error(F)
             fish_num.set(dpar, i, run, which='std')
+            fish_num.F[i,run] = F
 
             # The following also works, if get_std_var is changed at same time
             #fish_num.set(dpar**2, i, run, which='std')
@@ -1220,12 +1241,12 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish
             # MCMC fit of Parameters
             if options.do_fit_stan == True:
                 if options.likelihood == 'norm':
-                    if verbose == True:
+                    if options.verbose == True:
                         print('Running MCMC with mv normal likelihood')
                     res = fit_corr(x1, cov, cov_est, n_jobs=options.n_jobs)
                     fit = fit_norm
                 elif options.likelihood == 'ST':
-                    if verbose == True:
+                    if options.verbose == True:
                         print('Running MCMC with Sellentin&Heavens (ST) likelihood')
                     res = fit_corr_ST(x1, cov, cov_est_inv, n_jobs=options.n_jobs)
                     fit = fit_ST
@@ -1245,25 +1266,24 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish
 
 
 
-def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit, options, verbose=False):
+def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_ST, options):
     """Write simulated runs to files"""
 
     if options.add_simulations == True:
-        if verbose == True:
+        if options.verbose == True:
             print('Reading previous simulations from disk')
 
         # Initialise results
         n_n_S, n_R  = numbers_from_file(sigma_ML.file_base, 1)
-        #sigma_ML_prev    = Results(sigma_ML.par_name, n_n_S, n_R, file_base=sigma_ML.file_base, fct=sigma_ML.fct)
-        #sigma_m1_ML_prev = Results(sigma_m1_ML.par_name, n_n_S, n_R, file_base=sigma_m1_ML.file_base, yscale='log', fct=sigma_m1_ML.fct)
         sigma_ML_prev    = Results(sigma_ML.par_name, n_n_S, n_R, file_base=sigma_ML.file_base)
         sigma_m1_ML_prev = Results(sigma_m1_ML.par_name, n_n_S, n_R, file_base=sigma_m1_ML.file_base)
         fish_ana_prev    = Results(fish_ana.par_name, n_n_S, n_R, file_base=fish_ana.file_base, fct=fish_ana.fct)
         fish_num_prev    = Results(fish_num.par_name, n_n_S, n_R, file_base=fish_num.file_base, fct=fish_num.fct, yscale='linear')
         fish_deb_prev    = Results(fish_deb.par_name, n_n_S, n_R, file_base=fish_deb.file_base, fct=fish_deb.fct)
-        fit_prev         = Results(fit.par_name, n_n_S, n_R, file_base=fit.file_base, fct=fit.fct)
+        fit_norm_prev    = Results(fit_norm.par_name, n_n_S, n_R, file_base=fit_norm.file_base, fct=fit.fct)
+        fit_ST_prev      = Results(fit_ST.par_name, n_n_S, n_R, file_base=fit_ST.file_base, fct=fit.fct)
         # Fill results from files
-        read_from_file(sigma_ML_prev, sigma_m1_ML_prev, fish_ana_prev, fish_num_prev, fish_deb_prev, fit_prev, options, verbose=options.verbose)
+        read_from_file(sigma_ML_prev, sigma_m1_ML_prev, fish_ana_prev, fish_num_prev, fish_deb_prev, fit_norm_prev, fit_ST_prev, options)
 
         # Add new results
         sigma_ML.append(sigma_ML_prev)
@@ -1271,14 +1291,16 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, 
         fish_ana.append(fish_ana_prev)
         fish_num.append(fish_num_prev)
         fish_deb.append(fish_deb_prev)
-        fit.append(fit_prev)
+        fit_norm.append(fit_norm_prev)
+        fit_ST.append(fit_ST_prev)
 
-    if verbose == True:
+    if options.verbose == True:
         print('Writing simulations to disk')
 
     if options.do_fish_ana == True:
         fish_ana.write_mean_std(n_S_arr)
     fish_num.write_mean_std(n_S_arr)
+    fish_num.write_Fisher(n_S_arr)
     fish_deb.write_mean_std(n_S_arr)
     if options.do_fit_stan == True:
         fit.write_mean_std(n_S_arr)
@@ -1288,10 +1310,10 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, 
 
 
 
-def read_from_file(sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_ST, options, verbose=False):
+def read_from_file(sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_ST, options):
     """Read simulated runs from files"""
 
-    if verbose == True:
+    if options.verbose == True:
         print('Reading simulations from disk')
 
     if options.do_fish_ana == True:
@@ -1374,9 +1396,9 @@ def main(argv=None):
     # Create simulations
     if re.search('s', options.mode) is not None:
  
-        simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_ST, options, verbose=options.verbose) 
+        simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_ST, options) 
 
-        write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_ST, options, verbose=options.verbose)
+        write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_ST, options)
 
 
     # Read simulations
