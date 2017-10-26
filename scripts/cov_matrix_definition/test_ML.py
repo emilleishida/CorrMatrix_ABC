@@ -44,6 +44,12 @@ def no_bias(n, n_D, par):
 
 
 
+def alpha(n_S, n_D):
+    """Return precision matrix estimate bias prefactor alpha.
+    """
+
+    return (n_S - 1.0)/(n_S - n_D - 2.0)
+
 
 def tr_N_m1_ML(n, n_D, par):
     """Maximum-likelihood estimate of inverse covariance normalised trace.
@@ -51,7 +57,7 @@ def tr_N_m1_ML(n, n_D, par):
        This is alpha.
     """
 
-    return [(n_S - 1.0)/(n_S - n_D - 2.0) * par for n_S in n]
+    return [alpha(n_S, n_D) * par for n_S in n]
 
 
 
@@ -61,7 +67,8 @@ def par_fish(n, n_D, par):
        This is 1/sqrt(alpha).
     """
 
-    return [np.sqrt((n_S - n_D - 2.0)/(n_S - 1.0)) * par for n_S in n]
+    #return [np.sqrt((n_S - n_D - 2.0)/(n_S - 1.0)) * par for n_S in n]
+    return [np.sqrt(1.0 / alpha(n_S, n_D)) * par for n_S in n]
 
 
 def std_fish_deb(n, n_D, par):
@@ -78,13 +85,13 @@ def A(n_S, n_D):
     """Return TJK13 (27)
     """
 
-    A = (n_S - 1.0)**2 / ((n_S - n_D - 1.0) * (n_S - n_D - 2.0)**2 * (n_S - n_D - 4.0))
+    A = alpha(n_S, n_D)**2 / ((n_S - n_D - 1.0) * (n_S - n_D - 4.0))
 
     return A
 
 
 def A_corr(n_S, n_D):
-    """Return TJK13 (28)
+    """Return TJK13 (28), this is A/alpha^2.
     """
 
     
@@ -102,25 +109,37 @@ def std_fish_biased(n, n_D, par):
     return [np.sqrt(2 * A(n_S, n_D) * (1.0 + (n_S - n_D - 2))) * par for n_S in n]
 
 
-def d(x, sig2, delta):
-    """Return determinant of Fisher matrix.
+
+def detF(n_D, sig2, delta):
+    """Return exact determinant of Fisher matrix.
     """
 
-    dp, det = Fisher_error_ana(x, sig2, delta, mode=-1)
+    det = (n_D/sig2)**2 * delta**2 / 12.0
     return det
 
 
 
-def deltaG2(a, x, n_S, sig2, delta):
+def hatdetF(n_S, n_D, sig2, delta):
+    """Return expectation value of estimated determinant.
+    """
+
+    det = detF(n_D, sig2, delta)
+    det = det * (2 * A(n_S, n_D) + alpha(n_S, n_D)**2)
+    return det 
+
+
+
+def deltaG2(a, n_S, n_D, sig2, delta):
     """Return <(Delta G_aa)^2>.
     """
 
-    n_D = len(x)
+    pref = 2 * A(n_S, n_D) / sig2**2 * (n_S - n_D - 1) * n_D**2
 
     if a==0:
-        dG2 = 2 * A(n_S, n_D) / sig2**2 * (n_S - n_D - 1) * n_D**2
+        dG2 = pref
     elif a==1:
-        dG2 = 2 * A(n_S, n_D) / sig2**2 * (n_S - n_D - 1) * (delta**2/12.0)**2
+        dG2 = pref * (delta**2/12.0)**2
+        # TODO: n_D**2 check
     else:
         error('Invalid parameter index {}'.format(a))
 
@@ -128,33 +147,18 @@ def deltaG2(a, x, n_S, sig2, delta):
 
 
 
-def deltaGd(a, x, n_S, sig2, delta):
-    """Return <(Delta G_aa d)>.
-    """
+def std_fish_biased_ana(a, n, n_D, sig2, delta):
 
-    n_D = len(x)
-
-    if a==0:
-        dGd = 2 * A(n_S, n_D) / sig2**3 / n_D**3 * (delta*2 / 6 + n_S - n_D - 2)
-    elif a==1:
-        dGd = 0
-    else:
-        error('Invalid parameter index {}'.format(a))
-
-    return dGd
+    return [np.sqrt(1.0/hatdetF(n_S, n_D, sig2, delta)**2 *
+               deltaG2(a, n_S, n_D, sig2, delta) 
+            ) for n_S in n]
 
 
 
-def std_fish_biased_ana(a, n, x, sig2, delta, terms, sign):
+def add_title(n_D, n_R):
+    """Adds title to plot."""
 
-    n_D = len(x)
-
-    return [np.sqrt(1.0/d(x, sig2, delta)**2 * (
-            sign * (
-               (terms&1) * deltaG2(a, x, n_S, sig2, delta) 
-             - (terms&2) * 2 * deltaGd(a, x, n_S, sig2, delta) / d(x, sig2, delta) * n_D / sig2
-            ))) for n_S in n]
-
+    plt.suptitle('$n_{{\\rm d}}={}$ data points, $n_{{\\rm r}}={}$ runs'.format(n_D, n_R))
 
 
 class Results:
@@ -241,6 +245,20 @@ class Results:
             f.close()
 
 
+    def read_Fisher(self, format='ascii'):
+        """Read Fisher matrix
+        """
+
+        n_n_S, n_R = self.mean[self.par_name[0]].shape
+        if format == 'ascii': 
+            dat = ascii.read('F_{}.txt'.format(self.file_base))
+            for run in range(n_R):
+                for i in (0,1):
+                    for j in (0,1):
+                        col_name = 'F[{0:d},{1:d}]_run{2:02d}'.format(i, j, run)
+                        self.F[:, run, i, j] = dat[col_name].transpose()
+
+
     def write_Fisher(self, n, format='ascii'):
         """Write Fisher matrix.
         """
@@ -325,7 +343,7 @@ class Results:
 
         plot_sth = False
         plt.figure()
-        plt.suptitle('$n_{{\\rm d}}={}$ data points, $n_{{\\rm r}}={}$ runs'.format(n_D, n_R))
+        add_title(n_D, n_R)
 
         box_width = (n[1] - n[0]) / 2
 
@@ -391,7 +409,7 @@ class Results:
 
         plot_sth = False
         plt.figure()
-        plt.suptitle('$n_{{\\rm d}}={}$ data points, $n_{{\\rm r}}={}$ runs'.format(n_D, n_R))
+        add_title(n_D, n_R)
         ax = plt.subplot(1, 1, 1)
 
         for i, p in enumerate(self.par_name):
@@ -403,7 +421,7 @@ class Results:
                     n_fine = np.arange(n[0], n[-1], len(n)/10.0)
                     plt.plot(n_fine, self.fct['std_var'](n_fine, n_D, par[i]), '-', color=color[i])
 
-                plt.xlabel('n_S')
+                plt.xlabel('$n_{\\rm s}$')
                 plt.ylabel('std(var)')
                 plt.legend(loc='best', numpoints=1, frameon=False)
                 ax.set_yscale('log')
@@ -415,33 +433,121 @@ class Results:
             plt.savefig('std_2{}.pdf'.format(self.file_base))
 
 
+def plot_det(n, x, sig2, delta, F, n_R):
 
-def plot_std_fish_biased_ana(par_name, n, x, sig2, delta):
+    n_D = len(x)
+
+    plt.figure()
+    ax = plt.subplot(1, 1, 1)
+
+    det_num = []
+    det_ana = []
+    det_exa = np.array([detF(n_D, sig2, delta)] * len(n))
+
+    for i, nn in enumerate(n):
+        fmean = F[i,:].mean(axis=1)  # average over run
+        det = fmean[0,0] * fmean[1,1] - fmean[0,1] ** 2
+        det_num.append(det)
+
+        det = hatdetF(nn, n_D, sig2, delta)
+        det_ana.append(det)
+
+    det_num = np.array(det_num)
+    det_ana = np.array(det_ana)
+
+    f = 1.005
+    plt.plot(n/f, det_num/det_exa, marker='o', color='m', label='$|F|$ num/exact')
+    plt.plot(n/f, det_ana/det_exa, 'y-', label='$|F|$ analytical/exact')
+    #plt.plot(n/f, det_exa, 'c-', label='$|F|$ exa')
+
+    det_exa_m1 = 1/det_exa
+    det_num_m1 = 1/det_num
+    det_ana_m1 = 1/det_ana
+
+    plt.plot(n*f, det_num_m1/det_exa_m1, marker='s', color='m', linestyle='--', label='$1/|F|$ num/exact')
+    plt.plot(n*f, det_ana_m1/det_exa_m1, 'y--', label='$1/|F|$ analytical/exact')
+
+    plt.plot(n, det_exa/det_exa, 'b-')
+
+    plt.xlabel('$n_{\\rm s}$')
+    plt.ylabel('determinant of Fisher matrix relative to exact one')
+    plt.legend(loc='best', numpoints=1, frameon=False)
+    ax.set_yscale('log')
+    plt.ylim(1e-4, 1e4)
+    add_title(n_D, n_R)
+    plt.savefig('det.pdf')
+
+    f = open('det.txt', 'w')
+    print >>f, '# n_S det_num det_ana det_exa'
+    for i, nn in enumerate(n):
+        print >>f, '{} {} {} {}'.format(nn, det_num[i], det_ana[i], det_exa[i])
+    f.close()
+
+
+
+def plot_std_fish_biased_ana(par_name, n, x, sig2, delta, F=None, n_R=0):
 
     plt.figure()
     ax = plt.subplot(1, 1, 1)
     color = ['g', 'm']
 
+    n_D = len(x)
+
     for i, p in enumerate(par_name):
         n_fine = np.arange(n[0], n[-1], len(n)/10.0)
-        t_sum  = std_fish_biased_ana(i, n_fine, x, sig2, delta, 3, +1)
-        t_1    = std_fish_biased_ana(i, n_fine, x, sig2, delta, 1, +1)
-        mt_2   = std_fish_biased_ana(i, n_fine, x, sig2, delta, 2, -1)
-        plt.plot(n_fine, t_sum, '-', color=color[i], label='$\sigma[\sigma^2({})] \, t_1+t_2$ '.format(p))
-        plt.plot(n_fine, t_1, '--', color=color[i],
-                 label='$\sigma[\sigma^2({})] \, t_1$ '.format(p))
-        plt.plot(n_fine, mt_2, ':', color=color[i],
-                 label='$\sigma[\sigma^2({})] \, -t_2$ '.format(p))
+        t_sum  = std_fish_biased_ana(i, n_fine, n_D, sig2, delta)
+        plt.plot(n_fine, t_sum, '-', color=color[i], label='$\sigma[\sigma^2({})]$ '.format(p))
 
-        print('par={}, t2/t1:'.format(p))
-        for j in range(len(n_fine)):
-            print('{} {:.3e} {:.3e}'.format(n_fine[j], mt_2[j], t_1[j]))
+    mode = 3
+
+    det = 0
         
+    if F is not None:
+        std_a = []
+        std_b = []
 
-    plt.xlabel('n_S')
+        if mode == 4:
+            fmean = F.mean(axis=(0,1))  # average over n_S and run
+            det = fmean[0,0] * fmean[1,1] - fmean[0,1] ** 2
+
+        for i, nn in enumerate(n):
+            Fm1 = np.zeros(shape=(n_R, 2, 2))
+
+            if mode == 3:
+                fmean = F[i,:].mean(axis=1)  # average over run
+                det = fmean[0,0] * fmean[1,1] - fmean[0,1] ** 2
+                #print('{} {} {}'.format(nn, det, 1.0/det))
+                # MKDEBUG 24/10: I can reproduce theory curve if I take theory det.
+                # Uncomment following line.
+                #det = 75000000.0
+                # So maybe it is indeed higher-order terms that would reproduce data?
+                # Or extra uncertainty from inverse in det?
+
+            for run in range(n_R):
+                f     = F[i,run]
+                if mode == 1:    # Numerical inverse
+                    Fm1[run] = np.linalg.inv(F[i,run])
+
+                elif mode == 2:  # Analytical inverse
+                    det = f[0,0] * f[1,1] - f[0,1] ** 2
+                    Fm1[run,0,0] = f[1,1] / det
+                    Fm1[run,1,1] = f[0,0] / det
+
+                elif mode == 3:  # Analytical inverse with mean determinant (first-order term)
+                    Fm1[run,0,0] = f[1,1] / det
+                    Fm1[run,1,1] = f[0,0] / det
+
+            std_a.append(np.std(Fm1[:,0,0]))
+            std_b.append(np.std(Fm1[:,1,1]))
+        plt.plot(n, std_a, marker='o', color='g', label='$\sigma[\sigma^2({})]$ from $F^{{-1}}$ (mode={})'.format('a', mode))
+        plt.plot(n, std_b, marker='o', color='m', label='$\sigma[\sigma^2({})]$ from $F^{{-1}}$ (mode={})'.format('b', mode))
+
+    plt.ylim(8e-9, 1e-2)
+    plt.xlabel('$n_{\\rm s}$')
     plt.ylabel('std(var)')
     plt.legend(loc='best', numpoints=1, frameon=False)
     ax.set_yscale('log')
+    add_title(n_D, n_R)
     plt.savefig('{}.pdf'.format('std_var_ana'))
 
 
@@ -918,7 +1024,7 @@ def Fisher_error_ana(x, sig2, delta, mode=-1):
         db2 = F_11 / det
     else:
         # mode=-1
-        det = (n_D/sig2)**2 * delta**2/12
+        det = detF(n_D, sig2, delta)
         da2 = 12 * sig2 / (n_D * delta**2)
         db2 = sig2 / n_D
 
@@ -1036,7 +1142,7 @@ def plot_sigma_ML(n, n_D, sigma_ML, sigma_m1_ML, sig2, out_name='sigma_ML'):
     plt.subplot(1, 2, 1)
     plt.plot(n, sigma_ML, 'b.')
     plt.plot([n[0], n[-1]], [sig2, sig2], 'r-')
-    plt.xlabel('n_S')
+    plt.xlabel('$n_{\\rm s}$')
     plt.ylabel('normalised trace of ML covariance')
 
     ax = plt.subplot(1, 2, 2)
@@ -1045,7 +1151,7 @@ def plot_sigma_ML(n, n_D, sigma_ML, sigma_m1_ML, sig2, out_name='sigma_ML'):
     n_fine = np.arange(n[0], n[-1], len(n)/10.0)
     bias = [(n_S-1.0)/(n_S-n_D-2.0)/sig2 for n_S in n_fine]
     plt.plot(n_fine, bias, 'g-.')
-    plt.xlabel('n_S')
+    plt.xlabel('$n_{\\rm s}$')
     plt.ylabel('normalised trace of inverse of ML covariance')
     ax.set_yscale('log')
 
@@ -1319,6 +1425,7 @@ def read_from_file(sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm
     if options.do_fish_ana == True:
         fish_ana.read_mean_std()
     fish_num.read_mean_std()
+    fish_num.read_Fisher()
     fish_deb.read_mean_std()
 
     if options.do_fit_stan:
@@ -1371,7 +1478,8 @@ def main(argv=None):
 
     # Number of simulations
     start = options.n_D + 5
-    stop  = options.n_D * 10
+    #stop  = options.n_D * 10
+    stop  = options.n_D * 3
     n_S_arr = np.logspace(np.log10(start), np.log10(stop), options.n_n_S, dtype='int')
     n_n_S = len(n_S_arr)
 
@@ -1404,7 +1512,7 @@ def main(argv=None):
     # Read simulations
     if re.search('r', options.mode) is not None:
 
-        read_from_file(sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_ST, options, verbose=options.verbose)
+        read_from_file(sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_ST, options)
 
 
     # Plot results. Obsolete function, now done by class routine.
@@ -1447,7 +1555,8 @@ def main(argv=None):
     sigma_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [options.sig2]})
     sigma_m1_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [1/options.sig2]})
 
-    plot_std_fish_biased_ana(par_name, n_S_arr, x1, options.sig2, delta)
+    plot_std_fish_biased_ana(par_name, n_S_arr, x1, options.sig2, delta, F=fish_num.F, n_R=options.n_R)
+    plot_det(n_S_arr, x1, options.sig2, delta, fish_num.F, options.n_R)
 
     ### End main program
 
