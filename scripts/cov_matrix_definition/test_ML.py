@@ -101,12 +101,21 @@ def A_corr(n_S, n_D):
 
 
 
-def std_fish_biased(n, n_D, par):
-    """Error on variance from Fisher matrix with biased inverse covariance estimate.
+def std_fish_biased_TJK13(n, n_D, par):
+    """0th-order error on variance from Fisher matrix with biased inverse covariance estimate.
        From TJK13 (49) with A (27) instead of A_corr (28) in (49)
     """
 
-    return [np.sqrt(2 * A(n_S, n_D) * (1.0 + (n_S - n_D - 2))) * par for n_S in n]
+    return [np.sqrt(2 * A(n_S, n_D) * ((n_S - n_D - 1))) * par for n_S in n]
+
+
+
+def std_fish_biased(n, n_D, par):
+    """Error on variance from Fisher matrix with biased inverse covariance estimate,
+        with correction, IK17 (26).
+    """
+
+    return [np.sqrt(2 * A(n_S, n_D) * ((n_S - n_D - 1))) / (2 * A(n_S, n_D) + alpha(n_S, n_D)**2) * par for n_S in n]
 
 
 
@@ -153,6 +162,13 @@ def std_fish_biased_ana(a, n, n_D, sig2, delta):
                deltaG2(a, n_S, n_D, sig2, delta) 
             ) for n_S in n]
 
+
+
+def std_fish_biased_exa(a, n, n_D, sig2, delta):
+
+    return [np.sqrt(1.0/detF(n_D, sig2, delta)**2 *
+               deltaG2(a, n_S, n_D, sig2, delta) 
+            ) for n_S in n]
 
 
 def add_title(n_D, n_R):
@@ -420,6 +436,8 @@ class Results:
                 if self.fct is not None and par is not None:
                     n_fine = np.arange(n[0], n[-1], len(n)/10.0)
                     plt.plot(n_fine, self.fct['std_var'](n_fine, n_D, par[i]), '-', color=color[i])
+                    if 'std_var_TJK13' in self.fct:
+                        plt.plot(n_fine, self.fct['std_var_TJK13'](n_fine, n_D, par[i]), '--', color=color[i])
 
                 plt.xlabel('$n_{\\rm s}$')
                 plt.ylabel('std(var)')
@@ -495,8 +513,11 @@ def plot_std_fish_biased_ana(par_name, n, x, sig2, delta, F=None, n_R=0):
 
     for i, p in enumerate(par_name):
         n_fine = np.arange(n[0], n[-1], len(n)/10.0)
-        t_sum  = std_fish_biased_ana(i, n_fine, n_D, sig2, delta)
-        plt.plot(n_fine, t_sum, '-', color=color[i], label='$\sigma[\sigma^2({})]$ '.format(p))
+        var_ana  = std_fish_biased_ana(i, n_fine, n_D, sig2, delta)
+        plt.plot(n_fine, var_ana, '-', color=color[i], label='$\sigma[\sigma^2({})]$ '.format(p))
+
+        var_exa  = std_fish_biased_exa(i, n_fine, n_D, sig2, delta)
+        plt.plot(n_fine, var_exa, '--', color=color[i], label='$\sigma[\sigma^2({})]$ TKJ13'.format(p))
 
     mode = 3
 
@@ -1489,7 +1510,8 @@ def main(argv=None):
     sigma_m1_ML = Results(tr_name, n_n_S, options.n_R, file_base='sigma_m1_ML', yscale='log', fct={'mean': tr_N_m1_ML})
 
     fish_ana = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_ana', yscale='log', fct={'std': par_fish})
-    fish_num = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_num', yscale='log', fct={'std': par_fish, 'std_var': std_fish_biased})
+    fish_num = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_num', yscale='log', fct={'std': par_fish, \
+                       'std_var': std_fish_biased, 'std_var_TJK13': std_fish_biased_TJK13})
     fish_deb = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_deb', yscale='log', fct={'std': no_bias, 'std_var': std_fish_deb})
     fit_norm = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_norm', yscale=['linear', 'log'],
                        fct={'std': par_fish, 'std_var': std_fish_biased})
