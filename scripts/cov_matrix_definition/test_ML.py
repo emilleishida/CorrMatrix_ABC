@@ -110,6 +110,16 @@ def std_fish_biased_TJK13(n, n_D, par):
 
 
 
+def std_fish_biased_TJ14(n, n_D, par):
+    """Improved error on variance from Fisher matrix with biased inverse covariance estimate.
+       From TJ14 (12).
+    """
+
+    n_P = 2  # Number of parameters
+    return [np.sqrt(2 * (n_S - n_D + n_P - 1) / (n_S - n_D -2)**2) * par for n_S in n]
+
+
+
 def std_fish_biased(n, n_D, par):
     """Error on variance from Fisher matrix with biased inverse covariance estimate,
         with correction, IK17 (26).
@@ -438,6 +448,8 @@ class Results:
                     plt.plot(n_fine, self.fct['std_var'](n_fine, n_D, par[i]), '-', color=color[i])
                     if 'std_var_TJK13' in self.fct:
                         plt.plot(n_fine, self.fct['std_var_TJK13'](n_fine, n_D, par[i]), '--', color=color[i])
+                    if 'std_var_TJ14' in self.fct:
+                        plt.plot(n_fine, self.fct['std_var_TJ14'](n_fine, n_D, par[i]), '-.', color=color[i])
 
                 plt.xlabel('$n_{\\rm s}$')
                 plt.ylabel('std(var)')
@@ -1511,7 +1523,7 @@ def main(argv=None):
 
     fish_ana = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_ana', yscale='log', fct={'std': par_fish})
     fish_num = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_num', yscale='log', fct={'std': par_fish, \
-                       'std_var': std_fish_biased, 'std_var_TJK13': std_fish_biased_TJK13})
+                       'std_var': std_fish_biased, 'std_var_TJK13': std_fish_biased_TJK13, 'std_var_TJ14': std_fish_biased_TJ14})
     fish_deb = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_deb', yscale='log', fct={'std': no_bias, 'std_var': std_fish_deb})
     fit_norm = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_norm', yscale=['linear', 'log'],
                        fct={'std': par_fish, 'std_var': std_fish_biased})
