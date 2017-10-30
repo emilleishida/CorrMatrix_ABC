@@ -1524,7 +1524,8 @@ def main(argv=None):
     fish_ana = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_ana', yscale='log', fct={'std': par_fish})
     fish_num = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_num', yscale='log', fct={'std': par_fish, \
                        'std_var': std_fish_biased, 'std_var_TJK13': std_fish_biased_TJK13, 'std_var_TJ14': std_fish_biased_TJ14})
-    fish_deb = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_deb', yscale='log', fct={'std': no_bias, 'std_var': std_fish_deb})
+    fish_deb = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_deb', yscale='log', \
+                       fct={'std': no_bias, 'std_var': std_fish_deb})
     fit_norm = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_norm', yscale=['linear', 'log'],
                        fct={'std': par_fish, 'std_var': std_fish_biased})
     fit_ST   = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_ST', yscale=['linear', 'log'],
