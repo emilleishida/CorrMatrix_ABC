@@ -755,6 +755,7 @@ def params_default():
         n_D = 750,
         n_R = 10,
         n_n_S = 10,
+        f_n_S_max = 10,
         spar = '1.0 0.0',
         sig2 = 5.0,
         mode   = 's',
@@ -794,6 +795,8 @@ def parse_options(p_def):
         help='Number of runs per simulation, default={}'.format(p_def.n_R))
     parser.add_option('', '--n_n_S', dest='n_n_S', type='int', default=p_def.n_n_S,
         help='Number of n_S, where n_S is the number of simulation, default={}'.format(p_def.n_n_S))
+    parser.add_option('', '--f_n_S_max', dest='f_n_S_max', type='int', default=p_def.f_n_S_max,
+        help='Maximum n_S = n_D x f_n_S_max, default: f_n_S_max={}'.format(p_def.f_n_S_max))
 
     parser.add_option('-p', '--par', dest='spar', type='string', default=p_def.spar,
         help='list of parameter values, default=\'{}\''.format(p_def.spar))
@@ -1327,7 +1330,7 @@ def fit_corr_ST(x1, cov_true, cov_est_inv, n_jobs=3):
 
 
 
-def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_G, fit_ST, options):
+def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_ST, options):
     """Simulate data"""
         
     if options.verbose == True:
@@ -1421,6 +1424,7 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, 
         fish_deb_prev    = Results(fish_deb.par_name, n_n_S, n_R, file_base=fish_deb.file_base, fct=fish_deb.fct)
         fit_norm_prev    = Results(fit_norm.par_name, n_n_S, n_R, file_base=fit_norm.file_base, fct=fit.fct)
         fit_ST_prev      = Results(fit_ST.par_name, n_n_S, n_R, file_base=fit_ST.file_base, fct=fit.fct)
+
         # Fill results from files
         read_from_file(sigma_ML_prev, sigma_m1_ML_prev, fish_ana_prev, fish_num_prev, fish_deb_prev, fit_norm_prev, fit_ST_prev, options)
 
@@ -1442,7 +1446,12 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, 
     fish_num.write_Fisher(n_S_arr)
     fish_deb.write_mean_std(n_S_arr)
     if options.do_fit_stan == True:
-        fit.write_mean_std(n_S_arr)
+        if options.likelihood == 'norm':
+            fit_norm.write_mean_std(n_S_arr)
+        elif options.likelihood == 'ST':
+            fit_ST.write_mean_std(n_S_arr)
+        else:
+             error('Invalid likelihood \'{}\''.format(options.likelihood))
 
     sigma_ML.write_mean_std(n_S_arr)
     sigma_m1_ML.write_mean_std(n_S_arr)
@@ -1462,6 +1471,7 @@ def read_from_file(sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm
     fish_deb.read_mean_std()
 
     if options.do_fit_stan:
+        # Reading both irrespective of -L (likelihood) flag
         fit_norm.read_mean_std()
         fit_ST.read_mean_std()
 
@@ -1511,8 +1521,7 @@ def main(argv=None):
 
     # Number of simulations
     start = options.n_D + 5
-    #stop  = options.n_D * 10
-    stop  = options.n_D * 3
+    stop  = options.n_D * options.f_n_S_max
     n_S_arr = np.logspace(np.log10(start), np.log10(stop), options.n_n_S, dtype='int')
     n_n_S = len(n_S_arr)
 
