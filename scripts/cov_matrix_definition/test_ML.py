@@ -475,7 +475,10 @@ def plot_det(n, x, sig2, delta, F, n_R):
     det_exa = np.array([detF(n_D, sig2, delta)] * len(n))
 
     for i, nn in enumerate(n):
-        fmean = F[i,:].mean(axis=1)  # average over run
+        if n_R > 1:
+            fmean = F[i,:].mean(axis=1)  # average over run
+        else:
+            fmean = F[i,0,:]  # check!
         det = fmean[0,0] * fmean[1,1] - fmean[0,1] ** 2
         det_num.append(det)
 
@@ -547,7 +550,10 @@ def plot_std_fish_biased_ana(par_name, n, x, sig2, delta, F=None, n_R=0):
             Fm1 = np.zeros(shape=(n_R, 2, 2))
 
             if mode == 3:
-                fmean = F[i,:].mean(axis=1)  # average over run
+                if n_R > 1:
+                    fmean = F[i,:].mean(axis=1)  # average over run
+                else:
+                    fmean = F[i,0,:]
                 det = fmean[0,0] * fmean[1,1] - fmean[0,1] ** 2
                 #print('{} {} {}'.format(nn, det, 1.0/det))
                 # MKDEBUG 24/10: I can reproduce theory curve if I take theory det.
@@ -763,7 +769,7 @@ def params_default():
         do_fish_ana = False,
         likelihood  = 'norm',
         n_jobs = 1,
-        random_seed = True,
+        random_seed = False,
     )
 
     return p_def
@@ -1119,16 +1125,26 @@ def Fisher_num(x, a, b, Psi):
 
 
 
-def get_cov_ML_by_hand(mean, cov, size):
+def get_cov_ML_by_hand(y2, ymean, cov, n_S, n_D):
     """ Double check that get_cov_ML is the same as calculating 'by hand'"""
 
-    cov_est = np.zeros(shape=(size, size))
-    if size > 1:
-        for i in range(size):
-            for j in range(size):
-                cov_est[i,j] = sum((y2[:,i] - ymean[i]) * (y2[:,j] - ymean[j])) / (size - 1.0)
+    cov_est = np.zeros(shape=(n_D, n_D))
+    if n_D > 1:
+
+        #didj = (y2 - ymean)*(y2 - ymean)
+        #cov_est = didj.sum(axis=0)
+
+        for i in range(n_D):
+            for j in range(i, n_D):
+                cov_est[i,j] = sum((y2[:,i] - ymean[i]) * (y2[:,j] - ymean[j]))
+        for i in range(n_D):
+            for j in range(0, i):
+                cov_est[i,j] = cov_est[j,i]
+        cov_est = cov_est / (n_S - 1.0)
+
     else:
-        cov_est[0,0] = sum((y2 - ymean) * (y2 - ymean)) / (size - 1.0)
+
+        cov_est[0,0] = sum((y2 - ymean) * (y2 - ymean)) / (n_S - 1.0)
 
     return cov_est
 
@@ -1143,8 +1159,16 @@ def get_cov_ML(mean, cov, size):
     # Estimate mean (ML)
     ymean = np.mean(y2, axis=0)
 
-    # calculate covariance matrix
-    cov_est = np.cov(y2, rowvar=False)
+    # Calculate covariance matrix via np
+    #cov_est = np.cov(y2, rowvar=False)
+
+    # Or by hand
+    # 01/11 checked that this gives same results, with
+    # test_ML.py -D 50 -p 1_0 --n_n_S 10 --f_n_S_max 10 -s 0.2 -m s -R 50 -v
+    #n_D = len(mean)
+    #cov_est = get_cov_ML_by_hand(y2, ymean, cov, size, n_D)
+    #print(cov_est)
+
 
     if size > 1:
         pass
