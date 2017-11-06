@@ -1,5 +1,8 @@
 import numpy as np
 from scipy.stats import norm, uniform, multivariate_normal
+
+import matplotlib
+matplotlib.use("Agg")
 import pylab as plt
 import sys
 import os
