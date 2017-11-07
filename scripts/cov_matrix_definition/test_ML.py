@@ -1160,7 +1160,7 @@ def get_cov_ML(mean, cov, size):
     ymean = np.mean(y2, axis=0)
 
     # Calculate covariance matrix via np
-    #cov_est = np.cov(y2, rowvar=False)
+    cov_est = np.cov(y2, rowvar=False)
 
     # Or by hand
     # 01/11 checked that this gives same results, with
