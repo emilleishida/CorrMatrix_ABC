@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import numpy as np
 from scipy.stats import norm, uniform, multivariate_normal
 import pylab as plt
@@ -26,8 +28,6 @@ test_ML.py   -D 750   -p   1_0   -s   5   -v   -m r  -r   -n   4   --n_n_S   10 
 
 
 
-import pdb
-
 """The following functions correspond to the expectation values for Gaussian
    distributions. See Taylor, Joachimi & Kitching (2013), TKB13
 """
@@ -49,6 +49,28 @@ def alpha(n_S, n_D):
     """
 
     return (n_S - 1.0)/(n_S - n_D - 2.0)
+
+
+
+def A(n_S, n_D):
+    """Return TJK13 (27)
+    """
+
+    A = alpha(n_S, n_D)**2 / ((n_S - n_D - 1.0) * (n_S - n_D - 4.0))
+
+    return A
+
+
+
+def A_corr(n_S, n_D):
+    """Return TJK13 (28), this is A/alpha^2.
+    """
+
+    
+    A_c =  1.0 / ((n_S - n_D - 1.0) * (n_S - n_D - 4.0))
+
+    return A_c
+
 
 
 def tr_N_m1_ML(n, n_D, par):
@@ -77,46 +99,7 @@ def std_fish_deb(n, n_D, par):
     """
 
     #return [np.sqrt(2.0 / (n_S - n_D - 4.0)) * par for n_S in n]
-    return [np.sqrt(2 * A_corr(n_S, n_D) * (1.0 + (n_S - n_D - 2))) * par for n_S in n]
-
-
-
-def A(n_S, n_D):
-    """Return TJK13 (27)
-    """
-
-    A = alpha(n_S, n_D)**2 / ((n_S - n_D - 1.0) * (n_S - n_D - 4.0))
-
-    return A
-
-
-def A_corr(n_S, n_D):
-    """Return TJK13 (28), this is A/alpha^2.
-    """
-
-    
-    A_c =  1.0 / ((n_S - n_D - 1.0) * (n_S - n_D - 4.0))
-
-    return A_c
-
-
-
-def std_fish_biased_TJK13(n, n_D, par):
-    """0th-order error on variance from Fisher matrix with biased inverse covariance estimate.
-       From TJK13 (49) with A (27) instead of A_corr (28) in (49)
-    """
-
-    return [np.sqrt(2 * A(n_S, n_D) * ((n_S - n_D - 1))) * par for n_S in n]
-
-
-
-def std_fish_biased_TJ14(n, n_D, par):
-    """Improved error on variance from Fisher matrix with biased inverse covariance estimate.
-       From TJ14 (12).
-    """
-
-    n_P = 2  # Number of parameters
-    return [np.sqrt(2 * (n_S - n_D + n_P - 1) / (n_S - n_D -2)**2) * par for n_S in n]
+    return [np.sqrt(2 * A_corr(n_S, n_D) * (n_S - n_D - 1)) * par for n_S in n]
 
 
 
@@ -126,6 +109,64 @@ def std_fish_biased(n, n_D, par):
     """
 
     return [np.sqrt(2 * A(n_S, n_D) * ((n_S - n_D - 1))) / (2 * A(n_S, n_D) + alpha(n_S, n_D)**2) * par for n_S in n]
+
+
+def std_fish_biased2(n, n_D, par):
+    """Error on variance from Fisher matrix with biased inverse covariance estimate,
+        with correction, IK17 (26), ignoring 2A in denominator.
+    """
+
+    return [np.sqrt(2 * A(n_S, n_D) * ((n_S - n_D - 1))) / (alpha(n_S, n_D)**2) * par for n_S in n]
+
+
+
+def std_fish_deb_TJK13(n, n_D, par):
+    """0th-order error on variance from Fisher matrix with biased inverse covariance estimate.
+       From TJK13 (49) with A (27) instead of A_corr (28) in (49)
+    """
+
+    return [np.sqrt(2 * A_corr(n_S, n_D) * (n_S - n_D - 1)) * par for n_S in n]
+
+
+
+def std_fish_biased_TJK13(n, n_D, par):
+    """0th-order error on variance from Fisher matrix with biased inverse covariance estimate.
+       From TJK13 (49) with A (27) instead of A_corr (28) in (49)
+    """
+
+    return [np.sqrt(2 * A(n_S, n_D) * (n_S - n_D - 1)) * par for n_S in n]
+
+
+
+def std_fish_A_TJ14(n, n_D, par):
+    """Improved error on variance from the Fisher matrix.
+       From TJ14 (12). This seems to be the case of the debiased precision matrix..
+    """
+
+    n_P = 2  # Number of parameters
+    return [np.sqrt(2 * (n_S - n_D + n_P - 1) / (n_S - n_D -2)**2) * par for n_S in n]
+
+
+
+def std_fish_B_TJ14(n, n_D, par):
+    """Improved error on variance from the Fisher matrix.
+       From TJ14 (12), with multiplication of the de-biasing factor alpha, which goes in the wrong direction,
+       so this function is not used.
+    """
+
+    n_P = 2  # Number of parameters
+    return [np.sqrt(2 * (n_S - n_D + n_P - 1) / (n_S - n_D -2)**2) * alpha(n_S, n_D) * par for n_S in n]
+
+
+
+def std_fish_C_TJ14(n, n_D, par):
+    """Improved error on variance from the Fisher matrix.
+       From TJ14 (12), with division by the de-biasing factor alpha.
+    """
+
+    n_P = 2  # Number of parameters
+    return [np.sqrt(2 * (n_S - n_D + n_P - 1) / (n_S - n_D -2)**2) / alpha(n_S, n_D) * par for n_S in n]
+    #return [np.sqrt(2 * (n_S - n_D + n_P - 1) / (n_S - 2)**2) * par for n_S in n]
 
 
 
@@ -181,10 +222,38 @@ def std_fish_biased_exa(a, n, n_D, sig2, delta):
             ) for n_S in n]
 
 
-def add_title(n_D, n_R):
+def add_title(n_D, n_R, fs):
     """Adds title to plot."""
 
-    plt.suptitle('$n_{{\\rm d}}={}$ data points, $n_{{\\rm r}}={}$ runs'.format(n_D, n_R))
+    plt.suptitle('$n_{{\\rm d}}={}$ data points, $n_{{\\rm r}}={}$ runs'.format(n_D, n_R), fontsize=fs)
+
+
+
+def plot_add_legend(do_legend, x, y, linestyle, color='b', label='', linewidth=1):
+
+    if do_legend:
+        label = label
+    else:
+        label = None
+
+    plt.plot(x, y, linestyle, color=color, label=label, linewidth=linewidth)
+
+
+
+def plot_init(n_D, n_R):
+
+    plt.figure()
+    #plt.tight_layout() # makes space for large labels
+    ax = plt.gca()
+
+    fs = 16
+
+    ax.yaxis.label.set_size(fs)
+    ax.xaxis.label.set_size(fs)
+    plt.tick_params(axis='both', which='major', labelsize=fs)
+
+    if n_R>0:
+        add_title(n_D, n_R, fs)
 
 
 class Results:
@@ -368,8 +437,7 @@ class Results:
         fac_xlim   = 1.05
 
         plot_sth = False
-        plt.figure()
-        add_title(n_D, n_R)
+        plot_init(n_D, n_R)
 
         box_width = (n[1] - n[0]) / 2
 
@@ -396,8 +464,8 @@ class Results:
                     if y.shape[1] > 1:
                         bplot = plt.boxplot(y.transpose(), positions=n, sym='.', widths=box_width)
                         for key in bplot:
-                            plt.setp(bplot[key], color=color[i])
-                        plt.setp(bplot['whiskers'], linestyle='-')
+                            plt.setp(bplot[key], color=color[i], linewidth=2)
+                        plt.setp(bplot['whiskers'], linestyle='-', linewidth=2)
                     else:
                         plt.plot(n, y.mean(axis=1), marker[i], ms=markersize[i], color=color[i])
 
@@ -405,9 +473,9 @@ class Results:
                     if self.fct is not None and which in self.fct:
                         # Define high-resolution array for smoother lines
                         n_fine = np.arange(n[0], n[-1], len(n)/10.0)
-                        plt.plot(n_fine, self.fct[which](n_fine, n_D, my_par[i]), '{}-.'.format(color[i]))
+                        plt.plot(n_fine, self.fct[which](n_fine, n_D, my_par[i]), '{}-.'.format(color[i]), linewidth=2)
 
-                    plt.plot(n, no_bias(n, n_D, my_par[i]), '{}-'.format(color[i]), label='{}$({})$'.format(which, p))
+                    plt.plot(n, no_bias(n, n_D, my_par[i]), '{}-'.format(color[i]), label='{}$({})$'.format(which, p), linewidth=2)
 
         # Finalize plot
         for j, which in enumerate(['mean', 'std']):
@@ -416,11 +484,12 @@ class Results:
                 plt.xlabel('$n_{\\rm s}$')
                 plt.ylabel('<{}>'.format(which))
                 #plt.xticks2()?bo alpha, or n_d / n_s
+                plt.xticks(rotation = 'vertical')
                 plt.xlim((n[0]-5)/fac_xlim**3, n[-1]*fac_xlim)
                 ax.set_yscale(self.yscale[j])
                 plot_sth = True
 
-                ax.legend(loc='lower right', frameon=False)
+                ax.legend(frameon=False)
 
         if plot_sth == True:
             plt.savefig('{}.pdf'.format(self.file_base))
@@ -434,22 +503,22 @@ class Results:
         color = ['g', 'm']
 
         plot_sth = False
-        plt.figure()
-        add_title(n_D, n_R)
+        plot_init(n_D, n_R)
         ax = plt.subplot(1, 1, 1)
 
         for i, p in enumerate(self.par_name):
             y = self.get_std_var(p)
             if y.any():
-                plt.plot(n, y, marker='o', color=color[i], label='$\sigma[\sigma^2({})]$'.format(p))
+                plt.plot(n, y, marker='o', color=color[i], label='$\sigma[\sigma^2({})]$'.format(p), linestyle='None')
 
                 if self.fct is not None and par is not None:
                     n_fine = np.arange(n[0], n[-1], len(n)/10.0)
-                    plt.plot(n_fine, self.fct['std_var'](n_fine, n_D, par[i]), '-', color=color[i])
+                    plot_add_legend(i==0, n_fine, self.fct['std_var'](n_fine, n_D, par[i]), '-', color=color[i], label='This work')
+                    
                     if 'std_var_TJK13' in self.fct:
-                        plt.plot(n_fine, self.fct['std_var_TJK13'](n_fine, n_D, par[i]), '--', color=color[i])
+                        plot_add_legend(i==0, n_fine, self.fct['std_var_TJK13'](n_fine, n_D, par[i]), '--', color=color[i], label='TJK13')
                     if 'std_var_TJ14' in self.fct:
-                        plt.plot(n_fine, self.fct['std_var_TJ14'](n_fine, n_D, par[i]), '-.', color=color[i])
+                        plot_add_legend(i==0, n_fine, self.fct['std_var_TJ14'](n_fine, n_D, par[i]), '-.', color=color[i], label='TJ14', linewidth=2)
 
                 plt.xlabel('$n_{\\rm s}$')
                 plt.ylabel('std(var)')
@@ -467,7 +536,7 @@ def plot_det(n, x, sig2, delta, F, n_R):
 
     n_D = len(x)
 
-    plt.figure()
+    plot_init(n_D, n_R)
     ax = plt.subplot(1, 1, 1)
 
     det_num = []
@@ -507,7 +576,6 @@ def plot_det(n, x, sig2, delta, F, n_R):
     plt.legend(loc='best', numpoints=1, frameon=False)
     ax.set_yscale('log')
     plt.ylim(1e-4, 1e4)
-    add_title(n_D, n_R)
     plt.savefig('det.pdf')
 
     f = open('det.txt', 'w')
@@ -520,11 +588,11 @@ def plot_det(n, x, sig2, delta, F, n_R):
 
 def plot_std_fish_biased_ana(par_name, n, x, sig2, delta, F=None, n_R=0):
 
-    plt.figure()
+    n_D = len(x)
+    plot_init(n_D, n_R)
     ax = plt.subplot(1, 1, 1)
     color = ['g', 'm']
 
-    n_D = len(x)
 
     for i, p in enumerate(par_name):
         n_fine = np.arange(n[0], n[-1], len(n)/10.0)
@@ -586,8 +654,48 @@ def plot_std_fish_biased_ana(par_name, n, x, sig2, delta, F=None, n_R=0):
     plt.ylabel('std(var)')
     plt.legend(loc='best', numpoints=1, frameon=False)
     ax.set_yscale('log')
-    add_title(n_D, n_R)
     plt.savefig('{}.pdf'.format('std_var_ana'))
+
+
+def plot_A_alpha2(n, n_D, par):
+
+    plot_init(n_D, -1)
+    ax = plt.subplot(1, 1, 1)
+
+    n_fine = np.arange(n[0], n[-1], len(n)/10.0)
+
+    plt.plot(n_fine, 2*A(n_fine, n_D)/alpha(n_fine, n_D)**2, '-', color='g', label='$2A/\\alpha^2$')
+    plt.legend(frameon=False)
+    plt.xlabel('$n_{\\rm s}$')
+    plt.ylabel('$2A/\\alpha^2$')
+    ax.set_yscale('log')
+    plt.savefig('A_alpha2')
+
+    plot_init(n_D, -1)
+    ax = plt.subplot(1, 1, 1)
+
+    # It's strange that for low n_S the ratio 2A/alpha^2 approaches unity, but in std_fish_biased
+    # ignoring 2A does not make any visible change
+
+    pA = std_fish_biased(n_fine, n_D, par)
+    pB = std_fish_biased2(n_fine, n_D, par)
+    pC = std_fish_C_TJ14(n_fine, n_D, par)
+    plt.plot(n_fine, pA, '-', color='g', label='eq. (26)')
+    plt.plot(n_fine, pB, '--', color='r', label='ignoring $2A$')
+    plt.plot(n_fine, pC, '-.', color='r', label='TJK14')
+
+    plt.legend(frameon=False)
+    plt.xlabel('$n_{\\rm s}$')
+    plt.ylabel('std(var)')
+    ax.set_yscale('log')
+
+    plt.savefig('std_var_comp')
+
+    f = open('std_var_comp.txt', 'w')
+    for i in range(len(n_fine)):
+        print >>f, n_fine[i], pA[i], pB[i], pC[i]
+    f.close()
+
 
 
 class param:
@@ -1555,10 +1663,10 @@ def main(argv=None):
     sigma_m1_ML = Results(tr_name, n_n_S, options.n_R, file_base='sigma_m1_ML', yscale='log', fct={'mean': tr_N_m1_ML})
 
     fish_ana = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_ana', yscale='log', fct={'std': par_fish})
-    fish_num = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_num', yscale='log', fct={'std': par_fish, \
-                       'std_var': std_fish_biased, 'std_var_TJK13': std_fish_biased_TJK13, 'std_var_TJ14': std_fish_biased_TJ14})
+    fish_num = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_num', yscale='log', \
+                       fct={'std': par_fish, 'std_var': std_fish_biased, 'std_var_TJK13': std_fish_biased_TJK13, 'std_var_TJ14': std_fish_C_TJ14})
     fish_deb = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_deb', yscale='log', \
-                       fct={'std': no_bias, 'std_var': std_fish_deb})
+                       fct={'std': no_bias, 'std_var': std_fish_deb, 'std_var_TJK13': std_fish_deb_TJK13, 'std_var_TJ14': std_fish_A_TJ14})
     fit_norm = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_norm', yscale=['linear', 'log'],
                        fct={'std': par_fish, 'std_var': std_fish_biased})
     fit_ST   = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_ST', yscale=['linear', 'log'],
@@ -1625,6 +1733,7 @@ def main(argv=None):
 
     plot_std_fish_biased_ana(par_name, n_S_arr, x1, options.sig2, delta, F=fish_num.F, n_R=options.n_R)
     plot_det(n_S_arr, x1, options.sig2, delta, fish_num.F, options.n_R)
+    plot_A_alpha2(n_S_arr, options.n_D, dpar2[1])
 
     ### End main program
 
