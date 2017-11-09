@@ -95,7 +95,7 @@ def par_fish(n, n_D, par):
 
 def std_fish_deb(n, n_D, par):
     """Error on variance from Fisher matrix with debiased inverse covariance estimate.
-       TJK13 (50, 55)
+       TJK13 (49, 50)
     """
 
     #return [np.sqrt(2.0 / (n_S - n_D - 4.0)) * par for n_S in n]
