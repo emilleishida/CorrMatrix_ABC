@@ -89,7 +89,6 @@ def par_fish(n, n_D, par):
        This is 1/sqrt(alpha).
     """
 
-    #return [np.sqrt((n_S - n_D - 2.0)/(n_S - 1.0)) * par for n_S in n]
     return [np.sqrt(1.0 / alpha(n_S, n_D)) * par for n_S in n]
 
 
@@ -98,34 +97,28 @@ def std_fish_deb(n, n_D, par):
        TJK13 (49, 50)
     """
 
-    #return [np.sqrt(2.0 / (n_S - n_D - 4.0)) * par for n_S in n]
-    return [np.sqrt(2 * A_corr(n_S, n_D) * (n_S - n_D - 1)) * par for n_S in n]
+    #return [np.sqrt(2 * A_corr(n_S, n_D) * (n_S - n_D - 1)) * par for n_S in n]    # checked
+    #return [np.sqrt(2 * A(n_S, n_D) / alpha(n_S, n_D)**2 * (n_S - n_D - 1)) * par for n_S in n]    # checked
+
+    return [np.sqrt(2.0 / (n_S - n_D - 4.0)) * par for n_S in n]
 
 
 
 def std_fish_biased(n, n_D, par):
     """Error on variance from Fisher matrix with biased inverse covariance estimate,
-        with correction, IK17 (26).
+       with correction, IK17 (26).
     """
 
     return [np.sqrt(2 * A(n_S, n_D) * ((n_S - n_D - 1))) / (2 * A(n_S, n_D) + alpha(n_S, n_D)**2) * par for n_S in n]
 
 
+
 def std_fish_biased2(n, n_D, par):
     """Error on variance from Fisher matrix with biased inverse covariance estimate,
-        with correction, IK17 (26), ignoring 2A in denominator.
+       with correction, IK17 (26), ignoring 2A in denominator.
     """
 
     return [np.sqrt(2 * A(n_S, n_D) * ((n_S - n_D - 1))) / (alpha(n_S, n_D)**2) * par for n_S in n]
-
-
-
-def std_fish_deb_TJK13(n, n_D, par):
-    """0th-order error on variance from Fisher matrix with biased inverse covariance estimate.
-       From TJK13 (49) with A (27) instead of A_corr (28) in (49)
-    """
-
-    return [np.sqrt(2 * A_corr(n_S, n_D) * (n_S - n_D - 1)) * par for n_S in n]
 
 
 
@@ -134,11 +127,13 @@ def std_fish_biased_TJK13(n, n_D, par):
        From TJK13 (49) with A (27) instead of A_corr (28) in (49)
     """
 
-    return [np.sqrt(2 * A(n_S, n_D) * (n_S - n_D - 1)) * par for n_S in n]
+    #return std_fish_deb(n, n_D, par) / alpha(n, n_D)  # checked
+
+    return [np.sqrt(2 * A(n_S, n_D) / alpha(n_S, n_D)**4 * (n_S - n_D - 1)) * par for n_S in n]
 
 
 
-def std_fish_A_TJ14(n, n_D, par):
+def std_fish_deb_TJ14(n, n_D, par):
     """Improved error on variance from the Fisher matrix.
        From TJ14 (12). This seems to be the case of the debiased precision matrix..
     """
@@ -148,25 +143,13 @@ def std_fish_A_TJ14(n, n_D, par):
 
 
 
-def std_fish_B_TJ14(n, n_D, par):
-    """Improved error on variance from the Fisher matrix.
-       From TJ14 (12), with multiplication of the de-biasing factor alpha, which goes in the wrong direction,
-       so this function is not used.
-    """
-
-    n_P = 2  # Number of parameters
-    return [np.sqrt(2 * (n_S - n_D + n_P - 1) / (n_S - n_D -2)**2) * alpha(n_S, n_D) * par for n_S in n]
-
-
-
-def std_fish_C_TJ14(n, n_D, par):
+def std_fish_biased_TJ14(n, n_D, par):
     """Improved error on variance from the Fisher matrix.
        From TJ14 (12), with division by the de-biasing factor alpha.
     """
 
     n_P = 2  # Number of parameters
     return [np.sqrt(2 * (n_S - n_D + n_P - 1) / (n_S - n_D -2)**2) / alpha(n_S, n_D) * par for n_S in n]
-    #return [np.sqrt(2 * (n_S - n_D + n_P - 1) / (n_S - 2)**2) * par for n_S in n]
 
 
 
@@ -511,10 +494,13 @@ class Results:
             if y.any():
                 plt.plot(n, y, marker='o', color=color[i], label='$\sigma[\sigma^2({})]$'.format(p), linestyle='None')
 
-                if self.fct is not None and par is not None:
+        for i, p in enumerate(self.par_name):
+            y = self.get_std_var(p)
+            if y.any():
+                if par is not None:
                     n_fine = np.arange(n[0], n[-1], len(n)/10.0)
-                    plot_add_legend(i==0, n_fine, self.fct['std_var'](n_fine, n_D, par[i]), '-', color=color[i], label='This work')
-                    
+                    if 'std_var' in self.fct:
+                        plot_add_legend(i==0, n_fine, self.fct['std_var'](n_fine, n_D, par[i]), '-', color=color[i], label='This work')
                     if 'std_var_TJK13' in self.fct:
                         plot_add_legend(i==0, n_fine, self.fct['std_var_TJK13'](n_fine, n_D, par[i]), '--', color=color[i], label='TJK13')
                     if 'std_var_TJ14' in self.fct:
@@ -679,7 +665,7 @@ def plot_A_alpha2(n, n_D, par):
 
     pA = std_fish_biased(n_fine, n_D, par)
     pB = std_fish_biased2(n_fine, n_D, par)
-    pC = std_fish_C_TJ14(n_fine, n_D, par)
+    pC = std_fish_biased_TJ14(n_fine, n_D, par)
     plt.plot(n_fine, pA, '-', color='g', label='eq. (26)')
     plt.plot(n_fine, pB, '--', color='r', label='ignoring $2A$')
     plt.plot(n_fine, pC, '-.', color='r', label='TJK14')
@@ -1664,9 +1650,9 @@ def main(argv=None):
 
     fish_ana = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_ana', yscale='log', fct={'std': par_fish})
     fish_num = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_num', yscale='log', \
-                       fct={'std': par_fish, 'std_var': std_fish_biased, 'std_var_TJK13': std_fish_biased_TJK13, 'std_var_TJ14': std_fish_C_TJ14})
+                       fct={'std': par_fish, 'std_var': std_fish_biased, 'std_var_TJK13': std_fish_biased_TJK13, 'std_var_TJ14': std_fish_biased_TJ14})
     fish_deb = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_deb', yscale='log', \
-                       fct={'std': no_bias, 'std_var': std_fish_deb, 'std_var_TJK13': std_fish_deb_TJK13, 'std_var_TJ14': std_fish_A_TJ14})
+                       fct={'std': no_bias, 'std_var_TJK13': std_fish_deb, 'std_var_TJ14': std_fish_deb_TJ14})
     fit_norm = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_norm', yscale=['linear', 'log'],
                        fct={'std': par_fish, 'std_var': std_fish_biased})
     fit_ST   = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_ST', yscale=['linear', 'log'],
