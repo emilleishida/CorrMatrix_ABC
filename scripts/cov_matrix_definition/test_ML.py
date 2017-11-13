@@ -240,7 +240,7 @@ def plot_init(n_D, n_R):
 
 
 class Results:
-    """Store results of sampling
+    """Store results of Fisher matrix and MCMC sampling
     """
 
     def __init__(self, par_name, n_n_S, n_R, file_base='mean_std', yscale='linear', fct=None):
@@ -391,6 +391,14 @@ class Results:
             for n_S in range(n_n_S):
                 self.mean[p][n_S]   = np.append(mean[n_S], new.mean[p][n_S])
                 self.std[p][n_S]    = np.append(std[n_S], new.std[p][n_S])
+
+        F = self.F
+        self.F = np.zeros(shape = (n_n_S, n_R + n_R_new, 2, 2))
+        for n_S in range(n_n_S):
+            for r in range(n_R):
+                self.F[n_S][r] = F[n_S][r]
+            for r in range(n_R_new):
+                self.F[n_S][n_R + r] = new.F[n_S][r]
 
         return True
 
@@ -1540,11 +1548,12 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, 
         fish_ana_prev    = Results(fish_ana.par_name, n_n_S, n_R, file_base=fish_ana.file_base, fct=fish_ana.fct)
         fish_num_prev    = Results(fish_num.par_name, n_n_S, n_R, file_base=fish_num.file_base, fct=fish_num.fct, yscale='linear')
         fish_deb_prev    = Results(fish_deb.par_name, n_n_S, n_R, file_base=fish_deb.file_base, fct=fish_deb.fct)
-        fit_norm_prev    = Results(fit_norm.par_name, n_n_S, n_R, file_base=fit_norm.file_base, fct=fit.fct)
-        fit_ST_prev      = Results(fit_ST.par_name, n_n_S, n_R, file_base=fit_ST.file_base, fct=fit.fct)
+        fit_norm_prev    = Results(fit_norm.par_name, n_n_S, n_R, file_base=fit_norm.file_base, fct=fit_norm.fct)
+        fit_ST_prev      = Results(fit_ST.par_name, n_n_S, n_R, file_base=fit_ST.file_base, fct=fit_ST.fct)
 
         # Fill results from files
-        read_from_file(sigma_ML_prev, sigma_m1_ML_prev, fish_ana_prev, fish_num_prev, fish_deb_prev, fit_norm_prev, fit_ST_prev, options)
+        read_from_file(sigma_ML_prev, sigma_m1_ML_prev, fish_ana_prev, fish_num_prev, fish_deb_prev, fit_norm_prev, \
+                       fit_ST_prev, options)
 
         # Add new results
         sigma_ML.append(sigma_ML_prev)
