@@ -34,14 +34,14 @@ def params_default():
 
     p_def = param(
         n_D = 750,
-        n_R = 2,
+        n_R = 4,
         n_n_S = 10,
         f_n_S_max = 10,
         spar = '1.0 0.0',
         sig2 = 5.0,
         verbose = True,
         templ_dir = 'templates',
-        mode = 'r',
+        mode = 's',
     )
 
     return p_def
