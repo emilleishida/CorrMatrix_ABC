@@ -46,7 +46,7 @@ def model(p):
     x.sort()
     ytrue = np.array(p['a']*x + p['b'])
 
-    y = [norm.rvs(loc=ytrue[i], scale=p['cov']) for i in range(len(x))]
+    y = [norm.rvs(loc=ytrue[i], scale=p['sig']) for i in range(len(x))]
 
     return np.array([[x[i], y[i]] for i in range(int(p['nobs']))])
 
@@ -68,7 +68,9 @@ def model_3par(p):
     x = uniform.rvs(loc=p['xmin'], scale=p['xmax'] - p['xmin'], size=int(p['nobs']))
     
     x.sort()
-    ytrue = np.array(p['a']*x + p['b'])
+    asig = norm.rvs(0, p['asig'])
+
+    ytrue = np.array((p['a'] + asig)*x + p['b'])
 
     y = [norm.rvs(loc=ytrue[i], scale=p['sig']) for i in range(len(x))]
 
@@ -76,7 +78,7 @@ def model_3par(p):
 
 
 
-def gaussian_prior(par, func=False):
+def mgaussian_prior(par, func=False):
     """
     Gaussian prior.
   
@@ -92,6 +94,7 @@ def gaussian_prior(par, func=False):
     """
 
     np.random.seed()    
+
     dist = norm(loc=par['pmean'], scale=par['pstd'])
     flag = False  
     while flag == False:   
@@ -120,6 +123,7 @@ def gamma_prior(par, func=False):
     """
 
     np.random.seed()    
+
     dist = gamma(par['pgamma'])
     flag = False  
     while flag == False:   
@@ -183,8 +187,27 @@ def linear_dist_scale(d2, p):
 
     mod_sim = smf.glm(formula=formula, data=data_sim, family=sm.families.Gaussian()).fit()
     mod_obs = smf.glm(formula=formula, data=data_obs, family=sm.families.Gaussian()).fit()
+   
+    if isinstance(p['b'], float):
+        b_fid = p['b']
+    else:
+        b_fid = float(p['b'][0])
 
-    res = np.sqrt(pow(mod_sim.params[0] - mod_obs.params[0], 2) + pow(mod_sim.params[1] - mod_obs.params[1], 2) + pow(mod_sim.scale - mod_obs.scale, 2))
+    delta_b1 = (mod_sim.params[0] - b_fid)
+    delta_b2 = (mod_obs.params[0] - b_fid)
+    delta_a = (mod_sim.params[1] - mod_obs.params[1])
+    delta_asig = (mod_obs.cov_params()['Intercept'][0] - mod_sim.cov_params()['Intercept'][0])
+    delta_bsig = (mod_obs.cov_params()['x'][1] - mod_sim.cov_params()['x'][1])
+    delta_sig = (mod_obs.scale - mod_sim.scale)
 
+    res = np.sqrt(pow(delta_a,2) + pow(delta_b1 - delta_b2, 2) + pow(delta_asig,2) + pow(delta_bsig, 2) +  pow(delta_sig, 2))
+    """
+    print 'delta_a = ' + str(delta_a)
+    print 'delta_b1 = ' + str(delta_b1)
+    print 'delta_b2 = ' + str(delta_b2)
+    print 'delta_asig = ' + str(delta_asig)
+    print 'delta_bsig = ' + str(delta_bsig)
+    print 'delta_sig = ' + str(delta_sig)
+    """
     return np.atleast_1d(res)
     

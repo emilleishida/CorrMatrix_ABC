@@ -2,10 +2,11 @@ from cosmoabc.priors import flat_prior
 from cosmoabc.ABC_sampler import ABC
 from cosmoabc.plots import plot_2p, plot_3p
 from cosmoabc.ABC_functions import read_input
-from toy_model_functions import model_3par, linear_dist_scale, gamma_prior
+from toy_model_functions import model, linear_dist, gamma_prior, mgaussian_prior
 
 import numpy as np
 from scipy.stats import uniform, multivariate_normal
+from statsmodels.stats.weightstats import DescrStatsW
 
 def get_cov_ML(mean, cov, size):
 
@@ -26,6 +27,16 @@ def get_cov_ML(mean, cov, size):
 
     return cov_est
 
+def weighted_std(data, weights): 
+    """Taken from http://www.itl.nist.gov/div898/software/dataplot/refman2/ch2/weightsd.pdf"""
+
+    mean = np.average(data, weights=weights)
+    c = sum([weights[i] > pow(10, -6) for i in range(weights.shape[0])])
+
+    num = sum([weights[i] * pow(data[i] - mean, 2) for i in range(data.shape[0])])
+    denom = (c - 1) * sum(weights)/float(c)
+
+    return np.sqrt(num / denom)
 
 #user input file
 filename = 'toy_model.input'
@@ -42,9 +53,10 @@ Parameters['sig'] = float(Parameters['sig'][0])
 Parameters['nobs'] = int(Parameters['nobs'][0])
 
 # set functions
-Parameters['simulation_func'] = model_3par
-Parameters['distance_func'] = linear_dist_scale
-Parameters['prior']['sig']['func'] = gamma_prior
+Parameters['simulation_func'] = model
+Parameters['distance_func'] = linear_dist
+Parameters['prior']['a']['func'] = mgaussian_prior
+Parameters['prior']['b']['func'] = mgaussian_prior
 
 # construnct 1 instance of exploratory variable
 x = uniform.rvs(loc=Parameters['xmin'], scale=Parameters['xmax'] - Parameters['xmin'], size=Parameters['nobs'])
@@ -71,7 +83,6 @@ sys1 = sampler_ABC.BuildFirstPSystem()
 #update particle system until convergence
 sampler_ABC.fullABC()
 
-
 # calculate numerical results
 op1 = open(Parameters['file_root'] + str(sampler_ABC.T) + '.dat', 'r')
 lin1 = op1.readlines()
@@ -81,34 +92,38 @@ data1 = [elem.split() for elem in lin1]
 
 a_samples = np.array([float(line[0]) for line in data1[1:]])
 b_samples = np.array([float(line[1]) for line in data1[1:]])
-sig_samples = np.array([float(line[2]) for line in data1[1:]])
+asig_samples = np.array([float(line[2]) for line in data1[1:]])
+asigerr_samples = np.array([float(line[3]) for line in data1[1:]])
+
 
 weights = np.loadtxt(Parameters['file_root'] + str(sampler_ABC.T) + 'weights.dat')
 
-a_mean = sum([a_samples[i] * weights[i] for i in range(sampler_ABC.M)])
+a_results = DescrStatsW(a_samples, weights=weights, ddof=0)
+b_results = DescrStatsW(b_samples, weights=weights, ddof=0)
+asig_results = DescrStatsW(asig_samples, weights=weights, ddof=0)
+asigerr_results = DescrStatsW(asigerr_samples, weights=weights, ddof=0)
 
-nonzerow = sum([1 for item in weights if item > 0])
-a_std = sum([weights[i]*(a_samples[i] - a_mean)/(((nonzerow - 1)/float(nonzerow))*sum(weights))])
+a_results.std_mean = weighted_std(a_samples, weights)
+b_results.std_mean = weighted_std(b_samples, weights)
+asig_results.std_mean = weighted_std(asig_samples, weights)
+asigerr_results.std_mean = weighted_std(asigerr_samples, weights)
 
-b_mean = sum([b_samples[i] * weights[i] for i in range(sampler_ABC.M)])
-b_std = sum([weights[i]*(b_samples[i] - b_mean)/(((nonzerow - 1)/float(nonzerow))*sum(weights))])
 
-sig_mean = sum([sig_samples[i] * weights[i] for i in range(sampler_ABC.M)])
-sig_std = sum([weights[i]*(sig_samples[i] - sig_mean)/(((nonzerow - 1)/float(nonzerow))*sum(weights))])
 
 # store numerical results
-op2 = open('num_res_nsim_' + str(Parameters['nsim']) + '.dat', 'w')
-op2.write('a_mean    ' + str(a_mean) + '\n')
-op2.write('a_std     ' + str(a_std) + '\n\n\n')
-op2.write('b_mean    ' + str(b_mean) + '\n')
-op2.write('b_std     ' + str(b_std))
+op2 = open('num_res.dat', 'w')
+op2.write('a_mean    ' + str(a_results.mean) + '\n')
+op2.write('a_std     ' + str(a_results.std_mean) + '\n\n\n')
+op2.write('b_mean    ' + str(b_results.mean) + '\n')
+op2.write('b_std     ' + str(b_results.std_mean) + '\n')
+op2.write('asig_mean    ' + str(asig_results.mean) + '\n')
+op2.write('asig_std     ' + str(asig_results.std_mean))
 op2.close()
 
 print 'Numerical results:'
-print 'a:    ' + str(a_mean) + ' +- ' + str(a_std)
-print 'b:    ' + str(b_mean) + ' +- ' + str(b_std)
-print 'sig:  ' + str(sig_mean) + ' +- ' + str(sig_std)
-
+print 'a:    ' + str(a_results.mean) + ' +- ' + str(a_results.std_mean)
+print 'asig:  ' + str(asig_results.mean) + ' +- ' + str(asig_results.std_mean)
+print 'b:    ' + str(b_results.mean) + ' +- ' + str(b_results.std_mean)
 
 #plot results
-plot_3p( sampler_ABC.T, 'results_nsim_' + str(Parameters['nsim']) + '.pdf' , Parameters)
+plot_3p( sampler_ABC.T, 'results.pdf' , Parameters)
