@@ -6,6 +6,7 @@ from toy_model_functions import model, linear_dist
 
 import numpy as np
 from scipy.stats import uniform, multivariate_normal
+from statsmodels.stats.weightstats import DescrStatsW
 
 def get_cov_ML(mean, cov, size):
 
@@ -27,6 +28,17 @@ def get_cov_ML(mean, cov, size):
     return cov_est
 
 
+def weighted_std(data, weights): 
+    """Taken from http://www.itl.nist.gov/div898/software/dataplot/refman2/ch2/weightsd.pdf"""
+
+    mean = np.average(data, weights=weights)
+    c = sum([weights[i] > pow(10, -6) for i in range(weights.shape[0])])
+
+    num = sum([weights[i] * pow(data[i] - mean, 2) for i in range(data.shape[0])])
+    denom = (c - 1) * sum(weights)/float(c)
+
+    return np.sqrt(num / denom)
+
 #user input file
 filename = 'toy_model.input'
 
@@ -40,8 +52,6 @@ Parameters['a'] = float(Parameters['a'][0])
 Parameters['b'] = float(Parameters['b'][0])
 Parameters['sig'] = float(Parameters['sig'][0])
 Parameters['nobs'] = int(Parameters['nobs'][0])
-Parameters['nsim'] = int(Parameters['nsim'][0])
-
 
 # set functions
 Parameters['simulation_func'] = model
@@ -63,13 +73,15 @@ y = multivariate_normal.rvs(mean=ytrue, cov=cov, size=1)
 # add to parameter dictionary
 Parameters['dataset1'] = np.array([[x[i], y[i]] for i in range(Parameters['nobs'])])
 
-
+#############################################
+# Parameters['nsim'] = int(Parameters['nsim'][0])
+## We do not need covariance for this
 #estimated covariance matrix
-cov_est = get_cov_ML(ytrue, cov, Parameters['nsim'])
+#cov_est = get_cov_ML(ytrue, cov, Parameters['nsim'])
 
 # add covariance to user input parameters
-Parameters['cov'] = cov_est
-
+#Parameters['cov'] = cov_est
+#############################################
 
 #initiate ABC sampler
 sampler_ABC = ABC(params=Parameters)
@@ -93,26 +105,25 @@ b_samples = np.array([float(line[1]) for line in data1[1:]])
 
 weights = np.loadtxt(Parameters['file_root'] + str(sampler_ABC.T) + 'weights.dat')
 
-a_mean = sum([a_samples[i] * weights[i] for i in range(sampler_ABC.M)])
+a_results = DescrStatsW(a_samples, weights=weights, ddof=0)
+b_results = DescrStatsW(b_samples, weights=weights, ddof=0)
 
-nonzerow = sum([1 for item in weights if item > 0])
-a_std = sum([weights[i]*(a_samples[i] - a_mean)/(((nonzerow - 1)/float(nonzerow))*sum(weights))])
-
-b_mean = sum([b_samples[i] * weights[i] for i in range(sampler_ABC.M)])
-b_std = sum([weights[i]*(b_samples[i] - b_mean)/(((nonzerow - 1)/float(nonzerow))*sum(weights))])
+a_results.std_mean = weighted_std(a_samples, weights)
+b_results.std_mean = weighted_std(b_samples, weights)
 
 # store numerical results
-op2 = open('num_res_nsim_' + str(Parameters['nsim']) + '.dat', 'w')
-op2.write('a_mean    ' + str(a_mean) + '\n')
-op2.write('a_std     ' + str(a_std) + '\n\n\n')
-op2.write('b_mean    ' + str(b_mean) + '\n')
-op2.write('b_std     ' + str(b_std))
+op2 = open('num_res.dat', 'w')
+op2.write('a_mean    ' + str(a_results.mean) + '\n')
+op2.write('a_std     ' + str(a_results.std_mean) + '\n\n\n')
+op2.write('b_mean    ' + str(b_results.mean) + '\n')
+op2.write('b_std     ' + str(b_results.std_mean))
 op2.close()
 
 print 'Numerical results:'
-print 'a:    ' + str(a_mean) + ' +- ' + str(a_std)
-print 'b:    ' + str(b_mean) + ' +- ' + str(b_std)
+print 'a:    ' + str(a_results.mean) + ' +- ' + str(a_results.std_mean)
+print 'b:    ' + str(b_results.mean) + ' +- ' + str(b_results.std_mean)
+
 
 
 #plot results
-plot_2p( sampler_ABC.T, 'results_nsim_' + str(Parameters['nsim']) + '.pdf' , Parameters)
+plot_2p( sampler_ABC.T, 'results.pdf' , Parameters)

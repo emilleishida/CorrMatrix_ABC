@@ -49,7 +49,7 @@ def model(p):
     #print ytrue[0]
     #print p['cov']
 
-    y = [norm.rvs(loc=ytrue[i], scale=p['cov']) for i in range(len(x))]
+    y = [norm.rvs(loc=ytrue[i], scale=p['sig']) for i in range(len(x))]
 
     return np.array([[x[i], y[i]] for i in range(int(p['nobs']))])
 
