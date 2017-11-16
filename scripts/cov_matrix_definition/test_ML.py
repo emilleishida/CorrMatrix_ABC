@@ -477,7 +477,7 @@ def parse_options(p_def):
     parser.add_option('', '--fish_ana', dest='do_fish_ana', action='store_true',
         help='Calculate analytical Fisher matrix, default={}'.format(p_def.do_fish_ana))
     parser.add_option('-L', '--like', dest='likelihood', type='string', default=p_def.likelihood,
-        help='Likelihoo for MCMC, one in \'norm\'|\'ST\', default=\'{}\''.format(p_def.likelihood))
+        help='Likelihood for MCMC, one in \'norm\'|\'SH\', default=\'{}\''.format(p_def.likelihood))
 
     parser.add_option('-m', '--mode', dest='mode', type='string', default=p_def.mode,
         help='Mode: \'s\'=simulate, \'r\'=read, default={}'.format(p_def.mode))
@@ -912,7 +912,7 @@ def fit_corr(x1, cov_true, cov_est, n_jobs=3):
     return fit
 
 
-def fit_corr_ST(x1, cov_true, cov_est_inv, n_jobs=3):
+def fit_corr_SH(x1, cov_true, cov_est_inv, n_jobs=3):
     """
     Generates one draw from a multivariate student-t distribution
     (see Sellentin & Heavens 2015)
@@ -981,7 +981,7 @@ def fit_corr_ST(x1, cov_true, cov_est_inv, n_jobs=3):
 
 
 
-def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_ST, options):
+def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options):
     """Simulate data"""
         
     if options.verbose == True:
@@ -1038,11 +1038,11 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish
                         print('Running MCMC with mv normal likelihood')
                     res = fit_corr(x1, cov, cov_est, n_jobs=options.n_jobs)
                     fit = fit_norm
-                elif options.likelihood == 'ST':
+                elif options.likelihood == 'SH':
                     if options.verbose == True:
-                        print('Running MCMC with Sellentin&Heavens (ST) likelihood')
-                    res = fit_corr_ST(x1, cov, cov_est_inv, n_jobs=options.n_jobs)
-                    fit = fit_ST
+                        print('Running MCMC with Sellentin&Heavens (SH) likelihood')
+                    res = fit_corr_SH(x1, cov, cov_est_inv, n_jobs=options.n_jobs)
+                    fit = fit_SH
                 else:
                     error('Invalid likelihood \'{}\''.format(options.likelihood))
 
@@ -1059,7 +1059,7 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish
 
 
 
-def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_ST, options):
+def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options):
     """Write simulated runs to files"""
 
     if options.add_simulations == True:
@@ -1074,11 +1074,11 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, 
         fish_num_prev    = Results(fish_num.par_name, n_n_S, n_R, file_base=fish_num.file_base, fct=fish_num.fct, yscale='linear')
         fish_deb_prev    = Results(fish_deb.par_name, n_n_S, n_R, file_base=fish_deb.file_base, fct=fish_deb.fct)
         fit_norm_prev    = Results(fit_norm.par_name, n_n_S, n_R, file_base=fit_norm.file_base, fct=fit_norm.fct)
-        fit_ST_prev      = Results(fit_ST.par_name, n_n_S, n_R, file_base=fit_ST.file_base, fct=fit_ST.fct)
+        fit_SH_prev      = Results(fit_SH.par_name, n_n_S, n_R, file_base=fit_SH.file_base, fct=fit_SH.fct)
 
         # Fill results from files
         read_from_file(sigma_ML_prev, sigma_m1_ML_prev, fish_ana_prev, fish_num_prev, fish_deb_prev, fit_norm_prev, \
-                       fit_ST_prev, options)
+                       fit_SH_prev, options)
 
         # Add new results
         sigma_ML.append(sigma_ML_prev)
@@ -1087,7 +1087,7 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, 
         fish_num.append(fish_num_prev)
         fish_deb.append(fish_deb_prev)
         fit_norm.append(fit_norm_prev)
-        fit_ST.append(fit_ST_prev)
+        fit_SH.append(fit_SH_prev)
 
     if options.verbose == True:
         print('Writing simulations to disk')
@@ -1100,8 +1100,8 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, 
     if options.do_fit_stan == True:
         if options.likelihood == 'norm':
             fit_norm.write_mean_std(n_S_arr)
-        elif options.likelihood == 'ST':
-            fit_ST.write_mean_std(n_S_arr)
+        elif options.likelihood == 'SH':
+            fit_SH.write_mean_std(n_S_arr)
         else:
              error('Invalid likelihood \'{}\''.format(options.likelihood))
 
@@ -1110,7 +1110,7 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, 
 
 
 
-def read_from_file(sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_ST, options):
+def read_from_file(sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options):
     """Read simulated runs from files"""
 
     if options.verbose == True:
@@ -1125,7 +1125,7 @@ def read_from_file(sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm
     if options.do_fit_stan:
         # Reading both irrespective of -L (likelihood) flag
         fit_norm.read_mean_std()
-        fit_ST.read_mean_std()
+        fit_SH.read_mean_std()
 
     sigma_ML.read_mean_std()
     sigma_m1_ML.read_mean_std()
@@ -1189,7 +1189,7 @@ def main(argv=None):
                        fct={'std': no_bias, 'std_var_TJK13': std_fish_deb, 'std_var_TJ14': std_fish_deb_TJ14})
     fit_norm = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_norm', yscale=['linear', 'log'],
                        fct={'std': par_fish, 'std_var': std_fish_biased})
-    fit_ST   = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_ST', yscale=['linear', 'log'],
+    fit_SH   = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_SH', yscale=['linear', 'log'],
                        fct={'std': par_fish, 'std_var': std_fish_biased})
 
     # Data
@@ -1200,15 +1200,15 @@ def main(argv=None):
     # Create simulations
     if re.search('s', options.mode) is not None:
  
-        simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_ST, options) 
+        simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options) 
 
-        write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_ST, options)
+        write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options)
 
 
     # Read simulations
     if re.search('r', options.mode) is not None:
 
-        read_from_file(sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_ST, options)
+        read_from_file(sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options)
 
 
     # Plot results. Obsolete function, now done by class routine.
@@ -1231,7 +1231,7 @@ def main(argv=None):
     fish_deb.plot_mean_std(n_S_arr, options.n_D, par={'std': dpar_exact})
     if options.do_fit_stan == True:
         fit_norm.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact})
-        fit_ST.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact})
+        fit_SH.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact})
 
     dpar2 = dpar_exact**2
 
@@ -1246,7 +1246,7 @@ def main(argv=None):
     fish_deb.plot_std_var(n_S_arr, options.n_D, par=dpar2)
     if options.do_fit_stan == True:
         fit_norm.plot_std_var(n_S_arr, options.n_D, par=dpar2)
-        fit_ST.plot_std_var(n_S_arr, options.n_D, par=dpar2)
+        fit_SH.plot_std_var(n_S_arr, options.n_D, par=dpar2)
 
     sigma_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [options.sig2]})
     sigma_m1_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [1/options.sig2]})
