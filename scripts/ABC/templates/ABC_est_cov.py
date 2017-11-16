@@ -2,7 +2,7 @@ from cosmoabc.priors import flat_prior
 from cosmoabc.ABC_sampler import ABC
 from cosmoabc.plots import plot_2p
 from cosmoabc.ABC_functions import read_input
-from toy_model_functions import model, linear_dist
+from toy_model_functions import model, linear_dist, model_cov
 
 import numpy as np
 from scipy.stats import uniform, multivariate_normal
@@ -74,13 +74,11 @@ y = multivariate_normal.rvs(mean=ytrue, cov=cov, size=1)
 Parameters['dataset1'] = np.array([[x[i], y[i]] for i in range(Parameters['nobs'])])
 
 #############################################
-# Parameters['nsim'] = int(Parameters['nsim'][0])
-## We do not need covariance for this
-#estimated covariance matrix
-#cov_est = get_cov_ML(ytrue, cov, Parameters['nsim'])
+Parameters['nsim'] = int(Parameters['nsim'][0])
+cov_est = get_cov_ML(ytrue, cov, Parameters['nsim'])
 
 # add covariance to user input parameters
-#Parameters['cov'] = cov_est
+Parameters['cov'] = cov_est
 #############################################
 
 #initiate ABC sampler
