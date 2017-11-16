@@ -53,6 +53,33 @@ def model(p):
 
     return np.array([[x[i], y[i]] for i in range(int(p['nobs']))])
 
+def model_cov(p):
+    """Linear model.
+
+    input: p - dict: keywords 
+                a, scalar - angular coefficient
+                b, scalar - linear coefficient
+                sig, scalar - scatter
+                xmin, xmax, int - bounderies for explanatory variable
+                nobs, int - number of observations in a catalog
+                cov, matrix - covariance matrix between observations
+                
+
+    output: y, array - draw from normal distribution with mean
+                        a*x + b and scatter sig          
+    """
+    x = uniform.rvs(loc=p['xmin'], scale=p['xmax'] - p['xmin'], size=int(p['nobs']))
+    
+    x.sort()
+    ytrue = np.array(p['a']*x + p['b'])
+ 
+    #print ytrue[0]
+    #print p
+
+    y = multivariate_normal.rvs(mean=ytrue, cov=p['cov'])
+
+    return np.array([[x[i], y[i]] for i in range(int(p['nobs']))])
+
 
 
 def gaussian_prior(par, func=False):
@@ -102,13 +129,22 @@ def linear_dist(d2, p):
     data_obs['x'] = p['dataset1'][:,0]
     data_obs['y'] = p['dataset1'][:,1]
 
-    formula = 'y ~ x + 1'
+    data1_sim = np.array([[data_sim['x'][k], 1] for k in range(data_sim['x'].shape[0])])
+    data1_obs =  np.array([[data_obs['x'][k], 1] for k in range(data_obs['x'].shape[0])])
 
-    mod_sim = smf.glm(formula=formula, data=data_sim, family=sm.families.Gaussian()).fit()
-    mod_obs = smf.glm(formula=formula, data=data_obs, family=sm.families.Gaussian()).fit()
 
-    res = np.sqrt(pow(mod_sim.params[0] - mod_obs.params[0], 2) + pow(mod_sim.params[1] - mod_obs.params[1], 2))
+    mod_sim0 = sm.OLS(data_sim['y'], data1_sim)
+    mod_obs0 = sm.OLS(data_obs['y'], data1_obs)
+
+    mod_sim = mod_sim0.fit()
+    mod_obs = mod_obs0.fit()
+      
+    delta_a = mod_sim.params[0] - mod_obs.params[0]
+    delta_b = abs(mod_sim.params[1]) - abs(mod_obs.params[1])
+   
+    res = np.sqrt(pow(delta_a,2) + pow(delta_b, 2) )
 
     return np.atleast_1d(res)
+    
 
     
