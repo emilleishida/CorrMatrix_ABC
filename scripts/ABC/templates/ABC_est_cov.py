@@ -2,7 +2,7 @@ from cosmoabc.priors import flat_prior
 from cosmoabc.ABC_sampler import ABC
 from cosmoabc.plots import plot_2p
 from cosmoabc.ABC_functions import read_input
-from toy_model_functions import model, linear_dist, model_cov
+from toy_model_functions import model, linear_dist, model_cov, gaussian_prior
 
 import numpy as np
 from scipy.stats import uniform, multivariate_normal
@@ -56,6 +56,8 @@ Parameters['nobs'] = int(Parameters['nobs'][0])
 # set functions
 Parameters['simulation_func'] = model
 Parameters['distance_func'] = linear_dist
+Parameters['prior']['a']['func'] = gaussian_prior
+Parameters['prior']['b']['func'] = gaussian_prior
 
 # construnct 1 instance of exploratory variable
 x = uniform.rvs(loc=Parameters['xmin'], scale=Parameters['xmax'] - Parameters['xmin'], size=Parameters['nobs'])
@@ -73,6 +75,10 @@ y = multivariate_normal.rvs(mean=ytrue, cov=cov, size=1)
 # add to parameter dictionary
 Parameters['dataset1'] = np.array([[x[i], y[i]] for i in range(Parameters['nobs'])])
 
+# add observed catalog to simulation parameters
+if bool(Parameters['xfix']):
+    Parameters['simulation_input']['dataset1'] = Parameters['dataset1']
+
 #############################################
 Parameters['nsim'] = int(Parameters['nsim'][0])
 cov_est = get_cov_ML(ytrue, cov, Parameters['nsim'])
@@ -81,47 +87,54 @@ cov_est = get_cov_ML(ytrue, cov, Parameters['nsim'])
 Parameters['cov'] = cov_est
 #############################################
 
-#initiate ABC sampler
-sampler_ABC = ABC(params=Parameters)
 
-#build first particle system
-sys1 = sampler_ABC.BuildFirstPSystem()
+for i in range(5):
+    Parameters['file_root'] = 'linear_model_v' + str(i) + '_PS'
 
-#update particle system until convergence
-sampler_ABC.fullABC()
+    #initiate ABC sampler
+    sampler_ABC = ABC(params=Parameters)
+
+    #build first particle system
+    sys1 = sampler_ABC.BuildFirstPSystem()
+
+    #update particle system until convergence
+    sampler_ABC.fullABC()
 
 
-# calculate numerical results
-op1 = open(Parameters['file_root'] + str(sampler_ABC.T) + '.dat', 'r')
-lin1 = op1.readlines()
-op1.close()
+    # calculate numerical results
+    op1 = open(Parameters['file_root'] + str(sampler_ABC.T) + '.dat', 'r')
+    lin1 = op1.readlines()
+    op1.close()
 
-data1 = [elem.split() for elem in lin1]
+    data1 = [elem.split() for elem in lin1]
+  
+    a_samples = np.array([float(line[0]) for line in data1[1:]])
+    b_samples = np.array([float(line[1]) for line in data1[1:]])
 
-a_samples = np.array([float(line[0]) for line in data1[1:]])
-b_samples = np.array([float(line[1]) for line in data1[1:]])
+    weights = np.loadtxt(Parameters['file_root'] + str(sampler_ABC.T) + 'weights.dat')
 
-weights = np.loadtxt(Parameters['file_root'] + str(sampler_ABC.T) + 'weights.dat')
+    a_results = DescrStatsW(a_samples, weights=weights, ddof=0)
+    b_results = DescrStatsW(b_samples, weights=weights, ddof=0)
 
-a_results = DescrStatsW(a_samples, weights=weights, ddof=0)
-b_results = DescrStatsW(b_samples, weights=weights, ddof=0)
+    a_results.std_mean = weighted_std(a_samples, weights)
+    b_results.std_mean = weighted_std(b_samples, weights)
 
-a_results.std_mean = weighted_std(a_samples, weights)
-b_results.std_mean = weighted_std(b_samples, weights)
+    # store numerical results
+    op2 = open('num_res3.dat', 'w')
+    op2.write('a_mean    ' + str(a_results.mean) + '\n')
+    op2.write('a_std     ' + str(a_results.std_mean) + '\n\n\n')
+    op2.write('b_mean    ' + str(b_results.mean) + '\n')
+    op2.write('b_std     ' + str(b_results.std_mean))
+    op2.close()
 
-# store numerical results
-op2 = open('num_res.dat', 'w')
-op2.write('a_mean    ' + str(a_results.mean) + '\n')
-op2.write('a_std     ' + str(a_results.std_mean) + '\n\n\n')
-op2.write('b_mean    ' + str(b_results.mean) + '\n')
-op2.write('b_std     ' + str(b_results.std_mean))
-op2.close()
+    print 'Numerical results:'
+    print 'a:    ' + str(a_results.mean) + ' +- ' + str(a_results.std_mean)
+    print 'b:    ' + str(b_results.mean) + ' +- ' + str(b_results.std_mean)
 
-print 'Numerical results:'
-print 'a:    ' + str(a_results.mean) + ' +- ' + str(a_results.std_mean)
-print 'b:    ' + str(b_results.mean) + ' +- ' + str(b_results.std_mean)
+    del sampler_ABC
+    del sys1
 
 
 
 #plot results
-plot_2p( sampler_ABC.T, 'results.pdf' , Parameters)
+plot_2p( sampler_ABC.T, 'results3.pdf' , Parameters)

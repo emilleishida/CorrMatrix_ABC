@@ -41,7 +41,15 @@ def model(p):
     output: y, array - draw from normal distribution with mean
                         a*x + b and scatter sig          
     """
-    x = uniform.rvs(loc=p['xmin'], scale=p['xmax'] - p['xmin'], size=int(p['nobs']))
+    if bool(p['xfix']):
+        try:                
+            x = p['dataset1'][:,0]
+        except KeyError:
+            raise ValueError('Observed data not defined! \n if you are doing distance tests, set xfix=0')
+            
+                
+    else:
+        x = uniform.rvs(loc=p['xmin'], scale=p['xmax'] - p['xmin'], size=int(p['nobs']))
     
     x.sort()
     ytrue = np.array(p['a']*x + p['b'])
@@ -145,6 +153,8 @@ def linear_dist(d2, p):
     res = np.sqrt(pow(delta_a,2) + pow(delta_b, 2) )
 
     return np.atleast_1d(res)
+
+    
     
 
     
