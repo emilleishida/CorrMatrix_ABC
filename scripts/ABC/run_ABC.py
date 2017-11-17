@@ -15,6 +15,7 @@ from shutil import copy2
 import numpy as np
 
 sys.path.append('..')
+sys.path.append('../..')
 from covest import *
 
 
@@ -304,14 +305,14 @@ def simulate(n_S_arr, options):
             real_dir = '{}/nr_{}'.format(base_dir, run)
             if not os.path.exists(real_dir):
                 os.makedirs(real_dir)
+
+            #if os.path.exists('{}/num_res_nsim_{}.dat'.format(real_dir, n_S)):
+            if os.path.exists('{}/num_res.dat'.format(real_dir)):
+                 print('Skipping {}'.format(real_dir))
+                 #next
             else:
-                #if os.path.exists('{}/num_res_nsim_{}.dat'.format(real_dir, n_S)):
-                if os.path.exists('{}/num_res.dat'.format(real_dir)):
-                    print('Skipping {}'.format(real_dir))
-                    #next
-                else:
-                    print('Running {}'.format(real_dir))
-                    run_ABC_in_dir(real_dir, n_S, options.templ_dir)
+                 print('Running {}'.format(real_dir))
+                 run_ABC_in_dir(real_dir, n_S, options.templ_dir)
 
 
 
@@ -359,8 +360,10 @@ def main(argv=None):
     options = params_default()
 
     # Number of simulations
-    start = options.n_D + 5
-    stop  = options.n_D * options.f_n_S_max
+    #start = options.n_D + 5
+    #stop  = options.n_D * options.f_n_S_max
+    start = 58
+    stop  = 584
     n_S_arr = np.logspace(np.log10(start), np.log10(stop), options.n_n_S, dtype='int')
     n_n_S = len(n_S_arr)
 
