@@ -54,7 +54,7 @@ Parameters['sig'] = float(Parameters['sig'][0])
 Parameters['nobs'] = int(Parameters['nobs'][0])
 
 # set functions
-Parameters['simulation_func'] = model
+Parameters['simulation_func'] = model_cov
 Parameters['distance_func'] = linear_dist
 Parameters['prior']['a']['func'] = gaussian_prior
 Parameters['prior']['b']['func'] = gaussian_prior
