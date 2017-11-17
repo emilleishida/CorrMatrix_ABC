@@ -87,52 +87,45 @@ cov_est = get_cov_ML(ytrue, cov, Parameters['nsim'])
 Parameters['cov'] = cov_est
 #############################################
 
+#initiate ABC sampler
+sampler_ABC = ABC(params=Parameters)
 
-for i in range(5):
-    Parameters['file_root'] = 'linear_model_v' + str(i) + '_PS'
+#build first particle system
+sys1 = sampler_ABC.BuildFirstPSystem()
 
-    #initiate ABC sampler
-    sampler_ABC = ABC(params=Parameters)
-
-    #build first particle system
-    sys1 = sampler_ABC.BuildFirstPSystem()
-
-    #update particle system until convergence
-    sampler_ABC.fullABC()
+#update particle system until convergence
+sampler_ABC.fullABC()
 
 
-    # calculate numerical results
-    op1 = open(Parameters['file_root'] + str(sampler_ABC.T) + '.dat', 'r')
-    lin1 = op1.readlines()
-    op1.close()
+# calculate numerical results
+op1 = open(Parameters['file_root'] + str(sampler_ABC.T) + '.dat', 'r')
+lin1 = op1.readlines()
+op1.close()
 
-    data1 = [elem.split() for elem in lin1]
-  
-    a_samples = np.array([float(line[0]) for line in data1[1:]])
-    b_samples = np.array([float(line[1]) for line in data1[1:]])
+data1 = [elem.split() for elem in lin1]
 
-    weights = np.loadtxt(Parameters['file_root'] + str(sampler_ABC.T) + 'weights.dat')
+a_samples = np.array([float(line[0]) for line in data1[1:]])
+b_samples = np.array([float(line[1]) for line in data1[1:]])
 
-    a_results = DescrStatsW(a_samples, weights=weights, ddof=0)
-    b_results = DescrStatsW(b_samples, weights=weights, ddof=0)
+weights = np.loadtxt(Parameters['file_root'] + str(sampler_ABC.T) + 'weights.dat')
 
-    a_results.std_mean = weighted_std(a_samples, weights)
-    b_results.std_mean = weighted_std(b_samples, weights)
+a_results = DescrStatsW(a_samples, weights=weights, ddof=0)
+b_results = DescrStatsW(b_samples, weights=weights, ddof=0)
 
-    # store numerical results
-    op2 = open('num_res3.dat', 'w')
-    op2.write('a_mean    ' + str(a_results.mean) + '\n')
-    op2.write('a_std     ' + str(a_results.std_mean) + '\n\n\n')
-    op2.write('b_mean    ' + str(b_results.mean) + '\n')
-    op2.write('b_std     ' + str(b_results.std_mean))
-    op2.close()
+a_results.std_mean = weighted_std(a_samples, weights)
+b_results.std_mean = weighted_std(b_samples, weights)
 
-    print 'Numerical results:'
-    print 'a:    ' + str(a_results.mean) + ' +- ' + str(a_results.std_mean)
-    print 'b:    ' + str(b_results.mean) + ' +- ' + str(b_results.std_mean)
+# store numerical results
+op2 = open('num_res3.dat', 'w')
+op2.write('a_mean    ' + str(a_results.mean) + '\n')
+op2.write('a_std     ' + str(a_results.std_mean) + '\n\n\n')
+op2.write('b_mean    ' + str(b_results.mean) + '\n')
+op2.write('b_std     ' + str(b_results.std_mean))
+op2.close()
 
-    del sampler_ABC
-    del sys1
+print 'Numerical results:'
+print 'a:    ' + str(a_results.mean) + ' +- ' + str(a_results.std_mean)
+print 'b:    ' + str(b_results.mean) + ' +- ' + str(b_results.std_mean)
 
 
 
