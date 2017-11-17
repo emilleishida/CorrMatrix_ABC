@@ -41,7 +41,7 @@ def params_default():
         sig2 = 5.0,
         verbose = True,
         templ_dir = 'templates',
-        mode = 's',
+        mode = 'r',
     )
 
     return p_def
@@ -276,14 +276,14 @@ def run_ABC_in_dir(real_dir, n_S, templ_dir):
     dat = fin.read()
     fin.close()
 
-    dat = substitute(dat, 'nsim', 1622, n_S)
+    dat = substitute(dat, 'nsim', 800, n_S)
 
     fout.write(dat)
     fout.close()
 
     os.chdir(real_dir)
 
-    run_cmd('python ABC_est_cov.py', run=True, verbose=True)
+    run_cmd('python ABC_est_cov.py', run=True, verbose=False)
 
     os.chdir('../..')
 
@@ -305,14 +305,13 @@ def simulate(n_S_arr, options):
             if not os.path.exists(real_dir):
                 os.makedirs(real_dir)
             else:
-                if os.path.exists('{}/num_res_nsim_{}.dat'.format(real_dir, n_S)):
+                #if os.path.exists('{}/num_res_nsim_{}.dat'.format(real_dir, n_S)):
+                if os.path.exists('{}/num_res.dat'.format(real_dir)):
                     print('Skipping {}'.format(real_dir))
-                    next
+                    #next
                 else:
                     print('Running {}'.format(real_dir))
-
-
-            run_ABC_in_dir(real_dir, n_S, options.templ_dir)
+                    run_ABC_in_dir(real_dir, n_S, options.templ_dir)
 
 
 
@@ -326,7 +325,8 @@ def read_from_ABC_dirs(n_S_arr, par_name, fit_ABC, options):
 
             real_dir = '{}/nr_{}'.format(base_dir, run)
 
-            fname = '{}/num_res_nsim_{}.dat'.format(real_dir, n_S)
+            #fname = '{}/num_res_nsim_{}.dat'.format(real_dir, n_S)
+            fname = '{}/num_res.dat'.format(real_dir)
             if not os.path.exists(fname):
                 error('File {} not found'.format(fname))
 
@@ -366,7 +366,7 @@ def main(argv=None):
 
 
     # Initialisation of results
-    fit_ABC = Results(par_name, n_n_S, options.n_R, file_base='mean_std_ABC')
+    fit_ABC = Results(par_name, n_n_S, options.n_R, file_base='mean_std_ABC', yscale=['linear', 'log'])
 
 
     # Create simulations
