@@ -116,7 +116,7 @@ a_results.std_mean = weighted_std(a_samples, weights)
 b_results.std_mean = weighted_std(b_samples, weights)
 
 # store numerical results
-op2 = open('num_res3.dat', 'w')
+op2 = open('num_res.dat', 'w')
 op2.write('a_mean    ' + str(a_results.mean) + '\n')
 op2.write('a_std     ' + str(a_results.std_mean) + '\n\n\n')
 op2.write('b_mean    ' + str(b_results.mean) + '\n')
@@ -130,4 +130,4 @@ print 'b:    ' + str(b_results.mean) + ' +- ' + str(b_results.std_mean)
 
 
 #plot results
-plot_2p( sampler_ABC.T, 'results3.pdf' , Parameters)
+plot_2p( sampler_ABC.T, 'results.pdf' , Parameters)
