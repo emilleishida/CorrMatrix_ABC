@@ -2,7 +2,7 @@ from cosmoabc.priors import flat_prior
 from cosmoabc.ABC_sampler import ABC
 from cosmoabc.plots import plot_2p
 from cosmoabc.ABC_functions import read_input
-from toy_model_functions import model, linear_dist, model_cov
+from toy_model_functions import model, linear_dist, model_cov, gaussian_prior
 
 import numpy as np
 from scipy.stats import uniform, multivariate_normal
@@ -54,8 +54,10 @@ Parameters['sig'] = float(Parameters['sig'][0])
 Parameters['nobs'] = int(Parameters['nobs'][0])
 
 # set functions
-Parameters['simulation_func'] = model
+Parameters['simulation_func'] = model_cov
 Parameters['distance_func'] = linear_dist
+Parameters['prior']['a']['func'] = gaussian_prior
+Parameters['prior']['b']['func'] = gaussian_prior
 
 # construnct 1 instance of exploratory variable
 x = uniform.rvs(loc=Parameters['xmin'], scale=Parameters['xmax'] - Parameters['xmin'], size=Parameters['nobs'])
@@ -72,6 +74,10 @@ y = multivariate_normal.rvs(mean=ytrue, cov=cov, size=1)
 
 # add to parameter dictionary
 Parameters['dataset1'] = np.array([[x[i], y[i]] for i in range(Parameters['nobs'])])
+
+# add observed catalog to simulation parameters
+if bool(Parameters['xfix']):
+    Parameters['simulation_input']['dataset1'] = Parameters['dataset1']
 
 #############################################
 Parameters['nsim'] = int(Parameters['nsim'][0])
