@@ -40,6 +40,7 @@ test_ML.py   -D 750   -p   1_0   -s   5   -v   -m r  -r   -n   4   --n_n_S   10 
 
 def alpha(n_S, n_D):
     """Return precision matrix estimate bias prefactor alpha.
+       IK17 (5).
     """
 
     return (n_S - 1.0)/(n_S - n_D - 2.0)
@@ -69,7 +70,7 @@ def A_corr(n_S, n_D):
 
 def tr_N_m1_ML(n, n_D, par):
     """Maximum-likelihood estimate of inverse covariance normalised trace.
-       TJK13 (24).
+       TJK13 (24), IK17 (4).
        This is alpha.
     """
 
