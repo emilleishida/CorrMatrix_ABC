@@ -34,14 +34,14 @@ def params_default():
 
     p_def = param(
         n_D = 750,
-        n_R = 4,
+        n_R = 1,
         n_n_S = 10,
         f_n_S_max = 10,
         spar = '1.0 0.0',
         sig2 = 5.0,
         verbose = True,
         templ_dir = 'templates',
-        mode = 'R',
+        mode = 's',
     )
 
     return p_def
@@ -289,32 +289,32 @@ def run_ABC_in_dir(real_dir, n_S, templ_dir):
 
 
 
-def simulate(n_S_arr, options):
+def simulate(n_S_arr, param):
 
-    if options.verbose == True:
-        print('Creating {} simulations with {} runs each'.format(len(n_S_arr), options.n_R))
+    if param.verbose == True:
+        print('Creating {} simulations with {} runs each'.format(len(n_S_arr), param.n_R))
 
     for i, n_S in enumerate(n_S_arr):
 
-        if options.verbose == True:
+        if param.verbose == True:
             print('{}/{}: n_S={}'.format(i+1, len(n_S_arr), n_S))
 
         base_dir = 'nsim_{}'.format(n_S)
 
         # Loop over realisations
-        for run in range(options.n_R):
+        for run in range(param.n_R):
 
             real_dir = '{}/nr_{}'.format(base_dir, run)
             if not os.path.exists(real_dir):
                 os.makedirs(real_dir)
-            else:
-                #if os.path.exists('{}/num_res_nsim_{}.dat'.format(real_dir, n_S)):
-                if os.path.exists('{}/num_res.dat'.format(real_dir)):
+
+            if os.path.exists('{}/num_res.dat'.format(real_dir)):
+                if param.verbose == True:
                     print('Skipping {}'.format(real_dir))
-                    #next
-                else:
+            else:
+                if param.verbose == True:
                     print('Running {}'.format(real_dir))
-                    run_ABC_in_dir(real_dir, n_S, options.templ_dir)
+                run_ABC_in_dir(real_dir, n_S, param.templ_dir)
 
 
 
@@ -371,9 +371,9 @@ def main(argv=None):
 
     n_S_arr = np.array([1, 2])
 
-    start = 4
-    stop = 46
-    n_S_arr = np.append(n_S_arr, np.logspace(np.log10(start), np.log10(stop), options.n_n_S, dtype='int'))
+    #start = 4
+    #stop = 46
+    #n_S_arr = np.append(n_S_arr, np.logspace(np.log10(start), np.log10(stop), options.n_n_S, dtype='int'))
 
     n_n_S = len(n_S_arr)
 
