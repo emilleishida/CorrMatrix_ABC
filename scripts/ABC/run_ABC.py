@@ -42,7 +42,7 @@ def params_default():
         sig2 = 5.0,
         verbose = True,
         templ_dir = 'templates',
-        mode = 'r',
+        mode = 's',
     )
 
     return p_def

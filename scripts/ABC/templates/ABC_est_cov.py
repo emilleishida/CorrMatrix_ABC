@@ -2,7 +2,7 @@ from cosmoabc.priors import flat_prior
 from cosmoabc.ABC_sampler import ABC
 from cosmoabc.plots import plot_2p
 from cosmoabc.ABC_functions import read_input
-from toy_model_functions import model, linear_dist, model_cov, gaussian_prior
+from toy_model_functions import model, linear_dist, model, model_cov, gaussian_prior
 
 import numpy as np
 from scipy.stats import uniform, multivariate_normal
@@ -54,7 +54,8 @@ Parameters['sig'] = float(Parameters['sig'][0])
 Parameters['nobs'] = int(Parameters['nobs'][0])
 
 # set functions
-Parameters['simulation_func'] = model_cov
+#Parameters['simulation_func'] = model_cov
+Parameters['simulation_func'] = model
 Parameters['distance_func'] = linear_dist
 Parameters['prior']['a']['func'] = gaussian_prior
 Parameters['prior']['b']['func'] = gaussian_prior
