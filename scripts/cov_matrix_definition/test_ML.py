@@ -38,6 +38,16 @@ test_ML.py   -D 750   -p   1_0   -s   5   -v   -m r  -r   -n   4   --n_n_S   10 
 
 
 
+def alpha_new(n_S, n_D):
+    """Return precision matrix estimate bias prefactor alpha.
+       IK17 (5).
+    """
+
+    return (n_S - n_D - 2.0)/(n_S - 1.0)
+
+
+
+
 def alpha(n_S, n_D):
     """Return precision matrix estimate bias prefactor alpha.
     """
@@ -69,30 +79,30 @@ def A_corr(n_S, n_D):
 
 def tr_N_m1_ML(n, n_D, par):
     """Maximum-likelihood estimate of inverse covariance normalised trace.
-       TJK13 (24).
+       TJK13 (24), IK17 (4).
        This is alpha.
     """
 
-    return [alpha(n_S, n_D) * par for n_S in n]
+    #return [alpha(n_S, n_D) * par for n_S in n]
+    return [1/alpha_new(n_S, n_D) * par for n_S in n]
 
 
 
 def par_fish(n, n_D, par):
-    """Fisher matrix parameter, not defined for mean.
-       Expectation value of TJK13 (43), follows from (25).
-       This is 1/sqrt(alpha).
+    """Parameter RMS from Fisher matrix using biased precision matrix.
+       Square root of expectation value of TJK13 (43), follows from (25).
+       Also square root of IK17 (9).
     """
 
-    return [np.sqrt(1.0 / alpha(n_S, n_D)) * par for n_S in n]
+    #return [np.sqrt(1.0 / alpha(n_S, n_D)) * par for n_S in n]
+    return [np.sqrt(alpha_new(n_S, n_D)) * par for n_S in n]
+
 
 
 def std_fish_deb(n, n_D, par):
     """Error on variance from Fisher matrix with debiased inverse covariance estimate.
-       TJK13 (49, 50)
+       Ssquare root of TJK13 (49, 50), IK17 (18).
     """
-
-    #return [np.sqrt(2 * A_corr(n_S, n_D) * (n_S - n_D - 1)) * par for n_S in n]    # checked
-    #return [np.sqrt(2 * A(n_S, n_D) / alpha(n_S, n_D)**2 * (n_S - n_D - 1)) * par for n_S in n]    # checked
 
     return [np.sqrt(2.0 / (n_S - n_D - 4.0)) * par for n_S in n]
 
@@ -118,12 +128,13 @@ def std_fish_biased2(n, n_D, par):
 
 def std_fish_biased_TJK13(n, n_D, par):
     """0th-order error on variance from Fisher matrix with biased inverse covariance estimate.
-       From TJK13 (49) with A (27) instead of A_corr (28) in (49)
+       From TJK13 (49) with A (27) instead of A_corr (28) in (49).
+       Square root of IK17 (22).
     """
 
-    #return std_fish_deb(n, n_D, par) / alpha(n, n_D)  # checked
+    #return [np.sqrt(2 * A(n_S, n_D) / alpha(n_S, n_D)**4 * (n_S - n_D - 1)) * par for n_S in n] # checked
 
-    return [np.sqrt(2 * A(n_S, n_D) / alpha(n_S, n_D)**4 * (n_S - n_D - 1)) * par for n_S in n]
+    return std_fish_deb(n, n_D, par) * alpha_new(n, n_D)
 
 
 

@@ -1,4 +1,5 @@
 import sys
+import os
 import numpy as np
 import pylab as plt
 from astropy.table import Table, Column
@@ -94,6 +95,7 @@ class Results:
                     col_name = 'std[{0:s}]_run{1:02d}'.format(p, run)
                     self.std[p].transpose()[run] = dat[col_name]
 
+
     def write_mean_std(self, n, format='ascii'):
         """Write mean and std to file
         """
@@ -120,12 +122,14 @@ class Results:
 
         n_n_S, n_R = self.mean[self.par_name[0]].shape
         if format == 'ascii':
-            dat = ascii.read('F_{}.txt'.format(self.file_base))
-            for run in range(n_R):
-                for i in (0,1):
-                    for j in (0,1):
-                        col_name = 'F[{0:d},{1:d}]_run{2:02d}'.format(i, j, run)
-                        self.F[:, run, i, j] = dat[col_name].transpose()
+            fname = 'F_{}.txt'.format(self.file_base)
+            if os.path.isfile(fname):
+                dat = ascii.read(fname)
+                for run in range(n_R):
+                    for i in (0,1):
+                        for j in (0,1):
+                            col_name = 'F[{0:d},{1:d}]_run{2:02d}'.format(i, j, run)
+                            self.F[:, run, i, j] = dat[col_name].transpose()
 
 
     def write_Fisher(self, n, format='ascii'):
