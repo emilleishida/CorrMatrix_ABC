@@ -37,11 +37,14 @@ def params_default():
         parameter values
     """
 
+    n_D = 750
+
     p_def = param(
-        n_D = 750,
+        n_D = n_D,
         n_R = 4,
         n_n_S = 10,
-        f_n_S_max = 10,
+        f_n_S_max = 10.0,
+        n_S_min = n_D + 5,
         spar = '1.0 0.0',
         sig2 = 5.0,
         verbose = True,
@@ -78,8 +81,10 @@ def parse_options(p_def):
         help='Number of runs per simulation, default={}'.format(p_def.n_R))
     parser.add_option('', '--n_n_S', dest='n_n_S', type='int', default=p_def.n_n_S,
         help='Number of n_S, where n_S is the number of simulation, default={}'.format(p_def.n_n_S))
-    parser.add_option('', '--f_n_S_max', dest='f_n_S_max', type='int', default=p_def.f_n_S_max,
+    parser.add_option('', '--f_n_S_max', dest='f_n_S_max', type='float', default=p_def.f_n_S_max,
         help='Maximum n_S = n_D x f_n_S_max, default: f_n_S_max={}'.format(p_def.f_n_S_max))
+    parser.add_option('', '--n_S_min', dest='n_S_min', type='int', default=p_def.n_S_min,
+        help='Minimum n_S, default=n_D+5 ({})'.format(p_def.n_S_min))
 
     parser.add_option('-m', '--mode', dest='mode', type='string', default=p_def.mode,
         help='Mode: \'s\'=simulate, \'r\'=read ABC dirs, \'R\'=read master file, default={}'.format(p_def.mode))
@@ -445,24 +450,25 @@ def main(argv=None):
     param = update_param(p_def, options)
 
     # Number of simulations
-    n_S_arr = np.array([], dtype=int)
 
-    #n_S_arr = np.array([1, 2])
+    start = param.n_S_min
+    stop  = int(param.n_D * param.f_n_S_max)
+    n_S_arr = np.logspace(np.log10(start), np.log10(stop), param.n_n_S, dtype='int')
 
-    #start = 58
-    #stop  = 584
-    #n_S_arr = np.append(n_S_arr, np.logspace(np.log10(start), np.log10(stop), param.n_n_S, dtype='int'))
+    # Examples of runs:
+    #  [1, 2]
+    #  58 .. 584
+    #   4 .. 46
+    # default: 755 .. 7500
 
-    start = 4
-    stop = 46
-    n_S_arr = np.append(n_S_arr, np.logspace(np.log10(start), np.log10(stop), param.n_n_S, dtype='int'))
-
-    #start = options.n_D + 5
-    #stop  = options.n_D * options.f_n_S_max
-    #n_S_arr = np.append(n_S_arr, np.logspace(np.log10(start), np.log10(stop), options.n_n_S, dtype='int'))
 
     n_n_S = len(n_S_arr)
 
+
+    # Display n_S array and exit
+    if re.search('d', param.mode) is not None:
+        print('n_S =', n_S_arr)
+        return 0
 
     # Initialisation of results
     fit_ABC = Results(par_name, n_n_S, param.n_R, file_base='mean_std_ABC', yscale=['linear', 'log'])

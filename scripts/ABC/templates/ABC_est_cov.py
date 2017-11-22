@@ -85,7 +85,8 @@ Parameters['nsim'] = int(Parameters['nsim'][0])
 cov_est = get_cov_ML(ytrue, cov, Parameters['nsim'])
 
 # add covariance to user input parameters
-Parameters['cov'] = cov_est
+#Parameters['cov'] = cov_est
+Parameters['simulation_input']['cov'] = cov_est
 #############################################
 
 #initiate ABC sampler

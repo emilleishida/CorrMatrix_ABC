@@ -82,7 +82,7 @@ def model_cov(p):
     ytrue = np.array(p['a']*x + p['b'])
  
     #print ytrue[0]
-    #print p
+    #print p['cov']
 
     y = multivariate_normal.rvs(mean=ytrue, cov=p['cov'])
 
