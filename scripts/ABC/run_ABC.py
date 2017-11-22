@@ -20,6 +20,7 @@ import numpy as np
 
 sys.path.append('..')
 sys.path.append('../..')
+sys.path.append('{}/astro/ABC/CorrMatrix_ABC/scripts'.format(os.environ['HOME']))
 from covest import *
 
 
@@ -48,7 +49,7 @@ def params_default():
         spar = '1.0 0.0',
         sig2 = 5.0,
         verbose = True,
-        templ_dir = 'templates',
+        templ_dir = './templates',
         mode = 's',
     )
 
@@ -88,6 +89,9 @@ def parse_options(p_def):
 
     parser.add_option('-m', '--mode', dest='mode', type='string', default=p_def.mode,
         help='Mode: \'s\'=simulate, \'r\'=read ABC dirs, \'R\'=read master file, default={}'.format(p_def.mode))
+
+    parser.add_option('', '--template_dir', dest='templ_dir', type='string', default=p_def.templ_dir,
+        help='Template directory, default=\'{}\''.format(p_def.templ_dir))
 
     parser.add_option('-v', '--verbose', dest='verbose', action='store_true', help='verbose output')
 
