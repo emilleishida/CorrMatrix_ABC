@@ -1470,7 +1470,7 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, 
     if options.do_fish_ana == True:
         fish_ana.write_mean_std(n_S_arr)
     fish_num.write_mean_std(n_S_arr)
-    fish_num.write_Fisher(n_S_arr)
+    #fish_num.write_Fisher(n_S_arr)
     fish_deb.write_mean_std(n_S_arr)
     if options.do_fit_stan == True:
         if options.likelihood == 'norm':
@@ -1494,12 +1494,12 @@ def read_from_file(sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm
     if options.do_fish_ana == True:
         fish_ana.read_mean_std()
     fish_num.read_mean_std()
-    fish_num.read_Fisher()
+    #fish_num.read_Fisher()
     fish_deb.read_mean_std()
 
     if options.do_fit_stan:
         # Reading both irrespective of -L (likelihood) flag
-        fit_norm.read_mean_std()
+        #fit_norm.read_mean_std()
         fit_ST.read_mean_std()
 
     sigma_ML.read_mean_std()
@@ -1621,13 +1621,13 @@ def main(argv=None):
     fish_deb.plot_std_var(n_S_arr, options.n_D, par=dpar2)
     if options.do_fit_stan == True:
         fit_norm.plot_std_var(n_S_arr, options.n_D, par=dpar2)
-        fit_ST.plot_std_var(n_S_arr, options.n_D, par=dpar2)
+        #fit_ST.plot_std_var(n_S_arr, options.n_D, par=dpar2)
 
     sigma_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [options.sig2]})
     sigma_m1_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [1/options.sig2]})
 
-    plot_std_fish_biased_ana(par_name, n_S_arr, x1, options.sig2, delta, F=fish_num.F, n_R=options.n_R)
-    plot_det(n_S_arr, x1, options.sig2, delta, fish_num.F, options.n_R)
+    #plot_std_fish_biased_ana(par_name, n_S_arr, x1, options.sig2, delta, F=fish_num.F, n_R=options.n_R)
+    #plot_det(n_S_arr, x1, options.sig2, delta, fish_num.F, options.n_R)
 
     ### End main program
 
