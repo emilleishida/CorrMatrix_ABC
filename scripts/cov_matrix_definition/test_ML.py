@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import numpy as np
 from scipy.stats import norm, uniform, multivariate_normal
 
@@ -14,6 +16,10 @@ from astropy.io import ascii
 from optparse import OptionParser
 from optparse import OptionGroup
 
+sys.path.append('../..')
+from covest import *
+
+
 """
 test_ML.py.
 
@@ -29,21 +35,19 @@ test_ML.py   -D 750   -p   1_0   -s   5   -v   -m r  -r   -n   4   --n_n_S   10 
 
 
 
-import pdb
-
 """The following functions correspond to the expectation values for Gaussian
    distributions. See Taylor, Joachimi & Kitching (2013), TKB13
 """
 
 
-def no_bias(n, n_D, par):
-    """Unbiased estimator of par.
-       For example maximum-likelihood estimate of covariance normalised trace,
-       TKJ13 (17).
-       Or Fisher matrix errors from debiased estimate of inverse covariance.
+
+def alpha_new(n_S, n_D):
+    """Return precision matrix estimate bias prefactor alpha.
+       IK17 (5).
     """
 
-    return np.asarray([par] * len(n))
+    return (n_S - n_D - 2.0)/(n_S - 1.0)
+
 
 
 
@@ -54,35 +58,6 @@ def alpha(n_S, n_D):
     return (n_S - 1.0)/(n_S - n_D - 2.0)
 
 
-def tr_N_m1_ML(n, n_D, par):
-    """Maximum-likelihood estimate of inverse covariance normalised trace.
-       TJK13 (24).
-       This is alpha.
-    """
-
-    return [alpha(n_S, n_D) * par for n_S in n]
-
-
-
-def par_fish(n, n_D, par):
-    """Fisher matrix parameter, not defined for mean.
-       Expectation value of TJK13 (43), follows from (25).
-       This is 1/sqrt(alpha).
-    """
-
-    #return [np.sqrt((n_S - n_D - 2.0)/(n_S - 1.0)) * par for n_S in n]
-    return [np.sqrt(1.0 / alpha(n_S, n_D)) * par for n_S in n]
-
-
-def std_fish_deb(n, n_D, par):
-    """Error on variance from Fisher matrix with debiased inverse covariance estimate.
-       TJK13 (50, 55)
-    """
-
-    #return [np.sqrt(2.0 / (n_S - n_D - 4.0)) * par for n_S in n]
-    return [np.sqrt(2 * A_corr(n_S, n_D) * (1.0 + (n_S - n_D - 2))) * par for n_S in n]
-
-
 
 def A(n_S, n_D):
     """Return TJK13 (27)
@@ -91,6 +66,7 @@ def A(n_S, n_D):
     A = alpha(n_S, n_D)**2 / ((n_S - n_D - 1.0) * (n_S - n_D - 4.0))
 
     return A
+
 
 
 def A_corr(n_S, n_D):
@@ -104,18 +80,70 @@ def A_corr(n_S, n_D):
 
 
 
-def std_fish_biased_TJK13(n, n_D, par):
-    """0th-order error on variance from Fisher matrix with biased inverse covariance estimate.
-       From TJK13 (49) with A (27) instead of A_corr (28) in (49)
+def tr_N_m1_ML(n, n_D, par):
+    """Maximum-likelihood estimate of inverse covariance normalised trace.
+       TJK13 (24), IK17 (4).
+       This is alpha.
     """
 
-    return [np.sqrt(2 * A(n_S, n_D) * ((n_S - n_D - 1))) * par for n_S in n]
+    #return [alpha(n_S, n_D) * par for n_S in n]
+    return [1/alpha_new(n_S, n_D) * par for n_S in n]
 
 
 
-def std_fish_biased_TJ14(n, n_D, par):
-    """Improved error on variance from Fisher matrix with biased inverse covariance estimate.
-       From TJ14 (12).
+def par_fish(n, n_D, par):
+    """Parameter RMS from Fisher matrix using biased precision matrix.
+       Square root of expectation value of TJK13 (43), follows from (25).
+       Also square root of IK17 (9).
+    """
+
+    #return [np.sqrt(1.0 / alpha(n_S, n_D)) * par for n_S in n]
+    return [np.sqrt(alpha_new(n_S, n_D)) * par for n_S in n]
+
+
+
+def std_fish_deb(n, n_D, par):
+    """Error on variance from Fisher matrix with debiased inverse covariance estimate.
+       Ssquare root of TJK13 (49, 50), IK17 (18).
+    """
+
+    return [np.sqrt(2.0 / (n_S - n_D - 4.0)) * par for n_S in n]
+
+
+
+def std_fish_biased(n, n_D, par):
+    """Error on variance from Fisher matrix with biased inverse covariance estimate,
+       with correction, IK17 (26).
+    """
+
+    return [np.sqrt(2 * A(n_S, n_D) * ((n_S - n_D - 1))) / (2 * A(n_S, n_D) + alpha(n_S, n_D)**2) * par for n_S in n]
+
+
+
+def std_fish_biased2(n, n_D, par):
+    """Error on variance from Fisher matrix with biased inverse covariance estimate,
+       with correction, IK17 (26), ignoring 2A in denominator.
+    """
+
+    return [np.sqrt(2 * A(n_S, n_D) * ((n_S - n_D - 1))) / (alpha(n_S, n_D)**2) * par for n_S in n]
+
+
+
+def std_fish_biased_TJK13(n, n_D, par):
+    """0th-order error on variance from Fisher matrix with biased inverse covariance estimate.
+       From TJK13 (49) with A (27) instead of A_corr (28) in (49).
+       Square root of IK17 (22).
+    """
+
+    #return [np.sqrt(2 * A(n_S, n_D) / alpha(n_S, n_D)**4 * (n_S - n_D - 1)) * par for n_S in n] # checked
+
+    return std_fish_deb(n, n_D, par) * alpha_new(n, n_D)
+
+
+
+def std_fish_deb_TJ14(n, n_D, par):
+    """Improved error on variance from the Fisher matrix.
+       From TJ14 (12). This seems to be the case of the debiased precision matrix..
     """
 
     n_P = 2  # Number of parameters
@@ -123,21 +151,13 @@ def std_fish_biased_TJ14(n, n_D, par):
 
 
 
-def std_fish_biased(n, n_D, par):
-    """Error on variance from Fisher matrix with biased inverse covariance estimate,
-        with correction, IK17 (26).
+def std_fish_biased_TJ14(n, n_D, par):
+    """Improved error on variance from the Fisher matrix.
+       From TJ14 (12), with division by the de-biasing factor alpha.
     """
 
-    return [np.sqrt(2 * A(n_S, n_D) * ((n_S - n_D - 1))) / (2 * A(n_S, n_D) + alpha(n_S, n_D)**2) * par for n_S in n]
-
-
-
-def detF(n_D, sig2, delta):
-    """Return exact determinant of Fisher matrix.
-    """
-
-    det = (n_D/sig2)**2 * delta**2 / 12.0
-    return det
+    n_P = 2  # Number of parameters
+    return [np.sqrt(2 * (n_S - n_D + n_P - 1) / (n_S - n_D -2)**2) / alpha(n_S, n_D) * par for n_S in n]
 
 
 
@@ -184,293 +204,13 @@ def std_fish_biased_exa(a, n, n_D, sig2, delta):
             ) for n_S in n]
 
 
-def add_title(n_D, n_R):
-    """Adds title to plot."""
-
-    plt.suptitle('$n_{{\\rm d}}={}$ data points, $n_{{\\rm r}}={}$ runs'.format(n_D, n_R))
-
-
-class Results:
-    """Store results of sampling
-    """
-
-    def __init__(self, par_name, n_n_S, n_R, file_base='mean_std', yscale='linear', fct=None):
-        """Set arrays for mean and std storing all n_S simulation cases
-           with n_R runs each
-        """
-
-        self.mean      = {}
-        self.std       = {}
-        self.par_name  = par_name
-        self.file_base = file_base
-
-        if np.isscalar(yscale):
-            self.yscale = [yscale, yscale]
-        else:
-            self.yscale = yscale
-
-        self.fct = fct     
-        for p in par_name:
-            self.mean[p]   = np.zeros(shape = (n_n_S, n_R))
-            self.std[p]    = np.zeros(shape = (n_n_S, n_R))
-
-        self.F = np.zeros(shape = (n_n_S, n_R, 2, 2))
-
-
-    def set(self, par, i, run, which='mean'):
-        """Set mean or std for all parameteres for simulation #i and run #run
-        """
-
-        for j, p in enumerate(self.par_name):
-            w = getattr(self, which)
-            w[p][i][run] = par[j]
-
-
-    def get_std_var(self, p):
-        """Return standard deviation of the variance over all runs
-        """
-
-        n_n_S = self.mean[self.par_name[0]].shape[0]
-        std_var = np.zeros(shape = n_n_S)
-        for i in range(n_n_S):
-            std_var[i] = np.std(self.std[p][i]**2)
-            #std_var[i] = np.std(self.std[p][i]) # for testing
-
-        return std_var
-
-
-    def read_mean_std(self, format='ascii'):
-        """Read mean and std from file
-        """
-
-        n_n_S, n_R = self.mean[self.par_name[0]].shape
-        if format == 'ascii':
-            dat = ascii.read('{}.txt'.format(self.file_base))
-            for p in self.par_name:
-                for run in range(n_R):
-                    col_name = 'mean[{0:s}]_run{1:02d}'.format(p, run)
-                    self.mean[p].transpose()[run] = dat[col_name]
-                    col_name = 'std[{0:s}]_run{1:02d}'.format(p, run)
-                    self.std[p].transpose()[run] = dat[col_name]
-
-
-    def write_mean_std(self, n, format='ascii'):
-        """Write mean and std to file
-        """
-
-        n_n_S, n_R = self.mean[self.par_name[0]].shape
-        if format == 'ascii': 
-            cols  = [n]
-            names = ['# n_S']
-            for p in self.par_name:
-                for run in range(n_R):
-                    cols.append(self.mean[p].transpose()[run])
-                    names.append('mean[{0:s}]_run{1:02d}'.format(p, run))
-                    cols.append(self.std[p].transpose()[run])
-                    names.append('std[{0:s}]_run{1:02d}'.format(p, run))
-            t = Table(cols, names=names)
-            f = open('{}.txt'.format(self.file_base), 'w')
-            ascii.write(t, f, delimiter='\t')
-            f.close()
-
-
-    def read_Fisher(self, format='ascii'):
-        """Read Fisher matrix
-        """
-
-        n_n_S, n_R = self.mean[self.par_name[0]].shape
-        if format == 'ascii': 
-            dat = ascii.read('F_{}.txt'.format(self.file_base))
-            for run in range(n_R):
-                for i in (0,1):
-                    for j in (0,1):
-                        col_name = 'F[{0:d},{1:d}]_run{2:02d}'.format(i, j, run)
-                        self.F[:, run, i, j] = dat[col_name].transpose()
-
-
-    def write_Fisher(self, n, format='ascii'):
-        """Write Fisher matrix.
-        """
-
-        n_n_S, n_R = self.mean[self.par_name[0]].shape
-        if format == 'ascii': 
-            cols  = [n]
-            names = ['# n_S']
-            for run in range(n_R):
-                for i in (0,1):
-                    for j in (0,1):
-                        Fij = self.F[:, run, i, j]
-                        cols.append(Fij.transpose())
-                        names.append('F[{0:d},{1:d}]_run{2:02d}'.format(i, j, run))
-            t = Table(cols, names=names)
-            f = open('F_{}.txt'.format(self.file_base), 'w')
-            ascii.write(t, f, delimiter='\t')
-            f.close()
-
-
-    def append(self, new, verbose=False):
-        """Append new result to self.
-
-        Parameters
-        ----------
-        self, new: class Result
-            previous and new result
-        verbose: bool, optional
-            verbose mode
-
-        Returns
-        -------
-        res: bool
-            True for success
-        """
-
-        n_n_S, n_R         = self.mean[self.par_name[0]].shape
-        n_n_S_new, n_R_new = new.mean[new.par_name[0]].shape
-        if n_n_S != n_n_S_new:
-            error( \
-                'Number of simulations different for previous ({}) and new ({}), skipping append...'.format( \
-                n_n_S, n_n_S_new), stop=False, verbose=verbose)
-
-            return False
-
-        for p in self.par_name:
-            mean      = self.mean[p]
-            std       = self.std[p]
-
-            self.mean[p]   = np.zeros(shape = (n_n_S, n_R + n_R_new))
-            self.std[p]    = np.zeros(shape = (n_n_S, n_R + n_R_new))
-            for n_S in range(n_n_S):
-                self.mean[p][n_S]   = np.append(mean[n_S], new.mean[p][n_S])
-                self.std[p][n_S]    = np.append(std[n_S], new.std[p][n_S])
-
-        return True
-
-
-    def plot_mean_std(self, n, n_D, par=None):
-        """Plot mean and std versus number of realisations n
-
-        Parameters
-        ----------
-        n: array of integer
-            number of realisations {n_S} for ML covariance
-        n_D: integer
-            dimension of data vector
-        par: dictionary of array of float, optional
-            input parameter values and errors, default=None
-
-        Returns
-        -------
-        None
-        """
-
-        n_R = self.mean[self.par_name[0]].shape[1]
-
-        marker     = ['.', 'D']
-        markersize = [6] * len(marker)
-        color      = ['b', 'g']
-        fac_xlim   = 1.05
-
-        plot_sth = False
-        plt.figure()
-        add_title(n_D, n_R)
-
-        box_width = (n[1] - n[0]) / 2
-
-        # Set the number of required subplots (1 or 2)
-        j_panel = {}
-        for j, which in enumerate(['mean', 'std']):
-            for i, p in enumerate(self.par_name):
-                y = getattr(self, which)[p]   # mean or std for parameter p
-                if y.any():
-                    n_panel = 2
-                    j_panel[which] = j+1
-
-        if len(j_panel) == 1:   # Only one plot to do: Use entire canvas
-            n_panel = 1
-            j_panel[j_panel.keys()[0]] = 1
-        
-
-        for j, which in enumerate(['mean', 'std']):
-            for i, p in enumerate(self.par_name):
-                y = getattr(self, which)[p]   # mean or std for parameter p
-                if y.any():
-                    ax = plt.subplot(1, n_panel, j_panel[which])
-
-                    if y.shape[1] > 1:
-                        bplot = plt.boxplot(y.transpose(), positions=n, sym='.', widths=box_width)
-                        for key in bplot:
-                            plt.setp(bplot[key], color=color[i])
-                        plt.setp(bplot['whiskers'], linestyle='-')
-                    else:
-                        plt.plot(n, y.mean(axis=1), marker[i], ms=markersize[i], color=color[i])
-
-                    my_par = par[which]
-                    if self.fct is not None and which in self.fct:
-                        # Define high-resolution array for smoother lines
-                        n_fine = np.arange(n[0], n[-1], len(n)/10.0)
-                        plt.plot(n_fine, self.fct[which](n_fine, n_D, my_par[i]), '{}-.'.format(color[i]))
-
-                    plt.plot(n, no_bias(n, n_D, my_par[i]), '{}-'.format(color[i]), label='{}$({})$'.format(which, p))
-
-        # Finalize plot
-        for j, which in enumerate(['mean', 'std']):
-            if which in j_panel:
-                ax = plt.subplot(1, n_panel, j_panel[which])
-                plt.xlabel('$n_{\\rm s}$')
-                plt.ylabel('<{}>'.format(which))
-                #plt.xticks2()?bo alpha, or n_d / n_s
-                plt.xlim((n[0]-5)/fac_xlim**3, n[-1]*fac_xlim)
-                ax.set_yscale(self.yscale[j])
-                plot_sth = True
-
-                ax.legend(loc='lower right', frameon=False)
-
-        if plot_sth == True:
-            plt.savefig('{}.pdf'.format(self.file_base))
-
-
-    def plot_std_var(self, n, n_D, par=None):
-        """Plot standard deviation of parameter variance
-        """
-
-        n_R = self.mean[self.par_name[0]].shape[1]
-        color = ['g', 'm']
-
-        plot_sth = False
-        plt.figure()
-        add_title(n_D, n_R)
-        ax = plt.subplot(1, 1, 1)
-
-        for i, p in enumerate(self.par_name):
-            y = self.get_std_var(p)
-            if y.any():
-                plt.plot(n, y, marker='o', color=color[i], label='$\sigma[\sigma^2({})]$'.format(p))
-
-                if self.fct is not None and par is not None:
-                    n_fine = np.arange(n[0], n[-1], len(n)/10.0)
-                    plt.plot(n_fine, self.fct['std_var'](n_fine, n_D, par[i]), '-', color=color[i])
-                    if 'std_var_TJK13' in self.fct:
-                        plt.plot(n_fine, self.fct['std_var_TJK13'](n_fine, n_D, par[i]), '--', color=color[i])
-                    if 'std_var_TJ14' in self.fct:
-                        plt.plot(n_fine, self.fct['std_var_TJ14'](n_fine, n_D, par[i]), '-.', color=color[i])
-
-                plt.xlabel('$n_{\\rm s}$')
-                plt.ylabel('std(var)')
-                plt.legend(loc='best', numpoints=1, frameon=False)
-                ax.set_yscale('log')
-                plot_sth = True
-
-        plt.ylim(8e-9, 1e-2)
-
-        if plot_sth == True:
-            plt.savefig('std_2{}.pdf'.format(self.file_base))
 
 
 def plot_det(n, x, sig2, delta, F, n_R):
 
     n_D = len(x)
 
-    plt.figure()
+    plot_init(n_D, n_R)
     ax = plt.subplot(1, 1, 1)
 
     det_num = []
@@ -510,7 +250,6 @@ def plot_det(n, x, sig2, delta, F, n_R):
     plt.legend(loc='best', numpoints=1, frameon=False)
     ax.set_yscale('log')
     plt.ylim(1e-4, 1e4)
-    add_title(n_D, n_R)
     plt.savefig('det.pdf')
 
     f = open('det.txt', 'w')
@@ -523,11 +262,11 @@ def plot_det(n, x, sig2, delta, F, n_R):
 
 def plot_std_fish_biased_ana(par_name, n, x, sig2, delta, F=None, n_R=0):
 
-    plt.figure()
+    n_D = len(x)
+    plot_init(n_D, n_R)
     ax = plt.subplot(1, 1, 1)
     color = ['g', 'm']
 
-    n_D = len(x)
 
     for i, p in enumerate(par_name):
         n_fine = np.arange(n[0], n[-1], len(n)/10.0)
@@ -589,80 +328,47 @@ def plot_std_fish_biased_ana(par_name, n, x, sig2, delta, F=None, n_R=0):
     plt.ylabel('std(var)')
     plt.legend(loc='best', numpoints=1, frameon=False)
     ax.set_yscale('log')
-    add_title(n_D, n_R)
     plt.savefig('{}.pdf'.format('std_var_ana'))
 
 
-class param:
-    """General class to store (default) variables
-    """
+def plot_A_alpha2(n, n_D, par):
 
-    def __init__(self, **kwds):
-        self.__dict__.update(kwds)
+    plot_init(n_D, -1)
+    ax = plt.subplot(1, 1, 1)
 
-    def __str__(self, **kwds):
-        print(self.__dict__)
+    n_fine = np.arange(n[0], n[-1], len(n)/10.0)
 
-    def var_list(self, **kwds):
-        return vars(self)
+    plt.plot(n_fine, 2*A(n_fine, n_D)/alpha(n_fine, n_D)**2, '-', color='g', label='$2A/\\alpha^2$')
+    plt.legend(frameon=False)
+    plt.xlabel('$n_{\\rm s}$')
+    plt.ylabel('$2A/\\alpha^2$')
+    ax.set_yscale('log')
+    plt.savefig('A_alpha2')
 
+    plot_init(n_D, -1)
+    ax = plt.subplot(1, 1, 1)
 
-def my_string_split(string, num=-1, verbose=False, stop=False):
-    """Split a *string* into a list of strings. Choose as separator
-        the first in the list [space, underscore] that occurs in the string.
-        (Thus, if both occur, use space.)
+    # It's strange that for low n_S the ratio 2A/alpha^2 approaches unity, but in std_fish_biased
+    # ignoring 2A does not make any visible change
 
-    Parameters
-    ----------
-    string: string
-        Input string
-    num: int
-        Required length of output list of strings, -1 if no requirement.
-    verbose: bool
-        Verbose output
-    stop: bool
-        Stop programs with error if True, return None and continues otherwise
+    pA = std_fish_biased(n_fine, n_D, par)
+    pB = std_fish_biased2(n_fine, n_D, par)
+    pC = std_fish_biased_TJ14(n_fine, n_D, par)
+    plt.plot(n_fine, pA, '-', color='g', label='eq. (26)')
+    plt.plot(n_fine, pB, '--', color='r', label='ignoring $2A$')
+    plt.plot(n_fine, pC, '-.', color='r', label='TJK14')
 
-    Returns
-    -------
-    list_str: string, array()
-        List of string on success, and None if failed.
-    """
+    plt.legend(frameon=False)
+    plt.xlabel('$n_{\\rm s}$')
+    plt.ylabel('std(var)')
+    ax.set_yscale('log')
 
-    if string is None:
-        return None
+    plt.savefig('std_var_comp')
 
-    has_space      = string.find(' ')
-    has_underscore = string.find('_')
-
-    if has_space != -1:
-        # string has white-space
-        sep = ' '
-    else:
-        if has_underscore != -1:
-        # string has no white-space but underscore
-            sep = '_'
-        else:
-            # string has neither, consists of one element
-            if num == -1 or num == 1:
-                # one-element string is ok
-                sep = None
-                pass
-            else:
-                error('Neither \' \' nor \'_\' found in string \'{}\', cannot split'.format(string))
-
-    #res = string.split(sep=sep) # python v>=3?
-    res = string.split(sep)
-
-    if num != -1 and num != len(res):
-        if verbose:
-            print >>std.styerr, 'String \'{}\' has length {}, required is {}'.format(string, len(res), num)
-        if stop is True:
-            sys.exit(2)
-        else:
-            return None
-
-    return res
+    f = open('std_var_comp.txt', 'w')
+    for i in range(len(n_fine)):
+        print >>f, n_fine[i], pA[i], pB[i], pC[i]
+    f.close()
 
 
 
@@ -712,38 +418,6 @@ def log_command(argv, name=None, close_no_return=True):
 
     if name != 'sys.stdout' and name != 'sys.stderr':
         f.close()
-
-
-
-def error(str, val=1, stop=True, verbose=True):
-    """Print message str and exits program with code val
-
-    Parameters
-    ----------
-    str: string
-        message
-    val: integer
-        exit value, default=1
-    stop: boolean
-        stops program if True (default), continues if False
-    verbose: boolean
-        verbose output if True (default)
-
-    Returns
-    -------
-    None
-    """
-
-    if verbose is True:
-        print>>sys.stderr, "\x1b[31m{}\x1b[0m".format(str),
-
-    if stop is False:
-        if verbose is True:
-            print>>sys.stderr,  "\x1b[31m{}, continuing...\x1b[0m".format(str),
-    else:
-        if verbose is True:
-            print>>sys.stderr, ''
-        sys.exit(val)
 
 
 
@@ -817,7 +491,7 @@ def parse_options(p_def):
     parser.add_option('', '--fish_ana', dest='do_fish_ana', action='store_true',
         help='Calculate analytical Fisher matrix, default={}'.format(p_def.do_fish_ana))
     parser.add_option('-L', '--like', dest='likelihood', type='string', default=p_def.likelihood,
-        help='Likelihoo for MCMC, one in \'norm\'|\'ST\', default=\'{}\''.format(p_def.likelihood))
+        help='Likelihood for MCMC, one in \'norm\'|\'SH\', default=\'{}\''.format(p_def.likelihood))
 
     parser.add_option('-m', '--mode', dest='mode', type='string', default=p_def.mode,
         help='Mode: \'s\'=simulate, \'r\'=read, default={}'.format(p_def.mode))
@@ -1039,42 +713,6 @@ def Fisher_error(F):
     return d
 
 
-def Fisher_error_ana(x, sig2, delta, mode=-1):
-    """Return Fisher matrix errors, and detminant if mode==2, for affine function parameters (a, b)
-    """
-
-    n_D = len(x)
-
-    # The three following ways to compute the Fisher matrix errors are equivalent.
-    # Note that mode==-1,0 uses the statistical properties mean and variance of the uniform
-    # distribution, whereas more=1,2 uses the actual sample x.
-
-    if mode != -1:
-        if mode == 2:
-            Psi = np.diag([1.0 / sig2 for i in range(n_D)])
-            F_11 = np.einsum('i,ij,j', x, Psi, x)
-            F_22 = np.einsum('i,ij,j', np.ones(shape=n_D), Psi, np.ones(shape=n_D))
-            F_12 = np.einsum('i,ij,j', x, Psi, np.ones(shape=n_D))
-        elif mode == 1:
-            F_11 = sum(x*x) / sig2
-            F_12 = sum(x) / sig2
-            F_22 = n_D / sig2
-        elif mode == 0:
-            F_11 = n_D * delta**2 / 12.0 / sig2
-            F_12 = 0 
-            F_22 = n_D / sig2
-
-        det = F_11 * F_22 - F_12**2
-        da2 = F_22 / det
-        db2 = F_11 / det
-    else:
-        # mode=-1
-        det = detF(n_D, sig2, delta)
-        da2 = 12 * sig2 / (n_D * delta**2)
-        db2 = sig2 / n_D
-
-    return np.sqrt([da2, db2]), det
-
 
 def Fisher_ana(y, Psi):
     """Return analytical Fisher matrix
@@ -1288,7 +926,7 @@ def fit_corr(x1, cov_true, cov_est, n_jobs=3):
     return fit
 
 
-def fit_corr_ST(x1, cov_true, cov_est_inv, n_jobs=3):
+def fit_corr_SH(x1, cov_true, cov_est_inv, n_jobs=3):
     """
     Generates one draw from a multivariate student-t distribution
     (see Sellentin & Heavens 2015)
@@ -1357,7 +995,7 @@ def fit_corr_ST(x1, cov_true, cov_est_inv, n_jobs=3):
 
 
 
-def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_ST, options):
+def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options):
     """Simulate data"""
         
     if options.verbose == True:
@@ -1414,11 +1052,11 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish
                         print('Running MCMC with mv normal likelihood')
                     res = fit_corr(x1, cov, cov_est, n_jobs=options.n_jobs)
                     fit = fit_norm
-                elif options.likelihood == 'ST':
+                elif options.likelihood == 'SH':
                     if options.verbose == True:
-                        print('Running MCMC with Sellentin&Heavens (ST) likelihood')
-                    res = fit_corr_ST(x1, cov, cov_est_inv, n_jobs=options.n_jobs)
-                    fit = fit_ST
+                        print('Running MCMC with Sellentin&Heavens (SH) likelihood')
+                    res = fit_corr_SH(x1, cov, cov_est_inv, n_jobs=options.n_jobs)
+                    fit = fit_SH
                 else:
                     error('Invalid likelihood \'{}\''.format(options.likelihood))
 
@@ -1435,7 +1073,7 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish
 
 
 
-def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_ST, options):
+def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options):
     """Write simulated runs to files"""
 
     if options.add_simulations == True:
@@ -1450,10 +1088,11 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, 
         fish_num_prev    = Results(fish_num.par_name, n_n_S, n_R, file_base=fish_num.file_base, fct=fish_num.fct, yscale='linear')
         fish_deb_prev    = Results(fish_deb.par_name, n_n_S, n_R, file_base=fish_deb.file_base, fct=fish_deb.fct)
         fit_norm_prev    = Results(fit_norm.par_name, n_n_S, n_R, file_base=fit_norm.file_base, fct=fit_norm.fct)
-        fit_ST_prev      = Results(fit_ST.par_name, n_n_S, n_R, file_base=fit_ST.file_base, fct=fit_ST.fct)
+        fit_SH_prev      = Results(fit_SH.par_name, n_n_S, n_R, file_base=fit_SH.file_base, fct=fit_SH.fct)
 
         # Fill results from files
-        read_from_file(sigma_ML_prev, sigma_m1_ML_prev, fish_ana_prev, fish_num_prev, fish_deb_prev, fit_norm_prev, fit_ST_prev, options)
+        read_from_file(sigma_ML_prev, sigma_m1_ML_prev, fish_ana_prev, fish_num_prev, fish_deb_prev, fit_norm_prev, \
+                       fit_SH_prev, options)
 
         # Add new results
         sigma_ML.append(sigma_ML_prev)
@@ -1462,7 +1101,7 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, 
         fish_num.append(fish_num_prev)
         fish_deb.append(fish_deb_prev)
         fit_norm.append(fit_norm_prev)
-        fit_ST.append(fit_ST_prev)
+        fit_SH.append(fit_SH_prev)
 
     if options.verbose == True:
         print('Writing simulations to disk')
@@ -1475,8 +1114,8 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, 
     if options.do_fit_stan == True:
         if options.likelihood == 'norm':
             fit_norm.write_mean_std(n_S_arr)
-        elif options.likelihood == 'ST':
-            fit_ST.write_mean_std(n_S_arr)
+        elif options.likelihood == 'SH':
+            fit_SH.write_mean_std(n_S_arr)
         else:
              error('Invalid likelihood \'{}\''.format(options.likelihood))
 
@@ -1485,7 +1124,7 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, 
 
 
 
-def read_from_file(sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_ST, options):
+def read_from_file(sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options):
     """Read simulated runs from files"""
 
     if options.verbose == True:
@@ -1558,13 +1197,13 @@ def main(argv=None):
     sigma_m1_ML = Results(tr_name, n_n_S, options.n_R, file_base='sigma_m1_ML', yscale='log', fct={'mean': tr_N_m1_ML})
 
     fish_ana = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_ana', yscale='log', fct={'std': par_fish})
-    fish_num = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_num', yscale='log', fct={'std': par_fish, \
-                       'std_var': std_fish_biased, 'std_var_TJK13': std_fish_biased_TJK13, 'std_var_TJ14': std_fish_biased_TJ14})
+    fish_num = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_num', yscale='log', \
+                       fct={'std': par_fish, 'std_var': std_fish_biased, 'std_var_TJK13': std_fish_biased_TJK13, 'std_var_TJ14': std_fish_biased_TJ14})
     fish_deb = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_deb', yscale='log', \
-                       fct={'std': no_bias, 'std_var': std_fish_deb})
+                       fct={'std': no_bias, 'std_var_TJK13': std_fish_deb, 'std_var_TJ14': std_fish_deb_TJ14})
     fit_norm = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_norm', yscale=['linear', 'log'],
                        fct={'std': par_fish, 'std_var': std_fish_biased})
-    fit_ST   = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_ST', yscale=['linear', 'log'],
+    fit_SH   = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_SH', yscale=['linear', 'log'],
                        fct={'std': par_fish, 'std_var': std_fish_biased})
 
     # Data
@@ -1575,15 +1214,15 @@ def main(argv=None):
     # Create simulations
     if re.search('s', options.mode) is not None:
  
-        simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_ST, options) 
+        simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options) 
 
-        write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_ST, options)
+        write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options)
 
 
     # Read simulations
     if re.search('r', options.mode) is not None:
 
-        read_from_file(sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_ST, options)
+        read_from_file(sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options)
 
 
     # Plot results. Obsolete function, now done by class routine.
@@ -1606,7 +1245,7 @@ def main(argv=None):
     fish_deb.plot_mean_std(n_S_arr, options.n_D, par={'std': dpar_exact})
     if options.do_fit_stan == True:
         fit_norm.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact})
-        fit_ST.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact})
+        fit_SH.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact})
 
     dpar2 = dpar_exact**2
 
@@ -1621,13 +1260,14 @@ def main(argv=None):
     fish_deb.plot_std_var(n_S_arr, options.n_D, par=dpar2)
     if options.do_fit_stan == True:
         fit_norm.plot_std_var(n_S_arr, options.n_D, par=dpar2)
-        #fit_ST.plot_std_var(n_S_arr, options.n_D, par=dpar2)
+        fit_SH.plot_std_var(n_S_arr, options.n_D, par=dpar2)
 
     sigma_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [options.sig2]})
     sigma_m1_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [1/options.sig2]})
 
     #plot_std_fish_biased_ana(par_name, n_S_arr, x1, options.sig2, delta, F=fish_num.F, n_R=options.n_R)
     #plot_det(n_S_arr, x1, options.sig2, delta, fish_num.F, options.n_R)
+    #plot_A_alpha2(n_S_arr, options.n_D, dpar2[1])
 
     ### End main program
 
