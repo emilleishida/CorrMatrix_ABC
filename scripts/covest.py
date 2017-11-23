@@ -399,12 +399,12 @@ def detF(n_D, sig2, delta):
 
 
 def Fisher_error_ana(x, sig2, delta, mode=-1):
-    """Return Fisher matrix errors, and detminant if mode==2, for affine function parameters (a, b)
+    """Return Fisher matrix parameter errors (std), and Fisher matrix detminant, for affine function parameters (a, b)
     """
 
     n_D = len(x)
 
-    # The three following ways to compute the Fisher matrix errors are equivalent.
+    # The four following ways to compute the Fisher matrix errors are statistically equivalent.
     # Note that mode==-1,0 uses the statistical properties mean and variance of the uniform
     # distribution, whereas more=1,2 uses the actual sample x.
 
