@@ -80,7 +80,7 @@ def A_corr(n_S, n_D):
 def tr_N_m1_ML(n, n_D, par):
     """Maximum-likelihood estimate of inverse covariance normalised trace.
        TJK13 (24), IK17 (4).
-       This is alpha.
+       This is 1/alpha.
     """
 
     #return [alpha(n_S, n_D) * par for n_S in n]
@@ -366,55 +366,6 @@ def plot_A_alpha2(n, n_D, par):
     for i in range(len(n_fine)):
         print >>f, n_fine[i], pA[i], pB[i], pC[i]
     f.close()
-
-
-
-def log_command(argv, name=None, close_no_return=True):
-    """Write command with arguments to a file or stdout.
-       Choose name = 'sys.stdout' or 'sys.stderr' for output on sceen.
-
-    Parameters
-    ----------
-    argv: array of strings
-        Command line arguments
-    name: string
-        Output file name (default: 'log_<command>')
-    close_no_return: bool
-        If True (default), close log file. If False, keep log file open
-        and return file handler
-
-    Returns
-    -------
-    log: filehandler
-        log file handler (if close_no_return is False)
-    """
-
-    if name is None:
-        name = 'log_' + os.path.basename(argv[0])
-
-    if name == 'sys.stdout':
-        f = sys.stdout
-    elif name == 'sys.stderr':
-        f = sys.stderr
-    else:
-        f = open(name, 'w')
-
-    for a in argv:
-
-        # Quote argument if special characters
-        if ']' in a or ']' in a:
-            a = '\"{}\"'.format(a)
-
-        print>>f, a,
-        #print>>f, ' ',
-
-    print>>f, ''
-
-    if close_no_return == False:
-        return f
-
-    if name != 'sys.stdout' and name != 'sys.stderr':
-        f.close()
 
 
 
@@ -830,40 +781,6 @@ def debias_cov(cov_est_inv, n_S):
 
 
 
-def plot_sigma_ML(n, n_D, sigma_ML, sigma_m1_ML, sig2, out_name='sigma_ML'):
-    """Obsolete, use class method instead.
-    """
-
-    plt.figure()
-    plt.suptitle('Covariance of n_D = {} dimensional data'.format(n_D))
-
-    plt.subplot(1, 2, 1)
-    plt.plot(n, sigma_ML, 'b.')
-    plt.plot([n[0], n[-1]], [sig2, sig2], 'r-')
-    plt.xlabel('$n_{\\rm s}$')
-    plt.ylabel('normalised trace of ML covariance')
-
-    ax = plt.subplot(1, 2, 2)
-    plt.plot(n, sigma_m1_ML, 'b.')
-    plt.plot([n[0], n[-1]], [1.0/sig2, 1.0/sig2], 'r-')
-    n_fine = np.arange(n[0], n[-1], len(n)/10.0)
-    bias = [(n_S-1.0)/(n_S-n_D-2.0)/sig2 for n_S in n_fine]
-    plt.plot(n_fine, bias, 'g-.')
-    plt.xlabel('$n_{\\rm s}$')
-    plt.ylabel('normalised trace of inverse of ML covariance')
-    ax.set_yscale('log')
-
-    plt.savefig('{}.pdf'.format(out_name))
-
-    f = open('{}.txt'.format(out_name), 'w')
-    print >>f, '# sig2={}, n_D={}'.format(sig2, n_D)
-    print >>f, '# n sigma 1/sigma'
-    for i in range(len(n)):
-        print >>f, '{} {} {}'.format(n[i], sigma_ML[i], sigma_m1_ML[i])
-    f.close()
-
-
-
 def fit_corr(x1, cov_true, cov_est, n_jobs=3):
     """
     Generates one draw from a multivariate normal distribution
@@ -992,7 +909,7 @@ def fit_corr_SH(x1, cov_true, cov_est_inv, n_jobs=3):
 
 
 
-def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options):
+def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options):
     """Simulate data"""
         
     if options.verbose == True:
@@ -1015,10 +932,17 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish
             this_sigma_ML = np.trace(cov_est) / options.n_D
             sigma_ML.set([this_sigma_ML], i, run, which='mean')
 
+            # Biased inverse
             cov_est_inv = np.linalg.inv(cov_est)
 
             this_sigma_m1_ML = np.trace(cov_est_inv) / options.n_D
             sigma_m1_ML.set([this_sigma_m1_ML], i, run, which='mean')
+
+            # Debiased inverse
+            cov_est_inv_deb  = debias_cov(cov_est_inv, n_S)
+            this_sigma_m1_ML = np.trace(cov_est_inv_deb) / options.n_D
+            sigma_m1_ML_deb.set([this_sigma_m1_ML], i, run, which='mean')
+
 
             ### Fisher matrix ###
             # analytical
@@ -1070,7 +994,7 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish
 
 
 
-def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options):
+def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options):
     """Write simulated runs to files"""
 
     if options.add_simulations == True:
@@ -1081,6 +1005,7 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, 
         n_n_S, n_R  = numbers_from_file(sigma_ML.file_base, 1)
         sigma_ML_prev    = Results(sigma_ML.par_name, n_n_S, n_R, file_base=sigma_ML.file_base)
         sigma_m1_ML_prev = Results(sigma_m1_ML.par_name, n_n_S, n_R, file_base=sigma_m1_ML.file_base)
+        sigma_m1_ML_deb_prev = Results(sigma_m1_ML_deb.par_name, n_n_S, n_R, file_base=sigma_m1_ML_deb.file_base)
         fish_ana_prev    = Results(fish_ana.par_name, n_n_S, n_R, file_base=fish_ana.file_base, fct=fish_ana.fct)
         fish_num_prev    = Results(fish_num.par_name, n_n_S, n_R, file_base=fish_num.file_base, fct=fish_num.fct, yscale='linear')
         fish_deb_prev    = Results(fish_deb.par_name, n_n_S, n_R, file_base=fish_deb.file_base, fct=fish_deb.fct)
@@ -1088,12 +1013,13 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, 
         fit_SH_prev      = Results(fit_SH.par_name, n_n_S, n_R, file_base=fit_SH.file_base, fct=fit_SH.fct)
 
         # Fill results from files
-        read_from_file(sigma_ML_prev, sigma_m1_ML_prev, fish_ana_prev, fish_num_prev, fish_deb_prev, fit_norm_prev, \
+        read_from_file(sigma_ML_prev, sigma_m1_ML_prev, sigma_m1_ML_deb_prev, fish_ana_prev, fish_num_prev, fish_deb_prev, fit_norm_prev, \
                        fit_SH_prev, options)
 
         # Add new results
         sigma_ML.append(sigma_ML_prev)
         sigma_m1_ML.append(sigma_m1_ML_prev)
+        sigma_m1_ML_deb.append(sigma_m1_ML_deb_prev)
         fish_ana.append(fish_ana_prev)
         fish_num.append(fish_num_prev)
         fish_deb.append(fish_deb_prev)
@@ -1118,10 +1044,11 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, 
 
     sigma_ML.write_mean_std(n_S_arr)
     sigma_m1_ML.write_mean_std(n_S_arr)
+    sigma_m1_ML_deb.write_mean_std(n_S_arr)
 
 
 
-def read_from_file(sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options):
+def read_from_file(sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options):
     """Read simulated runs from files"""
 
     if options.verbose == True:
@@ -1140,6 +1067,7 @@ def read_from_file(sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm
 
     sigma_ML.read_mean_std()
     sigma_m1_ML.read_mean_std()
+    sigma_m1_ML_deb.read_mean_std()
 
     
 
@@ -1192,6 +1120,7 @@ def main(argv=None):
     # Initialisation of results
     sigma_ML    = Results(tr_name, n_n_S, options.n_R, file_base='sigma_ML')
     sigma_m1_ML = Results(tr_name, n_n_S, options.n_R, file_base='sigma_m1_ML', yscale='log', fct={'mean': tr_N_m1_ML})
+    sigma_m1_ML_deb = Results(tr_name, n_n_S, options.n_R, file_base='sigma_m1_ML_deb', fct={'mean': no_bias})
 
     fish_ana = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_ana', yscale='log', fct={'std': par_fish})
     fish_num = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_num', yscale='log', \
@@ -1211,24 +1140,22 @@ def main(argv=None):
     # Create simulations
     if re.search('s', options.mode) is not None:
  
-        simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options) 
+        simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options) 
 
-        write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options)
+        write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options)
 
 
     # Read simulations
     if re.search('r', options.mode) is not None:
 
-        read_from_file(sigma_ML, sigma_m1_ML, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options)
+        read_from_file(sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options)
 
-
-    # Plot results. Obsolete function, now done by class routine.
-    #plot_sigma_ML(n_S_arr, options.n_D, sigma_ML.mean['tr'].mean(axis=1), sigma_m1_ML.mean['tr'].mean(axis=1), options.sig2, out_name='sigma_both')
 
     dpar_exact, det = Fisher_error_ana(x1, options.sig2, delta, mode=-1)
 
     # Exact inverse covariance
     #cov_inv    = np.diag([1.0 / options.sig2 for i in range(options.n_D)])
+    # Numerical Fisher matrix using data
     #F_exact    = Fisher_ana(x1, cov_inv)    # Bug fixed 05/10
     #dpar_exact = Fisher_error(F_exact)
     #print('Parameter error (from exact Fisher_ana)', dpar_exact)
@@ -1246,12 +1173,6 @@ def main(argv=None):
 
     dpar2 = dpar_exact**2
 
-    # Problem with this plot, simulation does not agree with analytical formula.
-    # Checked:
-    # 08/09/2017
-    # - std**2 = var, seems to be correct in the code.
-    # To check (again): Does points go -> 0 for n_S very large or stay constant?
-    # Could be higher-order effect at low n_s?
     fish_num.plot_std_var(n_S_arr, options.n_D, par=dpar2)
 
     fish_deb.plot_std_var(n_S_arr, options.n_D, par=dpar2)
@@ -1261,6 +1182,7 @@ def main(argv=None):
 
     sigma_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [options.sig2]})
     sigma_m1_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [1/options.sig2]})
+    sigma_m1_ML_deb.plot_mean_std(n_S_arr, options.n_D, par={'mean': [1/options.sig2]})
 
     plot_std_fish_biased_ana(par_name, n_S_arr, x1, options.sig2, delta, F=fish_num.F, n_R=options.n_R)
     plot_det(n_S_arr, x1, options.sig2, delta, fish_num.F, options.n_R)
