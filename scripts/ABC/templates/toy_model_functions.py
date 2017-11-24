@@ -76,13 +76,18 @@ def model_cov(p):
     output: y, array - draw from normal distribution with mean
                         a*x + b and scatter sig          
     """
-    x = uniform.rvs(loc=p['xmin'], scale=p['xmax'] - p['xmin'], size=int(p['nobs']))
+    if bool(p['xfix']):
+        try:                
+            x = p['dataset1'][:,0]
+        except KeyError:
+            raise ValueError('Observed data not defined! \n if you are doing distance tests, set xfix=0')
+
+    else:
+        x = uniform.rvs(loc=p['xmin'], scale=p['xmax'] - p['xmin'], size=int(p['nobs']))
+
     
     x.sort()
     ytrue = np.array(p['a']*x + p['b'])
- 
-    #print ytrue[0]
-    #print p
 
     y = multivariate_normal.rvs(mean=ytrue, cov=p['cov'])
 
