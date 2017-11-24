@@ -198,7 +198,7 @@ class Results:
         return True
 
 
-    def plot_mean_std(self, n, n_D, par=None):
+    def plot_mean_std(self, n, n_D, par=None, boxwidth=None):
         """Plot mean and std versus number of realisations n
 
         Parameters
@@ -209,6 +209,8 @@ class Results:
             dimension of data vector
         par: dictionary of array of float, optional
             input parameter values and errors, default=None
+        boxwidth: float, optional
+            box width for box plots, default: None, width is determined from n
 
         Returns
         -------
@@ -225,7 +227,11 @@ class Results:
         plot_sth = False
         plot_init(n_D, n_R)
 
-        box_width = (n[1] - n[0]) / 2
+        if boxwidth == None:
+            box_width = (n[1] - n[0]) / 2
+        else:
+            box_width = boxwidth
+            
 
         # Set the number of required subplots (1 or 2)
         j_panel = {}
@@ -252,8 +258,10 @@ class Results:
                         for key in bplot:
                             plt.setp(bplot[key], color=color[i], linewidth=2)
                         plt.setp(bplot['whiskers'], linestyle='-', linewidth=2)
+                        ax.set_xscale('log')
                     else:
                         plt.plot(n, y.mean(axis=1), marker[i], ms=markersize[i], color=color[i])
+                        ax.set_xscale('log')
 
                     my_par = par[which]
                     if self.fct is not None and which in self.fct:
