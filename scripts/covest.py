@@ -1,4 +1,5 @@
 import sys
+import os
 import numpy as np
 import pylab as plt
 from astropy.table import Table, Column
@@ -94,6 +95,7 @@ class Results:
                     col_name = 'std[{0:s}]_run{1:02d}'.format(p, run)
                     self.std[p].transpose()[run] = dat[col_name]
 
+
     def write_mean_std(self, n, format='ascii'):
         """Write mean and std to file
         """
@@ -120,12 +122,14 @@ class Results:
 
         n_n_S, n_R = self.mean[self.par_name[0]].shape
         if format == 'ascii':
-            dat = ascii.read('F_{}.txt'.format(self.file_base))
-            for run in range(n_R):
-                for i in (0,1):
-                    for j in (0,1):
-                        col_name = 'F[{0:d},{1:d}]_run{2:02d}'.format(i, j, run)
-                        self.F[:, run, i, j] = dat[col_name].transpose()
+            fname = 'F_{}.txt'.format(self.file_base)
+            if os.path.isfile(fname):
+                dat = ascii.read(fname)
+                for run in range(n_R):
+                    for i in (0,1):
+                        for j in (0,1):
+                            col_name = 'F[{0:d},{1:d}]_run{2:02d}'.format(i, j, run)
+                            self.F[:, run, i, j] = dat[col_name].transpose()
 
 
     def write_Fisher(self, n, format='ascii'):
@@ -320,7 +324,8 @@ class Results:
 
 def plot_init(n_D, n_R):
 
-    plt.figure()
+    fig = plt.figure()
+    fig.subplots_adjust(bottom=0.16)
     #plt.tight_layout() # makes space for large labels
     ax = plt.gca()
 
@@ -395,12 +400,12 @@ def detF(n_D, sig2, delta):
 
 
 def Fisher_error_ana(x, sig2, delta, mode=-1):
-    """Return Fisher matrix errors, and detminant if mode==2, for affine function parameters (a, b)
+    """Return Fisher matrix parameter errors (std), and Fisher matrix detminant, for affine function parameters (a, b)
     """
 
     n_D = len(x)
 
-    # The three following ways to compute the Fisher matrix errors are equivalent.
+    # The four following ways to compute the Fisher matrix errors are statistically equivalent.
     # Note that mode==-1,0 uses the statistical properties mean and variance of the uniform
     # distribution, whereas more=1,2 uses the actual sample x.
 
@@ -488,5 +493,56 @@ def my_string_split(string, num=-1, verbose=False, stop=False):
             return None
 
     return res
+
+
+
+def log_command(argv, name=None, close_no_return=True):
+    """Write command with arguments to a file or stdout.
+       Choose name = 'sys.stdout' or 'sys.stderr' for output on sceen.
+
+    Parameters
+    ----------
+    argv: array of strings
+        Command line arguments
+    name: string
+        Output file name (default: 'log_<command>')
+    close_no_return: bool
+        If True (default), close log file. If False, keep log file open
+        and return file handler
+
+    Returns
+    -------
+    log: filehandler
+        log file handler (if close_no_return is False)
+    """
+
+    if name is None:
+        name = 'log_' + os.path.basename(argv[0])
+
+    if name == 'sys.stdout':
+        f = sys.stdout
+    elif name == 'sys.stderr':
+        f = sys.stderr
+    else:
+        f = open(name, 'w')
+
+    for a in argv:
+
+        # Quote argument if special characters
+        if ']' in a or ']' in a:
+            a = '\"{}\"'.format(a)
+
+        print>>f, a,
+        #print>>f, ' ',
+
+    print>>f, ''
+
+    if close_no_return == False:
+        return f
+
+    if name != 'sys.stdout' and name != 'sys.stderr':
+        f.close()
+
+
 
 

@@ -3,6 +3,9 @@
 # Compability with python2.x for x>6
 from __future__ import print_function
 
+# job_ABC.py
+# Martin Kilbinger (2017)
+
 
 import sys
 import os
@@ -86,6 +89,8 @@ def parse_options(p_def):
         help='Maximum n_S = n_D x f_n_S_max, default: f_n_S_max={}'.format(p_def.f_n_S_max))
     parser.add_option('', '--n_S_min', dest='n_S_min', type='int', default=p_def.n_S_min,
         help='Minimum n_S, default=n_D+5 ({})'.format(p_def.n_S_min))
+    parser.add_option('', '--n_S', dest='str_n_S', type='string', default=None,
+        help='Array of n_S, default=None. If given, overrides n_S_min, n_n_S and f_n_S_max')
 
     parser.add_option('-m', '--mode', dest='mode', type='string', default=p_def.mode,
         help='Mode: \'s\'=simulate, \'r\'=read ABC dirs, \'R\'=read master file, default={}'.format(p_def.mode))
@@ -98,6 +103,24 @@ def parse_options(p_def):
     options, args = parser.parse_args()
 
     return options, args
+
+
+
+def check_options(options):
+    """Check command line options.
+
+    Parameters
+    ----------
+    options: tuple
+        Command line options
+
+    Returns
+    -------
+    erg: bool
+        Result of option check. False if invalid option value.
+    """
+
+    return True
 
 
 
@@ -130,6 +153,12 @@ def update_param(p_def, options):
             setattr(param, key, getattr(options, key))
 
     # Do extra stuff if necessary
+
+    if options.str_n_S == None:
+        param.n_S = None
+    else:
+        str_n_S_list = my_string_split(options.str_n_S, verbose=False, stop=True)
+        param.n_S = [int(str_n_S) for str_n_S in str_n_S_list]
 
     return param
 
@@ -451,13 +480,25 @@ def main(argv=None):
     p_def = params_default()
     options, args = parse_options(p_def)
 
+    if check_options(options) is False:
+        return 1
+
     param = update_param(p_def, options)
+
+    # Save calling command
+    log_command(argv)
+    if options.verbose:
+        log_command(argv, name='sys.stderr')
+
 
     # Number of simulations
 
-    start = param.n_S_min
-    stop  = int(param.n_D * param.f_n_S_max)
-    n_S_arr = np.logspace(np.log10(start), np.log10(stop), param.n_n_S, dtype='int')
+    if param.n_S == None:
+        start = param.n_S_min
+        stop  = int(param.n_D * param.f_n_S_max)
+        n_S_arr = np.logspace(np.log10(start), np.log10(stop), param.n_n_S, dtype='int')
+    else:
+        n_S_arr = param.n_S
 
     # Examples of runs:
     #  [1, 2]
