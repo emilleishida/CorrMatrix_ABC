@@ -2,6 +2,8 @@
 
 import numpy as np
 from scipy.stats import norm, uniform, multivariate_normal
+import matplotlib
+matplotlib.use("Agg")
 import pylab as plt
 import sys
 import os
@@ -831,7 +833,11 @@ def fit_corr(x1, cov_true, cov_est, n_jobs=3):
 
     import pystan
     start = time.time()
-    fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=3, verbose=False, n_jobs=n_jobs)
+    fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=n_jobs, verbose=False, n_jobs=n_jobs)
+
+    # Testing: fast call to pystan
+    #fit = pystan.stan(model_code=stan_code, data=toy_data, iter=1, chains=1, verbose=False, n_jobs=n_jobs)
+
     end = time.time()
 
     #elapsed = end - start
@@ -899,7 +905,7 @@ def fit_corr_SH(x1, cov_true, cov_est_inv, n_jobs=3):
 
     import pystan
     start = time.time()
-    fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=3, verbose=False, n_jobs=n_jobs)
+    fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=n_jobs, verbose=False, n_jobs=n_jobs)
     end = time.time()
 
     #elapsed = end - start
@@ -1113,7 +1119,8 @@ def main(argv=None):
     # Number of simulations
     start = options.n_D + 5
     stop  = options.n_D * options.f_n_S_max
-    n_S_arr = np.logspace(np.log10(start), np.log10(stop), options.n_n_S, dtype='int')
+    #n_S_arr = np.logspace(np.log10(start), np.log10(stop), options.n_n_S, dtype='int')
+    n_S_arr = [5811]
     n_n_S = len(n_S_arr)
 
 
