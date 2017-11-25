@@ -2,6 +2,8 @@
 
 import numpy as np
 from scipy.stats import norm, uniform, multivariate_normal
+import matplotlib
+matplotlib.use("Agg")
 import pylab as plt
 import sys
 import os
@@ -382,11 +384,14 @@ def params_default():
         parameter values
     """
 
+    n_D = 750
+
     p_def = param(
-        n_D = 750,
+        n_D = n_D,
         n_R = 10,
         n_n_S = 10,
-        f_n_S_max = 10,
+        f_n_S_max = 10.0,
+        n_S_min = n_D + 5,
         spar = '1.0 0.0',
         sig2 = 5.0,
         mode   = 's',
@@ -426,8 +431,10 @@ def parse_options(p_def):
         help='Number of runs per simulation, default={}'.format(p_def.n_R))
     parser.add_option('', '--n_n_S', dest='n_n_S', type='int', default=p_def.n_n_S,
         help='Number of n_S, where n_S is the number of simulation, default={}'.format(p_def.n_n_S))
-    parser.add_option('', '--f_n_S_max', dest='f_n_S_max', type='int', default=p_def.f_n_S_max,
+    parser.add_option('', '--f_n_S_max', dest='f_n_S_max', type='float', default=p_def.f_n_S_max,
         help='Maximum n_S = n_D x f_n_S_max, default: f_n_S_max={}'.format(p_def.f_n_S_max))
+    parser.add_option('', '--n_S_min', dest='n_S_min', type='int', default=p_def.n_S_min,
+        help='Minimum n_S, default=n_D+5 ({})'.format(p_def.n_S_min))
 
     parser.add_option('-p', '--par', dest='spar', type='string', default=p_def.spar,
         help='list of parameter values, default=\'{}\''.format(p_def.spar))
@@ -831,7 +838,11 @@ def fit_corr(x1, cov_true, cov_est, n_jobs=3):
 
     import pystan
     start = time.time()
-    fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=3, verbose=False, n_jobs=n_jobs)
+    fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=n_jobs, verbose=False, n_jobs=n_jobs)
+
+    # Testing: fast call to pystan
+    #fit = pystan.stan(model_code=stan_code, data=toy_data, iter=1, chains=1, verbose=False, n_jobs=n_jobs)
+
     end = time.time()
 
     #elapsed = end - start
@@ -899,7 +910,7 @@ def fit_corr_SH(x1, cov_true, cov_est_inv, n_jobs=3):
 
     import pystan
     start = time.time()
-    fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=3, verbose=False, n_jobs=n_jobs)
+    fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=n_jobs, verbose=False, n_jobs=n_jobs)
     end = time.time()
 
     #elapsed = end - start
@@ -1111,10 +1122,16 @@ def main(argv=None):
     delta    = 200                   # Width of uniform distribution for x
 
     # Number of simulations
-    start = options.n_D + 5
-    stop  = options.n_D * options.f_n_S_max
-    n_S_arr = np.logspace(np.log10(start), np.log10(stop), options.n_n_S, dtype='int')
-    n_n_S = len(n_S_arr)
+    n_S_arr, n_n_S = get_n_S_arr(param.n_S_min, param.n_D, param.f_n_S_max, param.n_n_S)
+    #start = param.n_S_min
+    #stop  = int(param.n_D * param.f_n_S_max)
+    #n_S_arr = np.logspace(np.log10(start), np.log10(stop), param.n_n_S, dtype='int')
+    #n_n_S = len(n_S_arr)
+
+    # Display n_S array and exit
+    if re.search('d', param.mode) is not None:
+        print('n_S =', n_S_arr)
+        return 0
 
 
     # Initialisation of results
