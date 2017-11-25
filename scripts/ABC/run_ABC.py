@@ -454,19 +454,11 @@ def main(argv=None):
     param = update_param(p_def, options)
 
     # Number of simulations
-
-    start = param.n_S_min
-    stop  = int(param.n_D * param.f_n_S_max)
-    n_S_arr = np.logspace(np.log10(start), np.log10(stop), param.n_n_S, dtype='int')
-
-    # Examples of runs:
-    #  [1, 2]
-    #  58 .. 584
-    #   4 .. 46
-    # default: 755 .. 7500
-
-
-    n_n_S = len(n_S_arr)
+    n_S_arr, n_n_S = get_n_S_arr(param.n_S_min, param.n_D, param.f_n_S_max, param.n_n_S)
+    #start = param.n_S_min
+    #stop  = int(param.n_D * param.f_n_S_max)
+    #n_S_arr = np.logspace(np.log10(start), np.log10(stop), param.n_n_S, dtype='int')
+    #n_n_S = len(n_S_arr)
 
 
     # Display n_S array and exit

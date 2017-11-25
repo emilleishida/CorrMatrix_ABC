@@ -7,6 +7,36 @@ from astropy.io import ascii
 
 
 
+def get_n_S_arr(n_S_min, n_D, f_n_S_max, n_n_S):
+    """Return array of values of n_S=number of simulations.
+
+    Parameters
+    ----------
+    n_S_min: int
+        smallest n_S
+    n_D: int
+        number of data points
+    f_n_S_max: float
+        largest n_S = f_n_S_max * n_D
+    n_n_S: int
+        number of values for n_S
+
+    Returns
+    -------
+    n_S_arr: array of int
+        array with n_S values
+    n_n_S: int
+        number of n_S values
+    """
+
+    start   = n_S_min
+    stop    = int(n_D * f_n_S_max)
+    n_S_arr = np.logspace(np.log10(start), np.log10(stop), n_n_S, dtype='int')
+ 
+    return n_S_arr, n_n_S
+
+
+
 def no_bias(n, n_D, par):
     """Unbiased estimator of par.
        For example maximum-likelihood estimate of covariance normalised trace,
