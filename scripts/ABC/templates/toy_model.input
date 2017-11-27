@@ -40,7 +40,7 @@ qthreshold 	= 0.75				   # quantile in distance threshold
 
 file_root 	= linear_PS                        # root to output files names 
 screen          = 0			           # rather (1) or not (0) to screen outputs
-ncores          = 0				   # number of cores
+ncores          = -1				   # number of cores
 split_output    = 1                                # number of intermediate steps written to file
 
 

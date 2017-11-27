@@ -1,7 +1,11 @@
 import sys
 import os
 import numpy as np
+
+import matplotlib
+matplotlib.use("Agg")
 import pylab as plt
+
 from astropy.table import Table, Column
 from astropy.io import ascii
 
@@ -30,7 +34,7 @@ def get_n_S_arr(n_S_min, n_D, f_n_S_max, n_n_S):
     """
 
     start   = n_S_min
-    stop    = int(n_D * f_n_S_max)
+    stop    = n_D * f_n_S_max
     n_S_arr = np.logspace(np.log10(start), np.log10(stop), n_n_S, dtype='int')
  
     return n_S_arr, n_n_S
@@ -261,9 +265,11 @@ class Results:
             if len(n) > 1:
                 box_width = (n[1] - n[0]) / 2
             else:
-                box_width = 1
+                box_width = 50
         else:
             box_width = boxwidth
+
+        print('box_width = {}'.format(box_width))
             
 
         # Set the number of required subplots (1 or 2)
@@ -279,7 +285,8 @@ class Results:
             n_panel = 1
             j_panel[j_panel.keys()[0]] = 1
 
-        width = lambda p, box_width: 10**(np.log10(p)+box_width/2.)-10**(np.log10(p)-box_width/2.)
+        #width = lambda p, box_width: 10**(np.log10(p)+box_width/2.)-10**(np.log10(p)-box_width/2.)
+        width = lambda p, box_width: np.zeros(len(n)) + float(box_width)
 
         for j, which in enumerate(['mean', 'std']):
             for i, p in enumerate(self.par_name):
@@ -289,11 +296,10 @@ class Results:
 
                     if y.shape[1] > 1:
                         bplot = plt.boxplot(y.transpose(), positions=n, sym='.', widths=width(n, box_width))
-                        print(width(n, box_width))
                         for key in bplot:
                             plt.setp(bplot[key], color=color[i], linewidth=2)
                         plt.setp(bplot['whiskers'], linestyle='-', linewidth=2)
-                        ax.set_xscale('log')
+                        #ax.set_xscale('log')
                     else:
                         plt.plot(n, y.mean(axis=1), marker[i], ms=markersize[i], color=color[i])
                         ax.set_xscale('log')

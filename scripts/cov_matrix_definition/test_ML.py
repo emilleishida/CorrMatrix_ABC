@@ -920,6 +920,37 @@ def fit_corr_SH(x1, cov_true, cov_est_inv, n_jobs=3):
 
 
 
+def set_fit_MCMC(fit, res, i, run):
+    """Set mean and std of fit according to stan output res.
+    
+    Parameters
+    ----------
+    fit: class Results
+        fit data
+    res: stan fitting object
+        fit output
+    i: int
+        current n_S index
+    run: int
+        current run number
+
+    Returns
+    -------
+    None
+    """
+
+    la  = res.extract(permuted=True)
+    par  = []
+    dpar = []
+    for p in fit.par_name:
+        par.append(np.mean(la[p]))
+        dpar.append(np.std(la[p]))
+
+    fit.set(par, i, run, which='mean')
+    fit.set(dpar, i, run, which='std')
+
+
+
 def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options):
     """Simulate data"""
         
@@ -979,31 +1010,18 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_an
 
             # MCMC fit of Parameters
             if options.do_fit_stan == True:
-                if options.likelihood == 'norm':
+                if re.search('norm', options.likelihood) is not None:
                     if options.verbose == True:
                         print('Running MCMC with mv normal likelihood')
                     res = fit_corr(x1, cov, cov_est, n_jobs=options.n_jobs)
-                    fit = fit_norm
-                elif options.likelihood == 'SH':
+                    set_fit_MCMC(fit_norm, res, i, run)
+                if re.search('SH', options.likelihood) is not None:
                     if options.verbose == True:
                         print('Running MCMC with Sellentin&Heavens (SH) likelihood')
                     res = fit_corr_SH(x1, cov, cov_est_inv, n_jobs=options.n_jobs)
-                    fit = fit_SH
-                else:
-                    error('Invalid likelihood \'{}\''.format(options.likelihood))
+                    set_fit_MCMC(fit_SH, res, i, run)
 
-                la  = res.extract(permuted=True)
-                par  = []
-                dpar = []
-                for p in fit.par_name:
-                    par.append(np.mean(la[p]))
-                    dpar.append(np.std(la[p]))
-
-                fit.set(par, i, run, which='mean')
-                fit.set(dpar, i, run, which='std')
-
-
-
+                
 
 def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options):
     """Write simulated runs to files"""
@@ -1046,12 +1064,10 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fis
     fish_num.write_Fisher(n_S_arr)
     fish_deb.write_mean_std(n_S_arr)
     if options.do_fit_stan == True:
-        if options.likelihood == 'norm':
+        if re.search('norm', options.likelihood) is not None:
             fit_norm.write_mean_std(n_S_arr)
-        elif options.likelihood == 'SH':
+        if re.search('SH', options.likelihood) is not None:
             fit_SH.write_mean_std(n_S_arr)
-        else:
-             error('Invalid likelihood \'{}\''.format(options.likelihood))
 
     sigma_ML.write_mean_std(n_S_arr)
     sigma_m1_ML.write_mean_std(n_S_arr)
@@ -1072,9 +1088,10 @@ def read_from_file(sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, f
     fish_deb.read_mean_std()
 
     if options.do_fit_stan:
-        # Reading both irrespective of -L (likelihood) flag
-        fit_norm.read_mean_std()
-        fit_SH.read_mean_std()
+        if re.search('norm', options.likelihood) is not None:
+            fit_norm.read_mean_std()
+        if re.search('SH', options.likelihood) is not None:
+            fit_SH.read_mean_std()
 
     sigma_ML.read_mean_std()
     sigma_m1_ML.read_mean_std()
@@ -1123,10 +1140,6 @@ def main(argv=None):
 
     # Number of simulations
     n_S_arr, n_n_S = get_n_S_arr(param.n_S_min, param.n_D, param.f_n_S_max, param.n_n_S)
-    #start = param.n_S_min
-    #stop  = int(param.n_D * param.f_n_S_max)
-    #n_S_arr = np.logspace(np.log10(start), np.log10(stop), param.n_n_S, dtype='int')
-    #n_n_S = len(n_S_arr)
 
     # Display n_S array and exit
     if re.search('d', param.mode) is not None:
@@ -1185,8 +1198,10 @@ def main(argv=None):
     fish_num.plot_mean_std(n_S_arr, options.n_D, par={'std': dpar_exact})
     fish_deb.plot_mean_std(n_S_arr, options.n_D, par={'std': dpar_exact})
     if options.do_fit_stan == True:
-        fit_norm.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact})
-        fit_SH.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact})
+        if re.search('norm', options.likelihood) is not None:
+            fit_norm.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact})
+        if re.search('SH', options.likelihood) is not None:
+            fit_SH.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact})
 
     dpar2 = dpar_exact**2
 
@@ -1194,8 +1209,10 @@ def main(argv=None):
 
     fish_deb.plot_std_var(n_S_arr, options.n_D, par=dpar2)
     if options.do_fit_stan == True:
-        fit_norm.plot_std_var(n_S_arr, options.n_D, par=dpar2)
-        fit_SH.plot_std_var(n_S_arr, options.n_D, par=dpar2)
+        if re.search('norm', options.likelihood) is not None:
+            fit_norm.plot_std_var(n_S_arr, options.n_D, par=dpar2)
+        if re.search('SH', options.likelihood) is not None:
+            fit_SH.plot_std_var(n_S_arr, options.n_D, par=dpar2)
 
     sigma_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [options.sig2]})
     sigma_m1_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [1/options.sig2]})
