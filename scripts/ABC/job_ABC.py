@@ -97,6 +97,8 @@ def parse_options(p_def):
 
     parser.add_option('-b', '--boxwidth', dest='boxwidth', type='float', default=None,
         help='box width for box plot, default=None, determined from n_S array')
+    parser.add_option('', '--xlog', dest='xlog', action='store_true',
+        help='logarithmic x-axis for box plots')
 
     parser.add_option('', '--template_dir', dest='templ_dir', type='string', default=p_def.templ_dir,
         help='Template directory, default=\'{}\''.format(p_def.templ_dir))
@@ -545,7 +547,7 @@ def main(argv=None):
 
     par = my_string_split(param.spar, num=2, verbose=param.verbose, stop=True)
     param.par = [float(p) for p in par]
-    fit_ABC.plot_mean_std(n_S_arr, param.n_D, par={'mean': param.par, 'std': dpar_exact}, boxwidth=param.boxwidth)
+    fit_ABC.plot_mean_std(n_S_arr, param.n_D, par={'mean': param.par, 'std': dpar_exact}, boxwidth=param.boxwidth, xlog=param.xlog)
 
 
     return 0

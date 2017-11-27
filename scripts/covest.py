@@ -232,7 +232,7 @@ class Results:
         return True
 
 
-    def plot_mean_std(self, n, n_D, par=None, boxwidth=None):
+    def plot_mean_std(self, n, n_D, par=None, boxwidth=None, xlog=False):
         """Plot mean and std versus number of realisations n
 
         Parameters
@@ -245,6 +245,8 @@ class Results:
             input parameter values and errors, default=None
         boxwidth: float, optional
             box width for box plots, default: None, width is determined from n
+        xlog: bool, optional
+            logarithmic x-axis, default False
 
         Returns
         -------
@@ -256,21 +258,33 @@ class Results:
         marker     = ['.', 'D']
         markersize = [6] * len(marker)
         color      = ['b', 'g']
-        fac_xlim   = 1.05
 
         plot_sth = False
         plot_init(n_D, n_R)
 
         if boxwidth == None:
-            if len(n) > 1:
-                box_width = (n[1] - n[0]) / 2
+            if xlog == False:
+                if len(n) > 1:
+                    box_width = (n[1] - n[0]) / 2
+                else:
+                    box_width = 50
             else:
-                box_width = 50
+                if len(n) > 1:
+                    box_width = np.sqrt(n[1]/n[0]) # ?
+                else:
+                    box_width = 0.1
+            
         else:
             box_width = boxwidth
 
-        print('box_width = {}'.format(box_width))
-            
+        if xlog == True:
+            fac_xlim = 1.6
+            xmin = n[0]/fac_xlim
+            xmax = n[-1]*fac_xlim
+        else:
+            fac_xlim   = 1.05
+            xmin = (n[0]-5)/fac_xlim**3
+            xmax = n[-1]*fac_xlim
 
         # Set the number of required subplots (1 or 2)
         j_panel = {}
@@ -285,8 +299,10 @@ class Results:
             n_panel = 1
             j_panel[j_panel.keys()[0]] = 1
 
-        #width = lambda p, box_width: 10**(np.log10(p)+box_width/2.)-10**(np.log10(p)-box_width/2.)
-        width = lambda p, box_width: np.zeros(len(n)) + float(box_width)
+        if xlog == True:
+            width = lambda p, box_width: 10**(np.log10(p)+box_width/2.)-10**(np.log10(p)-box_width/2.)
+        else:
+            width = lambda p, box_width: np.zeros(len(n)) + float(box_width)
 
         for j, which in enumerate(['mean', 'std']):
             for i, p in enumerate(self.par_name):
@@ -299,18 +315,19 @@ class Results:
                         for key in bplot:
                             plt.setp(bplot[key], color=color[i], linewidth=2)
                         plt.setp(bplot['whiskers'], linestyle='-', linewidth=2)
-                        #ax.set_xscale('log')
                     else:
                         plt.plot(n, y.mean(axis=1), marker[i], ms=markersize[i], color=color[i])
+
+                    if xlog == True:
                         ax.set_xscale('log')
 
+                    n_fine = np.arange(xmin, xmax, len(n)/10.0)
                     my_par = par[which]
                     if self.fct is not None and which in self.fct:
                         # Define high-resolution array for smoother lines
-                        n_fine = np.arange(n[0], n[-1], len(n)/10.0)
                         plt.plot(n_fine, self.fct[which](n_fine, n_D, my_par[i]), '{}-.'.format(color[i]), linewidth=2)
 
-                    plt.plot(n, no_bias(n, n_D, my_par[i]), '{}-'.format(color[i]), label='{}$({})$'.format(which, p), linewidth=2)
+                    plt.plot(n_fine, no_bias(n_fine, n_D, my_par[i]), '{}-'.format(color[i]), label='{}$({})$'.format(which, p), linewidth=2)
 
         # Finalize plot
         for j, which in enumerate(['mean', 'std']):
@@ -320,7 +337,7 @@ class Results:
                 plt.ylabel('<{}>'.format(which))
                 #plt.xticks2()?bo alpha, or n_d / n_s
                 plt.xticks(rotation = 'vertical')
-                plt.xlim((n[0]-5)/fac_xlim**3, n[-1]*fac_xlim)
+                plt.xlim(xmin, xmax)
                 ax.set_yscale(self.yscale[j])
                 plot_sth = True
 
