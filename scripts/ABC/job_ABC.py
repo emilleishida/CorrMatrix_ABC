@@ -3,19 +3,27 @@
 # Compability with python2.x for x>6
 from __future__ import print_function
 
+# job_ABC.py
+# Martin Kilbinger (2017)
+
 
 import sys
 import os
 import re
 import subprocess
+import copy
 
 import shlex
 from shutil import copy2
+
+from optparse import OptionParser
+from optparse import OptionGroup
 
 import numpy as np
 
 sys.path.append('..')
 sys.path.append('../..')
+sys.path.append('{}/astro/ABC/CorrMatrix_ABC/scripts'.format(os.environ['HOME']))
 from covest import *
 
 
@@ -33,20 +41,132 @@ def params_default():
         parameter values
     """
 
+    n_D = 750
+
     p_def = param(
-        n_D = 750,
+        n_D = n_D,
         n_R = 4,
         n_n_S = 10,
-        f_n_S_max = 10,
+        f_n_S_max = 10.0,
+        n_S_min = n_D + 5,
         spar = '1.0 0.0',
         sig2 = 5.0,
         verbose = True,
-        templ_dir = 'templates',
+        templ_dir = './templates',
         mode = 's',
     )
 
     return p_def
 
+
+
+def parse_options(p_def):
+    """Parse command line options.
+
+    Parameters
+    ----------
+    p_def: class mkstuff.param
+        parameter values
+
+    Returns
+    -------
+    options: tuple
+        Command line options
+    args: string
+        Command line string
+    """
+
+    usage  = "%prog [OPTIONS]"
+    parser = OptionParser(usage=usage)
+
+    parser.add_option('-D', '--n_D', dest='n_D', type='int', default=p_def.n_D,
+        help='Number of data points, default={}'.format(p_def.n_D))
+    parser.add_option('-R', '--n_R', dest='n_R', type='int', default=p_def.n_R,
+        help='Number of runs per simulation, default={}'.format(p_def.n_R))
+    parser.add_option('', '--n_n_S', dest='n_n_S', type='int', default=p_def.n_n_S,
+        help='Number of n_S, where n_S is the number of simulation, default={}'.format(p_def.n_n_S))
+    parser.add_option('', '--f_n_S_max', dest='f_n_S_max', type='float', default=p_def.f_n_S_max,
+        help='Maximum n_S = n_D x f_n_S_max, default: f_n_S_max={}'.format(p_def.f_n_S_max))
+    parser.add_option('', '--n_S_min', dest='n_S_min', type='int', default=p_def.n_S_min,
+        help='Minimum n_S, default=n_D+5 ({})'.format(p_def.n_S_min))
+    parser.add_option('', '--n_S', dest='str_n_S', type='string', default=None,
+        help='Array of n_S, default=None. If given, overrides n_S_min, n_n_S and f_n_S_max')
+
+    parser.add_option('-m', '--mode', dest='mode', type='string', default=p_def.mode,
+        help='Mode: \'s\'=simulate, \'r\'=read ABC dirs, \'R\'=read master file, default={}'.format(p_def.mode))
+
+    parser.add_option('-b', '--boxwidth', dest='boxwidth', type='float', default=None,
+        help='box width for box plot, default=None, determined from n_S array')
+    parser.add_option('', '--xlog', dest='xlog', action='store_true',
+        help='logarithmic x-axis for box plots')
+
+    parser.add_option('', '--template_dir', dest='templ_dir', type='string', default=p_def.templ_dir,
+        help='Template directory, default=\'{}\''.format(p_def.templ_dir))
+
+
+    parser.add_option('-v', '--verbose', dest='verbose', action='store_true', help='verbose output')
+
+    options, args = parser.parse_args()
+
+    return options, args
+
+
+
+def check_options(options):
+    """Check command line options.
+
+    Parameters
+    ----------
+    options: tuple
+        Command line options
+
+    Returns
+    -------
+    erg: bool
+        Result of option check. False if invalid option value.
+    """
+
+    return True
+
+
+
+def update_param(p_def, options):
+    """Return default parameter, updated and complemented according to options.
+    
+    Parameters
+    ----------
+    p_def:  class mkstuff.param
+        parameter values
+    optiosn: tuple
+        command line options
+    
+    Returns
+    -------
+    param: class mkstuff.param
+        updated paramter values
+    """
+
+    param = copy.copy(p_def)
+
+    # Update keys in param according to options values
+    for key in vars(param):
+        if key in vars(options):
+            setattr(param, key, getattr(options, key))
+
+    # Add remaining keys from options to param
+    for key in vars(options):
+        if not key in vars(param):
+            setattr(param, key, getattr(options, key))
+
+    # Do extra stuff if necessary
+
+    if options.str_n_S == None:
+        param.n_S = None
+    else:
+        str_n_S_list = my_string_split(options.str_n_S, verbose=False, stop=True)
+        param.n_S = [int(str_n_S) for str_n_S in str_n_S_list]
+
+    return param
 
 
 
@@ -290,33 +410,39 @@ def run_ABC_in_dir(real_dir, n_S, templ_dir):
 
 
 
-def simulate(n_S_arr, options):
+def simulate(n_S_arr, param):
+
+    if param.verbose == True:
+        print('Creating {} simulations with {} runs each'.format(len(n_S_arr), param.n_R))
 
     for i, n_S in enumerate(n_S_arr):
 
-        if options.verbose == True:
+        if param.verbose == True:
             print('{}/{}: n_S={}'.format(i+1, len(n_S_arr), n_S))
 
         base_dir = 'nsim_{}'.format(n_S)
 
         # Loop over realisations
-        for run in range(options.n_R):
+        for run in range(param.n_R):
 
             real_dir = '{}/nr_{}'.format(base_dir, run)
             if not os.path.exists(real_dir):
                 os.makedirs(real_dir)
 
-            #if os.path.exists('{}/num_res_nsim_{}.dat'.format(real_dir, n_S)):
             if os.path.exists('{}/num_res.dat'.format(real_dir)):
-                 print('Skipping {}'.format(real_dir))
-                 #next
+                if param.verbose == True:
+                    print('Skipping {}'.format(real_dir))
             else:
-                 print('Running {}'.format(real_dir))
-                 run_ABC_in_dir(real_dir, n_S, options.templ_dir)
+                if param.verbose == True:
+                    print('Running {}'.format(real_dir))
+                run_ABC_in_dir(real_dir, n_S, param.templ_dir)
 
 
 
 def read_from_ABC_dirs(n_S_arr, par_name, fit_ABC, options):
+
+    if options.verbose == True:
+        print('Reading simulation results (mean, std) from disk (ABC run directories)')
 
     for i, n_S in enumerate(n_S_arr):
 
@@ -357,41 +483,63 @@ def main(argv=None):
     par_name = ['a', 'b']            # Parameter list
     delta    = 200
 
-    options = params_default()
+    p_def = params_default()
+    options, args = parse_options(p_def)
+
+    if check_options(options) is False:
+        return 1
+
+    param = update_param(p_def, options)
+
+    # Save calling command
+    log_command(argv)
+    if options.verbose:
+        log_command(argv, name='sys.stderr')
+
 
     # Number of simulations
-    #start = options.n_D + 5
-    #stop  = options.n_D * options.f_n_S_max
-    #start = 58
-    #stop  = 584
-    start = 4
-    stop = 46
-    n_S_arr = np.logspace(np.log10(start), np.log10(stop), options.n_n_S, dtype='int')
+    if param.n_S == None:
+        start = param.n_S_min
+        stop  = int(param.n_D * param.f_n_S_max)
+        n_S_arr = np.logspace(np.log10(start), np.log10(stop), param.n_n_S, dtype='int')
+    else:
+        n_S_arr = param.n_S
+
     n_n_S = len(n_S_arr)
 
 
+    # Display n_S array and exit
+    if re.search('d', param.mode) is not None:
+        print('n_S =', n_S_arr)
+        return 0
+
     # Initialisation of results
-    fit_ABC = Results(par_name, n_n_S, options.n_R, file_base='mean_std_ABC', yscale=['linear', 'log'])
+    fit_ABC = Results(par_name, n_n_S, param.n_R, file_base='mean_std_ABC', yscale=['linear', 'log'])
 
 
     # Create simulations
-    if re.search('s', options.mode) is not None:
+    if re.search('s', param.mode) is not None:
 
-        simulate(n_S_arr, options)
+        simulate(n_S_arr, param)
 
-    # Read simulations
-    if re.search('r', options.mode) is not None:
+    # Read simulations from ABC run directories and write to master file
+    if re.search('r', param.mode) is not None:
 
-        read_from_ABC_dirs(n_S_arr, par_name, fit_ABC, options)
+        read_from_ABC_dirs(n_S_arr, par_name, fit_ABC, param)
+        fit_ABC.write_mean_std(n_S_arr)
 
-    fit_ABC.write_mean_std(n_S_arr)
+    if re.search('R', param.mode) is not None:
 
-    x1 = np.zeros(shape = options.n_D)
-    dpar_exact, det = Fisher_error_ana(x1, options.sig2, delta, mode=-1)
+        if param.verbose == True:
+            print('Reading simulation results (mean, std) from disk (master file)')
+        fit_ABC.read_mean_std()
 
-    par = my_string_split(options.spar, num=2, verbose=options.verbose, stop=True)
-    options.par = [float(p) for p in par]
-    fit_ABC.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact})
+    x1 = np.zeros(shape = param.n_D) # Dummy variable
+    dpar_exact, det = Fisher_error_ana(x1, param.sig2, delta, mode=-1)
+
+    par = my_string_split(param.spar, num=2, verbose=param.verbose, stop=True)
+    param.par = [float(p) for p in par]
+    fit_ABC.plot_mean_std(n_S_arr, param.n_D, par={'mean': param.par, 'std': dpar_exact}, boxwidth=param.boxwidth, xlog=param.xlog)
 
 
     return 0

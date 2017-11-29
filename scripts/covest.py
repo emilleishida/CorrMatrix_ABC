@@ -1,8 +1,43 @@
 import sys
+import os
 import numpy as np
+
+import matplotlib
+matplotlib.use("Agg")
 import pylab as plt
+
 from astropy.table import Table, Column
 from astropy.io import ascii
+
+
+
+def get_n_S_arr(n_S_min, n_D, f_n_S_max, n_n_S):
+    """Return array of values of n_S=number of simulations.
+
+    Parameters
+    ----------
+    n_S_min: int
+        smallest n_S
+    n_D: int
+        number of data points
+    f_n_S_max: float
+        largest n_S = f_n_S_max * n_D
+    n_n_S: int
+        number of values for n_S
+
+    Returns
+    -------
+    n_S_arr: array of int
+        array with n_S values
+    n_n_S: int
+        number of n_S values
+    """
+
+    start   = n_S_min
+    stop    = n_D * f_n_S_max
+    n_S_arr = np.logspace(np.log10(start), np.log10(stop), n_n_S, dtype='int')
+ 
+    return n_S_arr, n_n_S
 
 
 
@@ -94,6 +129,7 @@ class Results:
                     col_name = 'std[{0:s}]_run{1:02d}'.format(p, run)
                     self.std[p].transpose()[run] = dat[col_name]
 
+
     def write_mean_std(self, n, format='ascii'):
         """Write mean and std to file
         """
@@ -120,12 +156,14 @@ class Results:
 
         n_n_S, n_R = self.mean[self.par_name[0]].shape
         if format == 'ascii':
-            dat = ascii.read('F_{}.txt'.format(self.file_base))
-            for run in range(n_R):
-                for i in (0,1):
-                    for j in (0,1):
-                        col_name = 'F[{0:d},{1:d}]_run{2:02d}'.format(i, j, run)
-                        self.F[:, run, i, j] = dat[col_name].transpose()
+            fname = 'F_{}.txt'.format(self.file_base)
+            if os.path.isfile(fname):
+                dat = ascii.read(fname)
+                for run in range(n_R):
+                    for i in (0,1):
+                        for j in (0,1):
+                            col_name = 'F[{0:d},{1:d}]_run{2:02d}'.format(i, j, run)
+                            self.F[:, run, i, j] = dat[col_name].transpose()
 
 
     def write_Fisher(self, n, format='ascii'):
@@ -194,7 +232,7 @@ class Results:
         return True
 
 
-    def plot_mean_std(self, n, n_D, par=None):
+    def plot_mean_std(self, n, n_D, par=None, boxwidth=None, xlog=False):
         """Plot mean and std versus number of realisations n
 
         Parameters
@@ -205,6 +243,10 @@ class Results:
             dimension of data vector
         par: dictionary of array of float, optional
             input parameter values and errors, default=None
+        boxwidth: float, optional
+            box width for box plots, default: None, width is determined from n
+        xlog: bool, optional
+            logarithmic x-axis, default False
 
         Returns
         -------
@@ -216,12 +258,33 @@ class Results:
         marker     = ['.', 'D']
         markersize = [6] * len(marker)
         color      = ['b', 'g']
-        fac_xlim   = 1.05
 
         plot_sth = False
         plot_init(n_D, n_R)
 
-        box_width = (n[1] - n[0]) / 2
+        if boxwidth == None:
+            if xlog == False:
+                if len(n) > 1:
+                    box_width = (n[1] - n[0]) / 2
+                else:
+                    box_width = 50
+            else:
+                if len(n) > 1:
+                    box_width = np.sqrt(n[1]/n[0]) # ?
+                else:
+                    box_width = 0.1
+            
+        else:
+            box_width = boxwidth
+
+        if xlog == True:
+            fac_xlim = 1.6
+            xmin = n[0]/fac_xlim
+            xmax = n[-1]*fac_xlim
+        else:
+            fac_xlim   = 1.05
+            xmin = (n[0]-5)/fac_xlim**3
+            xmax = n[-1]*fac_xlim
 
         # Set the number of required subplots (1 or 2)
         j_panel = {}
@@ -236,6 +299,10 @@ class Results:
             n_panel = 1
             j_panel[j_panel.keys()[0]] = 1
 
+        if xlog == True:
+            width = lambda p, box_width: 10**(np.log10(p)+box_width/2.)-10**(np.log10(p)-box_width/2.)
+        else:
+            width = lambda p, box_width: np.zeros(len(n)) + float(box_width)
 
         for j, which in enumerate(['mean', 'std']):
             for i, p in enumerate(self.par_name):
@@ -244,20 +311,23 @@ class Results:
                     ax = plt.subplot(1, n_panel, j_panel[which])
 
                     if y.shape[1] > 1:
-                        bplot = plt.boxplot(y.transpose(), positions=n, sym='.', widths=box_width)
+                        bplot = plt.boxplot(y.transpose(), positions=n, sym='.', widths=width(n, box_width))
                         for key in bplot:
                             plt.setp(bplot[key], color=color[i], linewidth=2)
                         plt.setp(bplot['whiskers'], linestyle='-', linewidth=2)
                     else:
                         plt.plot(n, y.mean(axis=1), marker[i], ms=markersize[i], color=color[i])
 
+                    if xlog == True:
+                        ax.set_xscale('log')
+
+                    n_fine = np.arange(xmin, xmax, len(n)/10.0)
                     my_par = par[which]
                     if self.fct is not None and which in self.fct:
                         # Define high-resolution array for smoother lines
-                        n_fine = np.arange(n[0], n[-1], len(n)/10.0)
                         plt.plot(n_fine, self.fct[which](n_fine, n_D, my_par[i]), '{}-.'.format(color[i]), linewidth=2)
 
-                    plt.plot(n, no_bias(n, n_D, my_par[i]), '{}-'.format(color[i]), label='{}$({})$'.format(which, p), linewidth=2)
+                    plt.plot(n_fine, no_bias(n_fine, n_D, my_par[i]), '{}-'.format(color[i]), label='{}$({})$'.format(which, p), linewidth=2)
 
         # Finalize plot
         for j, which in enumerate(['mean', 'std']):
@@ -267,7 +337,7 @@ class Results:
                 plt.ylabel('<{}>'.format(which))
                 #plt.xticks2()?bo alpha, or n_d / n_s
                 plt.xticks(rotation = 'vertical')
-                plt.xlim((n[0]-5)/fac_xlim**3, n[-1]*fac_xlim)
+                plt.xlim(xmin, xmax)
                 ax.set_yscale(self.yscale[j])
                 plot_sth = True
 
@@ -320,7 +390,8 @@ class Results:
 
 def plot_init(n_D, n_R):
 
-    plt.figure()
+    fig = plt.figure()
+    fig.subplots_adjust(bottom=0.16)
     #plt.tight_layout() # makes space for large labels
     ax = plt.gca()
 
@@ -395,12 +466,12 @@ def detF(n_D, sig2, delta):
 
 
 def Fisher_error_ana(x, sig2, delta, mode=-1):
-    """Return Fisher matrix errors, and detminant if mode==2, for affine function parameters (a, b)
+    """Return Fisher matrix parameter errors (std), and Fisher matrix detminant, for affine function parameters (a, b)
     """
 
     n_D = len(x)
 
-    # The three following ways to compute the Fisher matrix errors are equivalent.
+    # The four following ways to compute the Fisher matrix errors are statistically equivalent.
     # Note that mode==-1,0 uses the statistical properties mean and variance of the uniform
     # distribution, whereas more=1,2 uses the actual sample x.
 
@@ -488,5 +559,56 @@ def my_string_split(string, num=-1, verbose=False, stop=False):
             return None
 
     return res
+
+
+
+def log_command(argv, name=None, close_no_return=True):
+    """Write command with arguments to a file or stdout.
+       Choose name = 'sys.stdout' or 'sys.stderr' for output on sceen.
+
+    Parameters
+    ----------
+    argv: array of strings
+        Command line arguments
+    name: string
+        Output file name (default: 'log_<command>')
+    close_no_return: bool
+        If True (default), close log file. If False, keep log file open
+        and return file handler
+
+    Returns
+    -------
+    log: filehandler
+        log file handler (if close_no_return is False)
+    """
+
+    if name is None:
+        name = 'log_' + os.path.basename(argv[0])
+
+    if name == 'sys.stdout':
+        f = sys.stdout
+    elif name == 'sys.stderr':
+        f = sys.stderr
+    else:
+        f = open(name, 'w')
+
+    for a in argv:
+
+        # Quote argument if special characters
+        if ']' in a or ']' in a:
+            a = '\"{}\"'.format(a)
+
+        print>>f, a,
+        #print>>f, ' ',
+
+    print>>f, ''
+
+    if close_no_return == False:
+        return f
+
+    if name != 'sys.stdout' and name != 'sys.stderr':
+        f.close()
+
+
 
 
