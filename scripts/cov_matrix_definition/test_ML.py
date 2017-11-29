@@ -79,7 +79,9 @@ def tr_N_m1_ML(n, n_D, par):
 
 def par_fish(n, n_D, par):
     """Fisher matrix parameter, not defined for mean.
-       Expectation value of TJK13 (43), follows from (25).
+       Expectation value of TJK13 (43), follows from (25), assuming
+       that estimated inverse is inverse of estimate. Improvement
+       using full Wishart distribution is TJ14 (11).
        This is 1/sqrt(alpha).
     """
 
