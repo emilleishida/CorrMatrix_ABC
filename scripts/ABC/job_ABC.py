@@ -498,14 +498,7 @@ def main(argv=None):
 
 
     # Number of simulations
-    if param.n_S == None:
-        start = param.n_S_min
-        stop  = int(param.n_D * param.f_n_S_max)
-        n_S_arr = np.logspace(np.log10(start), np.log10(stop), param.n_n_S, dtype='int')
-    else:
-        n_S_arr = param.n_S
-
-    n_n_S = len(n_S_arr)
+    n_S_arr, n_n_S = get_n_S_arr(param.n_S_min, param.n_D, param.f_n_S_max, param.n_n_S, n_S=param.n_S)
 
 
     # Display n_S array and exit

@@ -12,7 +12,7 @@ from astropy.io import ascii
 
 
 
-def get_n_S_arr(n_S_min, n_D, f_n_S_max, n_n_S):
+def get_n_S_arr(n_S_min, n_D, f_n_S_max, n_n_S, n_S=None):
     """Return array of values of n_S=number of simulations.
 
     Parameters
@@ -25,6 +25,8 @@ def get_n_S_arr(n_S_min, n_D, f_n_S_max, n_n_S):
         largest n_S = f_n_S_max * n_D
     n_n_S: int
         number of values for n_S
+    n_S: array of int, optional, default=None
+        array of number of simulations, overrides all other arguments if not None
 
     Returns
     -------
@@ -34,9 +36,13 @@ def get_n_S_arr(n_S_min, n_D, f_n_S_max, n_n_S):
         number of n_S values
     """
 
-    start   = n_S_min
-    stop    = n_D * f_n_S_max
-    n_S_arr = np.logspace(np.log10(start), np.log10(stop), n_n_S, dtype='int')
+    if n_S != None:
+        n_S_arr = n_S
+        n_n_S   = len(n_S_arr)
+    else:
+        start   = n_S_min
+        stop    = n_D * f_n_S_max
+        n_S_arr = np.logspace(np.log10(start), np.log10(stop), n_n_S, dtype='int')
  
     return n_S_arr, n_n_S
 
@@ -50,6 +56,39 @@ def no_bias(n, n_D, par):
     """
 
     return np.asarray([par] * len(n))
+
+
+def get_n_S_R_from_fit_file(file_base, npar=2):
+    """Return array of number of simulations, n_n_S, and number of runs, n_R from fit output file.
+
+    Parameters
+    ----------
+    file_base: string
+        input file name base (without extension)
+    npar: int
+        number of parameters, default=2
+
+    Returns
+    -------
+    n_n_S: array of int
+        array of number of simulations
+    n_R: int
+        number of runs
+    """
+
+    in_name = '{}.txt'.format(file_base)
+    try:
+        dat = ascii.read(in_name)
+    except IOError as exc:
+        if exc.errno == errno.ENOENT:
+            error('File {} not found'.format(in_name))
+        else:
+            raise
+
+    n_n_S = np.array(dat['n_S'].data)
+    n_R   = (len(dat.keys()) - 1) / 2 / 2
+
+    return n_n_S, n_R
 
 
 
@@ -116,14 +155,15 @@ class Results:
         return std_var
 
 
-    def read_mean_std(self, format='ascii'):
+    def read_mean_std(self, format='ascii', verbose=False):
         """Read mean and std from file
         """
 
         n_n_S, n_R = self.mean[self.par_name[0]].shape
         if format == 'ascii':
+            in_name = '{}.txt'.format(self.file_base)
             try:
-                dat = ascii.read('{}.txt'.format(self.file_base))
+                dat = ascii.read(in_name)
                 for p in self.par_name:
                     for run in range(n_R):
                         col_name = 'mean[{0:s}]_run{1:02d}'.format(p, run)
@@ -132,6 +172,8 @@ class Results:
                         self.std[p].transpose()[run] = dat[col_name]
             except IOError as exc:
                 if exc.errno == errno.ENOENT:
+                    if verbose == True:
+                        print('File {} not found, continuing'.format(in_name))
                     pass
                 else:
                     raise
