@@ -142,7 +142,7 @@ def std_fish_biased_TJK13(n, n_D, par):
 
 def std_fish_deb_TJ14(n, n_D, par):
     """Improved error on variance from the Fisher matrix.
-       From TJ14 (12). This seems to be the case of the debiased precision matrix..
+       From TJ14 (12). This seems to be the case of the debiased precision matrix.
     """
 
     n_P = 2  # Number of parameters
@@ -261,6 +261,8 @@ def plot_det(n, x, sig2, delta, F, n_R):
 
 def plot_std_fish_biased_ana(par_name, n, x, sig2, delta, F=None, n_R=0):
 
+    EPS = 1e-6
+
     n_D = len(x)
     plot_init(n_D, n_R)
     ax = plt.subplot(1, 1, 1)
@@ -296,26 +298,24 @@ def plot_std_fish_biased_ana(par_name, n, x, sig2, delta, F=None, n_R=0):
                 else:
                     fmean = F[i,0,:]
                 det = fmean[0,0] * fmean[1,1] - fmean[0,1] ** 2
-                #print('{} {} {}'.format(nn, det, 1.0/det))
-                # MKDEBUG 24/10: I can reproduce theory curve if I take theory det.
-                # Uncomment following line.
-                #det = 75000000.0
-                # So maybe it is indeed higher-order terms that would reproduce data?
-                # Or extra uncertainty from inverse in det?
 
             for run in range(n_R):
                 f     = F[i,run]
+
                 if mode == 1:    # Numerical inverse
-                    Fm1[run] = np.linalg.inv(F[i,run])
+                    if f.any():
+                        Fm1[run] = np.linalg.inv(f)
 
                 elif mode == 2:  # Analytical inverse
                     det = f[0,0] * f[1,1] - f[0,1] ** 2
-                    Fm1[run,0,0] = f[1,1] / det
-                    Fm1[run,1,1] = f[0,0] / det
+                    if det > EPS:
+                        Fm1[run,0,0] = f[1,1] / det
+                        Fm1[run,1,1] = f[0,0] / det
 
                 elif mode == 3:  # Analytical inverse with mean determinant (first-order term)
-                    Fm1[run,0,0] = f[1,1] / det
-                    Fm1[run,1,1] = f[0,0] / det
+                    if det > EPS:
+                        Fm1[run,0,0] = f[1,1] / det
+                        Fm1[run,1,1] = f[0,0] / det
 
             std_a.append(np.std(Fm1[:,0,0]))
             std_b.append(np.std(Fm1[:,1,1]))
@@ -435,6 +435,9 @@ def parse_options(p_def):
         help='Maximum n_S = n_D x f_n_S_max, default: f_n_S_max={}'.format(p_def.f_n_S_max))
     parser.add_option('', '--n_S_min', dest='n_S_min', type='int', default=p_def.n_S_min,
         help='Minimum n_S, default=n_D+5 ({})'.format(p_def.n_S_min))
+    parser.add_option('', '--n_S', dest='str_n_S', type='string', default=None,
+        help='Array of n_S, default=None. If given, overrides n_S_min, n_n_S and f_n_S_max')
+
 
     parser.add_option('-p', '--par', dest='spar', type='string', default=p_def.spar,
         help='list of parameter values, default=\'{}\''.format(p_def.spar))
@@ -526,6 +529,13 @@ def update_param(p_def, options):
     options.par = [float(p) for p in par]
     options.a = options.par[0]
     options.b = options.par[1]
+
+    if options.str_n_S == None:
+        param.n_S = None
+    else:
+        str_n_S_list = my_string_split(options.str_n_S, verbose=False, stop=True)
+        param.n_S = [int(str_n_S) for str_n_S in str_n_S_list]
+
 
     return param
 
@@ -1077,27 +1087,27 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fis
 
 
 
-def read_from_file(sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options):
+def read_from_file(sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, param):
     """Read simulated runs from files"""
 
-    if options.verbose == True:
+    if param.verbose == True:
         print('Reading simulations from disk')
 
-    if options.do_fish_ana == True:
+    if param.do_fish_ana == True:
         fish_ana.read_mean_std()
-    fish_num.read_mean_std()
+    fish_num.read_mean_std(verbose=param.verbose)
     fish_num.read_Fisher()
-    fish_deb.read_mean_std()
+    fish_deb.read_mean_std(verbose=param.verbose)
 
-    if options.do_fit_stan:
-        if re.search('norm', options.likelihood) is not None:
-            fit_norm.read_mean_std()
-        if re.search('SH', options.likelihood) is not None:
-            fit_SH.read_mean_std()
+    if param.do_fit_stan:
+        if re.search('norm', param.likelihood) is not None:
+            fit_norm.read_mean_std(verbose=param.verbose)
+        if re.search('SH', param.likelihood) is not None:
+            fit_SH.read_mean_std(verbose=param.verbose)
 
-    sigma_ML.read_mean_std()
-    sigma_m1_ML.read_mean_std()
-    sigma_m1_ML_deb.read_mean_std()
+    sigma_ML.read_mean_std(verbose=param.verbose)
+    sigma_m1_ML.read_mean_std(verbose=param.verbose)
+    sigma_m1_ML_deb.read_mean_std(verbose=param.verbose)
 
     
 
@@ -1141,7 +1151,7 @@ def main(argv=None):
     delta    = 200                   # Width of uniform distribution for x
 
     # Number of simulations
-    n_S_arr, n_n_S = get_n_S_arr(param.n_S_min, param.n_D, param.f_n_S_max, param.n_n_S)
+    n_S_arr, n_n_S = get_n_S_arr(param.n_S_min, param.n_D, param.f_n_S_max, param.n_n_S, n_S=param.n_S)
 
     # Display n_S array and exit
     if re.search('d', param.mode) is not None:
@@ -1160,7 +1170,7 @@ def main(argv=None):
     fish_deb = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_deb', yscale='log', \
                        fct={'std': no_bias, 'std_var_TJK13': std_fish_deb, 'std_var_TJ14': std_fish_deb_TJ14})
     fit_norm = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_norm', yscale=['linear', 'log'],
-                       fct={'std': par_fish, 'std_var': std_fish_biased})
+                       fct={'std': par_fish, 'std_var': std_fish_biased, 'std_var_TJK13': std_fish_biased_TJK13, 'std_var_TJ14': std_fish_biased_TJ14})
     fit_SH   = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_SH', yscale=['linear', 'log'],
                        fct={'std': par_fish, 'std_var': std_fish_biased})
 
@@ -1180,7 +1190,7 @@ def main(argv=None):
     # Read simulations
     if re.search('r', options.mode) is not None:
 
-        read_from_file(sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options)
+        read_from_file(sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, param)
 
 
     dpar_exact, det = Fisher_error_ana(x1, options.sig2, delta, mode=-1)
@@ -1221,8 +1231,8 @@ def main(argv=None):
     sigma_m1_ML_deb.plot_mean_std(n_S_arr, options.n_D, par={'mean': [1/options.sig2]})
 
     plot_std_fish_biased_ana(par_name, n_S_arr, x1, options.sig2, delta, F=fish_num.F, n_R=options.n_R)
-    plot_det(n_S_arr, x1, options.sig2, delta, fish_num.F, options.n_R)
-    plot_A_alpha2(n_S_arr, options.n_D, dpar2[1])
+    #plot_det(n_S_arr, x1, options.sig2, delta, fish_num.F, options.n_R)
+    #plot_A_alpha2(n_S_arr, options.n_D, dpar2[1])
 
     ### End main program
 
