@@ -91,17 +91,9 @@ def tr_N_m1_ML(n, n_D, par):
 
 
 def par_fish(n, n_D, par):
-<<<<<<< HEAD
-    """Fisher matrix parameter, not defined for mean.
-       Expectation value of TJK13 (43), follows from (25), assuming
-       that estimated inverse is inverse of estimate. Improvement
-       using full Wishart distribution is TJ14 (11).
-       This is 1/sqrt(alpha).
-=======
     """Parameter RMS from Fisher matrix using biased precision matrix.
        Square root of expectation value of TJK13 (43), follows from (25).
        Also square root of IK17 (9).
->>>>>>> 4ad50bbffa14d25cec59510bbeede79be2fdfcce
     """
 
     #return [np.sqrt(1.0 / alpha(n_S, n_D)) * par for n_S in n]
@@ -1021,7 +1013,9 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_an
                 if re.search('norm', options.likelihood) is not None:
                     if options.verbose == True:
                         print('Running MCMC with mv normal likelihood')
-                    res = fit_corr(x1, cov, cov_est, n_jobs=options.n_jobs)
+                    #res = fit_corr(x1, cov, cov_est, n_jobs=options.n_jobs)
+                    print('MKDEBUG: Running stan with true instead of estimated covariance for testing MCMC noise')
+                    res = fit_corr(x1, cov, cov, n_jobs=options.n_jobs)
                     set_fit_MCMC(fit_norm, res, i, run)
                 if re.search('SH', options.likelihood) is not None:
                     if options.verbose == True:
