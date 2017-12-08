@@ -1,6 +1,7 @@
 import sys
 import os
 import numpy as np
+import errno
 
 import matplotlib
 matplotlib.use("Agg")
@@ -121,13 +122,19 @@ class Results:
 
         n_n_S, n_R = self.mean[self.par_name[0]].shape
         if format == 'ascii':
-            dat = ascii.read('{}.txt'.format(self.file_base))
-            for p in self.par_name:
-                for run in range(n_R):
-                    col_name = 'mean[{0:s}]_run{1:02d}'.format(p, run)
-                    self.mean[p].transpose()[run] = dat[col_name]
-                    col_name = 'std[{0:s}]_run{1:02d}'.format(p, run)
-                    self.std[p].transpose()[run] = dat[col_name]
+            try:
+                dat = ascii.read('{}.txt'.format(self.file_base))
+                for p in self.par_name:
+                    for run in range(n_R):
+                        col_name = 'mean[{0:s}]_run{1:02d}'.format(p, run)
+                        self.mean[p].transpose()[run] = dat[col_name]
+                        col_name = 'std[{0:s}]_run{1:02d}'.format(p, run)
+                        self.std[p].transpose()[run] = dat[col_name]
+            except IOError as exc:
+                if exc.errno == errno.ENOENT:
+                    pass
+                else:
+                    raise
 
 
     def write_mean_std(self, n, format='ascii'):
