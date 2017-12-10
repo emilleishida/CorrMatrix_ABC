@@ -486,6 +486,8 @@ def check_options(options):
             error('Adding simulations (-a) only possible with random seed (-r)')
         if re.search('r', options.mode) is not None:
             error('Adding simulations (-a) is not  possible in read mode (-m r)')
+        if not os.path.isfile('sigma_ML.txt'):
+            error('Previous file \'sigma_ML.txt\' necessary for option -a (adding simulations)')
 
     if re.search('s', options.mode) is not None and re.search('r', options.mode) is not None:
         error('Simulation and read mode (-m rs) not possible simultaneously') 
@@ -1041,8 +1043,10 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fis
             print('Reading previous simulations from disk')
 
         # Initialise results
-        n_n_S, n_R  = numbers_from_file(sigma_ML.file_base, 1)
+        n_S, n_R         = get_n_S_R_from_fit_file(sigma_ML.file_base, npar=1)
+
         sigma_ML_prev    = Results(sigma_ML.par_name, n_n_S, n_R, file_base=sigma_ML.file_base)
+        n_n_S = 
         sigma_m1_ML_prev = Results(sigma_m1_ML.par_name, n_n_S, n_R, file_base=sigma_m1_ML.file_base)
         sigma_m1_ML_deb_prev = Results(sigma_m1_ML_deb.par_name, n_n_S, n_R, file_base=sigma_m1_ML_deb.file_base)
         fish_ana_prev    = Results(fish_ana.par_name, n_n_S, n_R, file_base=fish_ana.file_base, fct=fish_ana.fct)

@@ -70,7 +70,7 @@ def get_n_S_R_from_fit_file(file_base, npar=2):
 
     Returns
     -------
-    n_n_S: array of int
+    n_S: array of int
         array of number of simulations
     n_R: int
         number of runs
@@ -85,10 +85,10 @@ def get_n_S_R_from_fit_file(file_base, npar=2):
         else:
             raise
 
-    n_n_S = np.array(dat['n_S'].data)
+    n_S = np.array(dat['n_S'].data)
     n_R   = (len(dat.keys()) - 1) / 2 / 2
 
-    return n_n_S, n_R
+    return n_S, n_R
 
 
 
