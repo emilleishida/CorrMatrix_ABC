@@ -407,10 +407,16 @@ class Results:
         plot_init(n_D, n_R)
         ax = plt.subplot(1, 1, 1)
 
+        # For output ascii file
+        cols  = [n]
+        names = ['# n_S']
+
         for i, p in enumerate(self.par_name):
             y = self.get_std_var(p)
             if y.any():
                 plt.plot(n, y, marker='o', color=color[i], label='$\sigma[\sigma^2({})]$'.format(p), linestyle='None')
+                cols.append(y)
+                names.append('sigma(sigma^2({}))'.format(p))
 
         for i, p in enumerate(self.par_name):
             y = self.get_std_var(p)
@@ -418,11 +424,22 @@ class Results:
                 if par is not None:
                     n_fine = np.arange(n[0], n[-1], len(n)/10.0)
                     if 'std_var' in self.fct:
-                        plot_add_legend(i==0, n_fine, self.fct['std_var'](n_fine, n_D, par[i]), '-', color=color[i], label='This work')
+                        plot_add_legend(i==0, n_fine, self.fct['std_var'](n_fine, n_D, par[i]), \
+                                        '-', color=color[i], label='This work')
+                        cols.append(self.fct['std_var'](n, n_D, par[i]))
+                        names.append('IJ17({})'.format(p))
+
                     if 'std_var_TJK13' in self.fct:
-                        plot_add_legend(i==0, n_fine, self.fct['std_var_TJK13'](n_fine, n_D, par[i]), '--', color=color[i], label='TJK13')
+                        plot_add_legend(i==0, n_fine, self.fct['std_var_TJK13'](n_fine, n_D, par[i]), \
+                                        '--', color=color[i], label='TJK13')
+                        cols.append(self.fct['std_var_TJK13'](n, n_D, par[i]))
+                        names.append('TJK13({})'.format(p))
+
                     if 'std_var_TJ14' in self.fct:
-                        plot_add_legend(i==0, n_fine, self.fct['std_var_TJ14'](n_fine, n_D, par[i]), '-.', color=color[i], label='TJ14', linewidth=2)
+                        plot_add_legend(i==0, n_fine, self.fct['std_var_TJ14'](n_fine, n_D, par[i]), \
+                                        '-.', color=color[i], label='TJ14', linewidth=2)
+                        cols.append(self.fct['std_var_TJ14'](n, n_D, par[i]))
+                        names.append('TJ14({})'.format(p))
 
                 plt.xlabel('$n_{\\rm s}$')
                 plt.ylabel('std(var)')
@@ -432,8 +449,18 @@ class Results:
 
         plt.ylim(8e-9, 1e-2)
 
+        ### Output
+        outbase = 'std_2{}'.format(self.file_base)
+
+        # Plot/pdf
         if plot_sth == True:
-            plt.savefig('std_2{}.pdf'.format(self.file_base))
+            plt.savefig('{}.pdf'.format(outbase))
+
+        # Ascii
+        t = Table(cols, names=names)
+        f = open('{}.txt'.format(outbase), 'w')  
+        ascii.write(t, f, delimiter='\t')
+        f.close()
 
 
 
