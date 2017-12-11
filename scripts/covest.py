@@ -411,12 +411,16 @@ class Results:
         cols  = [n]
         names = ['# n_S']
 
+        subtr = [3.682803791761424e-08, 0.00016929798341341006]
+
         for i, p in enumerate(self.par_name):
             y = self.get_std_var(p)
             if y.any():
                 plt.plot(n, y, marker='o', color=color[i], label='$\sigma[\sigma^2({})]$'.format(p), linestyle='None')
                 cols.append(y)
                 names.append('sigma(sigma^2({}))'.format(p))
+
+                plt.plot(n, y-subtr[i], marker='o', mfc='none', color=color[i], label='$\sigma[\sigma^2({})]$ corrected'.format(p), linestyle='None')
 
         for i, p in enumerate(self.par_name):
             y = self.get_std_var(p)
