@@ -370,7 +370,7 @@ class Results:
                     if xlog == True:
                         ax.set_xscale('log')
 
-                    n_fine = np.arange(xmin, xmax, len(n)/10.0)
+                    n_fine = np.arange(n[0], n[-1], len(n)/10.0)
                     my_par = par[which]
                     if self.fct is not None and which in self.fct:
                         # Define high-resolution array for smoother lines
@@ -396,7 +396,7 @@ class Results:
             plt.savefig('{}.pdf'.format(self.file_base))
 
 
-    def plot_std_var(self, n, n_D, par=None):
+    def plot_std_var(self, n, n_D, par=None, sig_var_noise=None):
         """Plot standard deviation of parameter variance
         """
 
@@ -411,8 +411,6 @@ class Results:
         cols  = [n]
         names = ['# n_S']
 
-        subtr = [3.682803791761424e-08, 0.00016929798341341006]
-
         for i, p in enumerate(self.par_name):
             y = self.get_std_var(p)
             if y.any():
@@ -420,7 +418,9 @@ class Results:
                 cols.append(y)
                 names.append('sigma(sigma^2({}))'.format(p))
 
-                plt.plot(n, y-subtr[i], marker='o', mfc='none', color=color[i], label='$\sigma[\sigma^2({})]$ corrected'.format(p), linestyle='None')
+                if sig_var_noise != None:
+                    plt.plot(n, y - sig_var_noise[i], marker='o', mfc='none', color=color[i], \
+                             label='$\sigma[\sigma^2({0})] - \sigma_\textrm{{n}}[\sigma^2({0})]$'.format(p), linestyle='None')
 
         for i, p in enumerate(self.par_name):
             y = self.get_std_var(p)
