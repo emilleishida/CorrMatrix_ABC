@@ -1044,6 +1044,7 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fis
 
         # Initialise results
         n_S, n_R         = get_n_S_R_from_fit_file(sigma_ML.file_base, npar=1)
+        n_n_S            = len(n_S)
 
         sigma_ML_prev    = Results(sigma_ML.par_name, n_n_S, n_R, file_base=sigma_ML.file_base)
         n_n_S = 
