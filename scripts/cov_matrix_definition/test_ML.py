@@ -450,6 +450,8 @@ def parse_options(p_def):
         help='Calculate analytical Fisher matrix, default={}'.format(p_def.do_fish_ana))
     parser.add_option('-L', '--like', dest='likelihood', type='string', default=p_def.likelihood,
         help='Likelihood for MCMC, one in \'norm\'|\'SH\', default=\'{}\''.format(p_def.likelihood))
+    parser.add_option('', '--sig_var_noise', dest='sig_var_noise', type='string',
+        help='MCMC \'noise\' to be subtracted from sigma(var) plots for fits, default=None')
 
     parser.add_option('-m', '--mode', dest='mode', type='string', default=p_def.mode,
         help='Mode: \'s\'=simulate, \'r\'=read, default={}'.format(p_def.mode))
@@ -527,10 +529,13 @@ def update_param(p_def, options):
             setattr(param, key, getattr(options, key))
 
     # Do extra stuff if necessary
-    par = my_string_split(param.spar, num=2, verbose=options.verbose, stop=True)
+    par = my_string_split(param.spar, num=2, verbose=param.verbose, stop=True)
     options.par = [float(p) for p in par]
     options.a = options.par[0]
     options.b = options.par[1]
+
+    tmp = my_string_split(param.sig_var_noise, num=2, verbose=param.verbose, stop=True)
+    param.sig_var_noise = [float(s) for s in tmp]
 
     if options.str_n_S == None:
         param.n_S = None
@@ -1228,15 +1233,15 @@ def main(argv=None):
     fish_deb.plot_std_var(n_S_arr, options.n_D, par=dpar2)
     if options.do_fit_stan == True:
         if re.search('norm', options.likelihood) is not None:
-            fit_norm.plot_std_var(n_S_arr, options.n_D, par=dpar2)
+            fit_norm.plot_std_var(n_S_arr, options.n_D, par=dpar2, sig_var_noise=param.sig_var_noise)
         if re.search('SH', options.likelihood) is not None:
-            fit_SH.plot_std_var(n_S_arr, options.n_D, par=dpar2)
+            fit_SH.plot_std_var(n_S_arr, options.n_D, par=dpar2, sig_var_noise=param.sig_var_noise)
 
     sigma_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [options.sig2]})
     sigma_m1_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [1/options.sig2]})
     sigma_m1_ML_deb.plot_mean_std(n_S_arr, options.n_D, par={'mean': [1/options.sig2]})
 
-    plot_std_fish_biased_ana(par_name, n_S_arr, x1, options.sig2, delta, F=fish_num.F, n_R=options.n_R)
+    #plot_std_fish_biased_ana(par_name, n_S_arr, x1, options.sig2, delta, F=fish_num.F, n_R=options.n_R)
     #plot_det(n_S_arr, x1, options.sig2, delta, fish_num.F, options.n_R)
     #plot_A_alpha2(n_S_arr, options.n_D, dpar2[1])
 

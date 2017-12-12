@@ -37,7 +37,7 @@ def get_n_S_arr(n_S_min, n_D, f_n_S_max, n_n_S, n_S=None):
     """
 
     if n_S != None:
-        n_S_arr = n_S
+        n_S_arr = np.array(n_S)
         n_n_S   = len(n_S_arr)
     else:
         start   = n_S_min
@@ -173,7 +173,7 @@ class Results:
             except IOError as exc:
                 if exc.errno == errno.ENOENT:
                     if verbose == True:
-                        print('File {} not found, continuing'.format(in_name))
+                        warning('File {} not found'.format(in_name))
                     pass
                 else:
                     raise
@@ -370,7 +370,7 @@ class Results:
                     if xlog == True:
                         ax.set_xscale('log')
 
-                    n_fine = np.arange(xmin, xmax, len(n)/10.0)
+                    n_fine = np.arange(n[0], n[-1], len(n)/10.0)
                     my_par = par[which]
                     if self.fct is not None and which in self.fct:
                         # Define high-resolution array for smoother lines
@@ -396,7 +396,7 @@ class Results:
             plt.savefig('{}.pdf'.format(self.file_base))
 
 
-    def plot_std_var(self, n, n_D, par=None):
+    def plot_std_var(self, n, n_D, par=None, sig_var_noise=None):
         """Plot standard deviation of parameter variance
         """
 
@@ -417,6 +417,10 @@ class Results:
                 plt.plot(n, y, marker='o', color=color[i], label='$\sigma[\sigma^2({})]$'.format(p), linestyle='None')
                 cols.append(y)
                 names.append('sigma(sigma^2({}))'.format(p))
+
+                if sig_var_noise != None:
+                    plt.plot(n, y - sig_var_noise[i], marker='o', mfc='none', color=color[i], \
+                             label='$\sigma[\sigma^2({0})] - \sigma_n[\sigma^2({0})]$'.format(p), linestyle='None')
 
         for i, p in enumerate(self.par_name):
             y = self.get_std_var(p)
@@ -524,11 +528,20 @@ def error(str, val=1, stop=True, verbose=True):
 
     if stop is False:
         if verbose is True:
-            print>>sys.stderr,  "\x1b[31m{}, continuing...\x1b[0m".format(str),
+            print>>sys.stderr,  "\x1b[33m{}, continuing...\x1b[0m".format(str),
+            print>>sys.stderr, ''
     else:
         if verbose is True:
             print>>sys.stderr, ''
         sys.exit(val)
+
+
+
+def warning(str):
+    """Prints message to stderr
+        """
+
+    error('Warning: ' + str, val=None, stop=False, verbose=True)
 
 
 
