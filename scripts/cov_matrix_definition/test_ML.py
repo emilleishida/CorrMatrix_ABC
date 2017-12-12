@@ -535,7 +535,9 @@ def update_param(p_def, options):
     options.b = options.par[1]
 
     tmp = my_string_split(param.sig_var_noise, num=2, verbose=param.verbose, stop=True)
-    param.sig_var_noise = [float(s) for s in tmp]
+    if tmp != None:
+        param.sig_var_noise = [float(s) for s in tmp]
+    param.sig_var_noise = None
 
     if options.str_n_S == None:
         param.n_S = None
@@ -829,7 +831,8 @@ def fit_corr(x1, cov_true, cov_est, n_jobs=3):
     toy_data['y'] = y              # response variable, here one realisation
 
     # set estimated covariance matrix for fitting
-    toy_data['cov_est'] = cov_est
+    # MKDEBUG: cc branch, use true cov for testing
+    toy_data['cov_est'] = cov_true
 
     # STAN code
     # the fitting code does not believe that observations are correlated!
