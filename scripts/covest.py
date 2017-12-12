@@ -37,7 +37,7 @@ def get_n_S_arr(n_S_min, n_D, f_n_S_max, n_n_S, n_S=None):
     """
 
     if n_S != None:
-        n_S_arr = n_S
+        n_S_arr = np.array(n_S)
         n_n_S   = len(n_S_arr)
     else:
         start   = n_S_min
@@ -173,7 +173,7 @@ class Results:
             except IOError as exc:
                 if exc.errno == errno.ENOENT:
                     if verbose == True:
-                        print('File {} not found, continuing'.format(in_name))
+                        warning('File {} not found'.format(in_name))
                     pass
                 else:
                     raise
@@ -528,11 +528,20 @@ def error(str, val=1, stop=True, verbose=True):
 
     if stop is False:
         if verbose is True:
-            print>>sys.stderr,  "\x1b[31m{}, continuing...\x1b[0m".format(str),
+            print>>sys.stderr,  "\x1b[33m{}, continuing...\x1b[0m".format(str),
+            print>>sys.stderr, ''
     else:
         if verbose is True:
             print>>sys.stderr, ''
         sys.exit(val)
+
+
+
+def warning(str):
+    """Prints message to stderr
+        """
+
+    error('Warning: ' + str, val=None, stop=False, verbose=True)
 
 
 
