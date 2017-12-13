@@ -807,6 +807,73 @@ def debias_cov(cov_est_inv, n_S):
 
 
 
+def fit_corr_inv_true(x1, cov_true, sig2, n_jobs=3):
+    """
+    Generates one draw from a multivariate normal distribution
+    and performs the linear fit using the true inverse 
+    diagonal covariance
+
+    input:  x1, mean of multivariate normal distribution - vector of floats
+            sig2, variance
+            n_jobs, number of parallel jobs
+
+    output: fit, Stan fitting object
+    """
+
+    # Fit
+    toy_data = {}                  # build data dictionary
+    toy_data['nobs'] = len(x1)     # sample size = n_D
+    toy_data['x'] = x1             # explanatory variable
+
+    # cov = covariance of the data!
+    y = multivariate_normal.rvs(mean=x1, cov=cov_true, size=1)
+    toy_data['y'] = y              # response variable, here one realisation
+
+    # set estimated covariance matrix for fitting
+    cov_inv = np.diag([1/sig2 for i in range(len(x1))])
+    toy_data['cov_inv'] = cov_inv
+
+    # STAN code
+    # the fitting code does not believe that observations are correlated!
+    stan_code = """
+    data {
+        int<lower=0> nobs;
+        vector[nobs] x;
+        vector[nobs] y; 
+        matrix[nobs, nobs] cov_inv;
+    }
+    parameters {
+        real a;
+        real b;                                                              
+    }
+    model {
+        vector[nobs] mu;
+        real chi2;
+
+        mu = b + a * x;
+
+        chi2 = (y - mu)' * cov_inv * (y - mu);
+
+        target += chi2;
+    }
+    """
+
+    import pystan
+    start = time.time()
+    fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=n_jobs, verbose=False, n_jobs=n_jobs)
+
+    # Testing: fast call to pystan
+    #fit = pystan.stan(model_code=stan_code, data=toy_data, iter=1, chains=1, verbose=False, n_jobs=n_jobs)
+
+    end = time.time()
+
+    #elapsed = end - start
+    #print 'elapsed time = ' + str(elapsed)
+
+    return fit
+
+
+
 def fit_corr(x1, cov_true, cov_est, n_jobs=3):
     """
     Generates one draw from a multivariate normal distribution
@@ -831,8 +898,7 @@ def fit_corr(x1, cov_true, cov_est, n_jobs=3):
     toy_data['y'] = y              # response variable, here one realisation
 
     # set estimated covariance matrix for fitting
-    # MKDEBUG: cc branch, use true cov for testing
-    toy_data['cov_est'] = cov_true
+    toy_data['cov_est'] = cov_est
 
     # STAN code
     # the fitting code does not believe that observations are correlated!
@@ -1033,9 +1099,18 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_an
                 if re.search('norm', options.likelihood) is not None:
                     if options.verbose == True:
                         print('Running MCMC with mv normal likelihood')
+
+                    # Using estimated covariance in likelihood
                     #res = fit_corr(x1, cov, cov_est, n_jobs=options.n_jobs)
-                    print('MKDEBUG: Running stan with true instead of estimated covariance for testing MCMC noise')
-                    res = fit_corr(x1, cov, cov, n_jobs=options.n_jobs)
+
+                    # Using true covariance in likelihood
+                    #print('MKDEBUG: cc branch, use true cov for testing')
+                    #res = fit_corr(x1, cov, cov, n_jobs=options.n_jobs)
+
+                    # Using true inverse covariance in likelihood
+                    print('MKDEBUG: cc branch, use true *inverse* cov for testing')
+                    res = fit_corr_inv_true(x1, cov, options.sig2, n_jobs=options.n_jobs)
+
                     set_fit_MCMC(fit_norm, res, i, run)
                 if re.search('SH', options.likelihood) is not None:
                     if options.verbose == True:

@@ -3,8 +3,8 @@ import os
 import numpy as np
 import errno
 
-import matplotlib
-matplotlib.use("Agg")
+#import matplotlib
+#matplotlib.use("Agg")
 import pylab as plt
 
 from astropy.table import Table, Column
@@ -434,6 +434,9 @@ class Results:
                         names.append('IJ17({})'.format(p))
 
                     if 'std_var_TJK13' in self.fct:
+                        print('MKDEBUG {} n_D={} par[{}]={} {}'.format(self.file_base, n_D, i, par[i], np.sqrt(par[i])))
+                        print(n)
+                        print(self.fct['std_var_TJK13'](n, n_D, par[i]))
                         plot_add_legend(i==0, n_fine, self.fct['std_var_TJK13'](n_fine, n_D, par[i]), \
                                         '--', color=color[i], label='TJK13')
                         cols.append(self.fct['std_var_TJK13'](n, n_D, par[i]))
