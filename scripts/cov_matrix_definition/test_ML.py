@@ -39,17 +39,6 @@ test_ML.py   -D 750   -p   1_0   -s   5   -v   -m r  -r   -n   4   --n_n_S   10 
 """
 
 
-
-def alpha_new(n_S, n_D):
-    """Return precision matrix estimate bias prefactor alpha.
-       IK17 (5).
-    """
-
-    return (n_S - n_D - 2.0)/(n_S - 1.0)
-
-
-
-
 def alpha(n_S, n_D):
     """Return precision matrix estimate bias prefactor alpha.
     """

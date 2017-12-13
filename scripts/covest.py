@@ -6,9 +6,19 @@ import errno
 import matplotlib
 matplotlib.use("Agg")
 import pylab as plt
+from matplotlib.ticker import ScalarFormatter
 
 from astropy.table import Table, Column
 from astropy.io import ascii
+
+
+
+def alpha_new(n_S, n_D):
+    """Return precision matrix estimate bias prefactor alpha.
+       IK17 (5).
+    """
+
+    return (n_S - n_D - 2.0)/(n_S - 1.0)
 
 
 
@@ -106,7 +116,6 @@ class param:
         return vars(self)
 
 
-
 class Results:
     """Store results of Fisher matrix and MCMC sampling
     """
@@ -119,6 +128,7 @@ class Results:
         self.mean      = {}
         self.std       = {}
         self.par_name  = par_name
+
         self.file_base = file_base
 
         if np.isscalar(yscale):
@@ -330,10 +340,12 @@ class Results:
             fac_xlim = 1.6
             xmin = n[0]/fac_xlim
             xmax = n[-1]*fac_xlim
+            rotation = 'horizontal'
         else:
             fac_xlim   = 1.05
             xmin = (n[0]-5)/fac_xlim**3
             xmax = n[-1]*fac_xlim
+            rotation = 'vertical'
 
         # Set the number of required subplots (1 or 2)
         j_panel = {}
@@ -381,13 +393,32 @@ class Results:
         # Finalize plot
         for j, which in enumerate(['mean', 'std']):
             if which in j_panel:
-                ax = plt.subplot(1, n_panel, j_panel[which])
+
+		# axes labels
                 plt.xlabel('$n_{\\rm s}$')
                 plt.ylabel('<{}>'.format(which))
-                #plt.xticks2()?bo alpha, or n_d / n_s
-                plt.xticks(rotation = 'vertical')
+
                 plt.xlim(xmin, xmax)
+
+		# Second x-axis
+                ax2 = plt.twiny()
+		n_S_min, n_S_max = xmin, xmax
+		tr_min, tr_max = n_D/n_S_min, n_D/n_S_max
+		ax2.set_xlim(tr_min, tr_max)
+		ax2.set_xlabel('n_{\rm d} / n_{\rm s}')
+		if xlog == True:
+                    ax2.set_xscale('log')
+
+		# x-ticks
+                ax = plt.gca().xaxis
+		ax.set_major_formatter(ScalarFormatter())
+		plt.ticklabel_format(axis='x', style='sci')
+                plt.xticks(rotation = rotation)
+
+		# y-scale
+                ax = plt.subplot(1, n_panel, j_panel[which])
                 ax.set_yscale(self.yscale[j])
+
                 plot_sth = True
 
                 ax.legend(frameon=False)
