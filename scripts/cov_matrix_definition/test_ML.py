@@ -524,7 +524,10 @@ def update_param(p_def, options):
     options.b = options.par[1]
 
     tmp = my_string_split(param.sig_var_noise, num=2, verbose=param.verbose, stop=True)
-    param.sig_var_noise = [float(s) for s in tmp]
+    if tmp != None:
+        param.sig_var_noise = [float(s) for s in tmp]
+    else:
+        param.sig_var_noise = None
 
     if options.str_n_S == None:
         param.n_S = None

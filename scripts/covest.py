@@ -3,8 +3,8 @@ import os
 import numpy as np
 import errno
 
-import matplotlib
-matplotlib.use("Agg")
+#import matplotlib
+#matplotlib.use("Agg")
 import pylab as plt
 from matplotlib.ticker import ScalarFormatter
 
@@ -141,7 +141,8 @@ class Results:
             self.mean[p]   = np.zeros(shape = (n_n_S, n_R))
             self.std[p]    = np.zeros(shape = (n_n_S, n_R))
 
-        self.F = np.zeros(shape = (n_n_S, n_R, 2, 2))
+        self.F  = np.zeros(shape = (n_n_S, n_R, 2, 2))
+	self.fs = 16
 
 
     def set(self, par, i, run, which='mean'):
@@ -319,7 +320,7 @@ class Results:
         color      = ['b', 'g']
 
         plot_sth = False
-        plot_init(n_D, n_R)
+        plot_init(n_D, n_R, raise_title=True, fs=self.fs)
 
         if boxwidth == None:
             if xlog == False:
@@ -340,10 +341,10 @@ class Results:
             fac_xlim = 1.6
             xmin = n[0]/fac_xlim
             xmax = n[-1]*fac_xlim
-            rotation = 'horizontal'
+	    rotation = 0
         else:
             fac_xlim   = 1.05
-            xmin = (n[0]-5)/fac_xlim**3
+            xmin = (n[0]-5)/fac_xlim**5
             xmax = n[-1]*fac_xlim
             rotation = 'vertical'
 
@@ -388,43 +389,65 @@ class Results:
                         # Define high-resolution array for smoother lines
                         plt.plot(n_fine, self.fct[which](n_fine, n_D, my_par[i]), '{}-.'.format(color[i]), linewidth=2)
 
-                    plt.plot(n_fine, no_bias(n_fine, n_D, my_par[i]), '{}-'.format(color[i]), label='{}$({})$'.format(which, p), linewidth=2)
+                    plt.plot(n_fine, no_bias(n_fine, n_D, my_par[i]), '{}-'.format(color[i]), \
+			     label='{}$({})$'.format(which, p), linewidth=2)
 
         # Finalize plot
         for j, which in enumerate(['mean', 'std']):
             if which in j_panel:
 
-		# axes labels
+		# Get main axes
+                ax = plt.subplot(1, n_panel, j_panel[which])
+
+		# Main-axes settings
                 plt.xlabel('$n_{\\rm s}$')
                 plt.ylabel('<{}>'.format(which))
-
-                plt.xlim(xmin, xmax)
-
-		# Second x-axis
-                ax2 = plt.twiny()
-		n_S_min, n_S_max = xmin, xmax
-		tr_min, tr_max = n_D/n_S_min, n_D/n_S_max
-		ax2.set_xlim(tr_min, tr_max)
-		ax2.set_xlabel('n_{\rm d} / n_{\rm s}')
-		if xlog == True:
-                    ax2.set_xscale('log')
+                ax.set_yscale(self.yscale[j])
+                ax.legend(frameon=False)
+		plt.xlim(xmin, xmax)
 
 		# x-ticks
                 ax = plt.gca().xaxis
 		ax.set_major_formatter(ScalarFormatter())
 		plt.ticklabel_format(axis='x', style='sci')
-                plt.xticks(rotation = rotation)
+		# Remove first tick label due to text overlap in case of two panels
+		x_loc = []
+		x_lab = []
+		for i, n_S in enumerate(n):
+	            x_loc.append(n_S)
+		    if n_panel == 1 or i != 1:
+			lab = '{}'.format(n_S)
+		    else:
+			lab = ''
+		    x_lab.append(lab)
+		plt.xticks(x_loc, x_lab, rotation=rotation)
+    		ax.label.set_size(self.fs)
 
-		# y-scale
-                ax = plt.subplot(1, n_panel, j_panel[which])
-                ax.set_yscale(self.yscale[j])
+		# Second x-axis
+		x_loc, x_lab = plt.xticks()
+                ax2 = plt.twiny()
+		x2_loc = []
+		x2_lab = []
+		for i, n_S in enumerate(x_loc):
+		    if n_S > 0:
+			if n_panel == 1 or i != 1:
+			    lab = '{:.2g}'.format(float(n_D) / float(n_S))
+		        else:
+			    lab = ''
+			x2_loc.append(n_S)
+		        x2_lab.append(lab)
+		plt.xticks(x2_loc, x2_lab)
+		ax2.set_xlabel('$n_{\\rm d} / n_{\\rm s}$', size=self.fs)
+                for tick in ax2.get_xticklabels():
+                    tick.set_rotation(90)
+		plt.xlim(xmin, xmax)
 
                 plot_sth = True
 
-                ax.legend(frameon=False)
-
         if plot_sth == True:
-            plt.savefig('{}.pdf'.format(self.file_base))
+	    plt.tight_layout(h_pad=5.0)
+            plt.savefig('{}.pdf'.format(self.file_base), bbox_inches="tight")
+
 
 
     def plot_std_var(self, n, n_D, par=None, sig_var_noise=None):
@@ -435,8 +458,7 @@ class Results:
         color = ['g', 'm']
 
         plot_sth = False
-        plot_init(n_D, n_R)
-        ax = plt.subplot(1, 1, 1)
+        plot_init(n_D, n_R, fs=self.fs)
 
         # For output ascii file
         cols  = [n]
@@ -476,13 +498,39 @@ class Results:
                         cols.append(self.fct['std_var_TJ14'](n, n_D, par[i]))
                         names.append('TJ14({})'.format(p))
 
-                plt.xlabel('$n_{\\rm s}$')
-                plt.ylabel('std(var)')
-                plt.legend(loc='best', numpoints=1, frameon=False)
-                ax.set_yscale('log')
-                plot_sth = True
+                    plot_sth = True
 
+        # Finalize plot
+
+	# Get main axes
+        ax = plt.subplot(1, 1, 1)
+
+	# Main-axes settings
+        plt.xlabel('$n_{\\rm s}$')
+        plt.ylabel('std(var)')
+        ax.set_yscale('log')
+        ax.legend(loc='best', numpoints=1, frameon=False)
+
+	# x-ticks
+        ax = plt.gca().xaxis
+	ax.set_major_formatter(ScalarFormatter())
+	plt.ticklabel_format(axis='x', style='sci')
+
+	# Second x-axis
+	x_loc, x_lab = plt.xticks()
+	ax2 = plt.twiny()
+	x2_loc = []
+	x2_lab = []
+	for i, n_S in enumerate(x_loc):
+            if n_S > 0:
+                x2_loc.append(n_S)
+	        x2_lab.append('{:.2g}'.format(float(n_D) / float(n_S)))
+	plt.xticks(x2_loc, x2_lab)
+	ax2.set_xlabel('$n_{\\rm d} / n_{\\rm s}$', size=self.fs)
+
+        # y-scale
         plt.ylim(8e-9, 1e-2)
+
 
         ### Output
         outbase = 'std_2{}'.format(self.file_base)
@@ -499,28 +547,33 @@ class Results:
 
 
 
-def plot_init(n_D, n_R):
+def plot_init(n_D, n_R, raise_title=False, fs=16):
 
     fig = plt.figure()
     fig.subplots_adjust(bottom=0.16)
-    #plt.tight_layout() # makes space for large labels
+
     ax = plt.gca()
-
-    fs = 16
-
     ax.yaxis.label.set_size(fs)
     ax.xaxis.label.set_size(fs)
+
     plt.tick_params(axis='both', which='major', labelsize=fs)
 
+    plt.rcParams.update({'figure.autolayout': True})
+
     if n_R>0:
-        add_title(n_D, n_R, fs)
+        add_title(n_D, n_R, fs, raise_title=raise_title)
 
 
 
-def add_title(n_D, n_R, fs):
+def add_title(n_D, n_R, fs, raise_title=False):
     """Adds title to plot."""
 
-    plt.suptitle('$n_{{\\rm d}}={}$ data points, $n_{{\\rm r}}={}$ runs'.format(n_D, n_R), fontsize=fs)
+    if raise_title == True:
+        y = 1.1
+    else:
+        y = 1
+
+    plt.suptitle('$n_{{\\rm d}}={}$ data points, $n_{{\\rm r}}={}$ runs'.format(n_D, n_R), fontsize=fs, y=y)
 
 
 
@@ -554,12 +607,17 @@ def error(str, val=1, stop=True, verbose=True):
     None
     """
 
+    if stop == True:
+        col = '31' # red
+    else:
+        col = '33' # orange
+
     if verbose is True:
-        print>>sys.stderr, "\x1b[31m{}\x1b[0m".format(str),
+        print>>sys.stderr, "\x1b[{}m{}\x1b[0m".format(col, str),
 
     if stop is False:
         if verbose is True:
-            print>>sys.stderr,  "\x1b[33m{}, continuing...\x1b[0m".format(str),
+            print>>sys.stderr,  "\x1b[{}m, continuing...\x1b[0m".format(col),
             print>>sys.stderr, ''
     else:
         if verbose is True:
