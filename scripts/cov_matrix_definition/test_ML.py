@@ -830,7 +830,7 @@ def fit_corr_inv_true(x1, cov_true, sig2, n_jobs=3):
     toy_data['y'] = y              # response variable, here one realisation
 
     # set estimated covariance matrix for fitting
-    cov_inv = np.diag([1/sig2 for i in range(len(x1))])
+    cov_inv = np.diag([1.0/sig2 for i in range(len(x1))])
     toy_data['cov_inv'] = cov_inv
 
     # STAN code
@@ -854,7 +854,7 @@ def fit_corr_inv_true(x1, cov_true, sig2, n_jobs=3):
 
         chi2 = (y - mu)' * cov_inv * (y - mu);
 
-        target += chi2;
+        target += -chi2/2;
     }
     """
 
