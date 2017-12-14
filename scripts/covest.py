@@ -341,7 +341,7 @@ class Results:
             fac_xlim = 1.6
             xmin = n[0]/fac_xlim
             xmax = n[-1]*fac_xlim
-	    rotation = 0
+	    rotation = 'vertical'
         else:
             fac_xlim   = 1.05
             xmin = (n[0]-5)/fac_xlim**5
@@ -362,9 +362,11 @@ class Results:
             j_panel[j_panel.keys()[0]] = 1
 
         if xlog == True:
-            width = lambda p, box_width: 10**(np.log10(p)+box_width/2.)-10**(np.log10(p)-box_width/2.)
+            width   = lambda p, box_width: 10**(np.log10(p)+box_width/2.)-10**(np.log10(p)-box_width/2.)
+            flinlog = lambda x: np.log(x)
         else:
-            width = lambda p, box_width: np.zeros(len(n)) + float(box_width)
+            width   = lambda p, box_width: np.zeros(len(n)) + float(box_width)
+            flinlog = lambda x: x
 
         for j, which in enumerate(['mean', 'std']):
             for i, p in enumerate(self.par_name):
@@ -410,12 +412,12 @@ class Results:
                 ax = plt.gca().xaxis
 		ax.set_major_formatter(ScalarFormatter())
 		plt.ticklabel_format(axis='x', style='sci')
-		# Remove first tick label due to text overlap in case of two panels
+		# Remove first tick label due to text overlap if little space
 		x_loc = []
 		x_lab = []
 		for i, n_S in enumerate(n):
 	            x_loc.append(n_S)
-		    if n_panel == 1 or i != 1:
+		    if n_panel == 1 or i != 1 or len(n)<10:
 			lab = '{}'.format(n_S)
 		    else:
 			lab = ''
@@ -424,23 +426,22 @@ class Results:
     		ax.label.set_size(self.fs)
 
 		# Second x-axis
-		x_loc, x_lab = plt.xticks()
                 ax2 = plt.twiny()
 		x2_loc = []
 		x2_lab = []
-		for i, n_S in enumerate(x_loc):
+		for i, n_S in enumerate(n):
 		    if n_S > 0:
-			if n_panel == 1 or i != 1:
+			if n_panel == 1 or i != 1 or len(n)<10:
 			    lab = '{:.2g}'.format(float(n_D) / float(n_S))
 		        else:
 			    lab = ''
-			x2_loc.append(n_S)
+			x2_loc.append(flinlog(n_S))
 		        x2_lab.append(lab)
 		plt.xticks(x2_loc, x2_lab)
 		ax2.set_xlabel('$n_{\\rm d} / n_{\\rm s}$', size=self.fs)
                 for tick in ax2.get_xticklabels():
                     tick.set_rotation(90)
-		plt.xlim(xmin, xmax)
+		plt.xlim(flinlog(xmin), flinlog(xmax))
 
                 plot_sth = True
 
