@@ -3,6 +3,7 @@
 import numpy as np
 from scipy.stats import norm
 from statsmodels.base.model import GenericLikelihoodModel
+from statsmodels.base.model import LikelihoodModel
 import pylab as plt
 import matplotlib.mlab as mlab
 
@@ -23,53 +24,14 @@ def get_var_flattened(res):
     return all_var
 
 
-def my_std(var):
-
-    sum1 = 0
-    sum2 = 0
-    for v in var:
-        sum1 += v
-        sum2 += v*v
-
-    n = len(var)
-
-    mean = sum1 / n
-    std  = np.sqrt( (sum2 - n * mean**2) / n )
-
-    return std
-
-
-def jackknife(var):
-
-    n = len(var)
-    std_jk_var = []
-    for i in range(n):
-        var_i = np.delete(var, i)
-        std_jk_var.append(my_std(var))
-
-    # Jackknife mean of std(var)
-    mean_jk_std_var = np.mean(std_jk_var)
-
-    sum2 = 0
-    for i in range(n):
-        sum2 += (std_jk_var[i] - mean_jk_std_var)**2
-
-    # Jackknife std of std(var)
-    std_jk_std_var = np.sqrt((n-1.0) / n * sum2)
-
-    return mean_jk_std_var, std_jk_std_var
-
-
 
 def all_var_print(var, par_name, file_base):
 
     for p in par_name:
         mean_var = np.mean(var[p])
         std_var  = np.std(var[p])
-        std_var2 = my_std(var[p])
-        mean_jk_std_var, std_jk_std_var = jackknife(var[p])
-        #print('{:30s} {:3s} {:.5g} {:.5g} {:.5g} {:.5g} {:.5g}'.format(file_base, p, mean_var, std_var, std_var2, mean_jk_std_var, std_jk_std_var))
-        print('{:30s} {:3s} {:.5g} {:.5g} {:.5g}'.format(file_base, p, mean_var, std_var, std_var2))
+        print('{:30s} {:3s} {:.5g} {:.5g}'.format(file_base, p, mean_var, std_var))
+
 
 
 class Norm(GenericLikelihoodModel):
@@ -82,13 +44,9 @@ class Norm(GenericLikelihoodModel):
 
 def fit_plot_norm(var, hist, col):
 
-    #params = norm.fit(var)
-    #mu     = params[0]
-    #sigma  = params[1]
-    #params  = np.array([np.mean(var), np.std(var)])
     params = np.array([0.0, 1.0])
 
-    res = Norm(var).fit(start_params=params)
+    res = Norm(var).fit(start_params=params, disp=0)
     mu        = res.params[0]
     sigma     = res.params[1]
     if res.normalized_cov_params is not None:
@@ -132,14 +90,15 @@ def main(argv=None):
     fit_true_cov = Results(par_name, n_n_S, n_R, file_base='true_cov/mean_std_fit_norm')
     fit_true_cov.read_mean_std(verbose=True)
     var_true_cov = get_var_flattened(fit_true_cov)
+    print('Number of runs for {} = {}'.format(fit_true_cov.file_base, len(var_true_cov[par_name[0]])))
 
     n_n_S    =  6
     n_R      = 19
     fit_true_inv_cov = Results(par_name, n_n_S, n_R, file_base='true_inv_cov/mean_std_fit_norm')
     fit_true_inv_cov.read_mean_std(verbose=True)
     var_true_inv_cov = get_var_flattened(fit_true_inv_cov)
+    print('Number of runs for {} = {}'.format(fit_true_inv_cov.file_base, len(var_true_inv_cov[par_name[0]])))
 
-    #print('# {:28s} {:3s} {:12s} {:12s} {:12s} {:12s}'.format('file', 'par', 'mean(var)', 'std(var)', 'mean_jk[std(var)]', 'std_jk[std(var)]'))
     print('# {:28s} {:3s} {:12s} {:12s}'.format('file', 'par', 'mean(var)', 'std(var)'))
     all_var_print(var_true_cov, par_name, fit_true_cov.file_base)
     all_var_print(var_true_inv_cov, par_name, fit_true_inv_cov.file_base)
