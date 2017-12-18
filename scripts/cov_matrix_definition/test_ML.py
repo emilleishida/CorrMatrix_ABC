@@ -989,7 +989,9 @@ def fit_corr_SH(x1, cov_true, cov_est_inv, n_jobs=3):
 
         chi2 = (y - mu)' * cov_est_inv * (y - mu);
 
-        target += pow(1.0 + chi2/(1.0 + nobs), -nobs/2.0);
+        #target += pow(1.0 + chi2/(1.0 + nobs), -nobs/2.0);
+        # MKDEBUG test: log-likelihood, see fit_corr_true_inv_cov
+        target += log(1.0 + chi2/(1.0 + nobs)) * -nobs/2.0;
     }
     """
 
@@ -1101,15 +1103,15 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_an
                         print('Running MCMC with mv normal likelihood')
 
                     # Using estimated covariance in likelihood
-                    #res = fit_corr(x1, cov, cov_est, n_jobs=options.n_jobs)
+                    res = fit_corr(x1, cov, cov_est, n_jobs=options.n_jobs)
 
                     # Using true covariance in likelihood
                     #print('MKDEBUG: cc branch, use true cov for testing')
                     #res = fit_corr(x1, cov, cov, n_jobs=options.n_jobs)
 
                     # Using true inverse covariance in likelihood
-                    print('MKDEBUG: cc branch, use true *inverse* cov for testing')
-                    res = fit_corr_inv_true(x1, cov, options.sig2, n_jobs=options.n_jobs)
+                    #print('MKDEBUG: cc branch, use true *inverse* cov for testing')
+                    #res = fit_corr_inv_true(x1, cov, options.sig2, n_jobs=options.n_jobs)
 
                     set_fit_MCMC(fit_norm, res, i, run)
                 if re.search('SH', options.likelihood) is not None:
