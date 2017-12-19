@@ -1133,7 +1133,8 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_an
 
                 
 
-def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options):
+def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, \
+                  fit_norm_num, fit_norm_deb, fit_SH, options):
     """Write simulated runs to files"""
 
     if options.add_simulations == True:
@@ -1154,8 +1155,8 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fis
         fit_SH_prev      = Results(fit_SH.par_name, n_n_S, n_R, file_base=fit_SH.file_base, fct=fit_SH.fct)
 
         # Fill results from files
-        read_from_file(sigma_ML_prev, sigma_m1_ML_prev, sigma_m1_ML_deb_prev, fish_ana_prev, fish_num_prev, fish_deb_prev, fit_norm_prev, \
-                       fit_SH_prev, options)
+        read_from_file(sigma_ML_prev, sigma_m1_ML_prev, sigma_m1_ML_deb_prev, fish_ana_prev, fish_num_prev, fish_deb_prev, \
+                       fit_norm_num_prev, fit_norm_deb_prev, fit_SH_prev, options)
 
         # Add new results
         sigma_ML.append(sigma_ML_prev)
@@ -1164,7 +1165,8 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fis
         fish_ana.append(fish_ana_prev)
         fish_num.append(fish_num_prev)
         fish_deb.append(fish_deb_prev)
-        fit_norm.append(fit_norm_prev)
+        fit_norm_num.append(fit_norm_num_prev)
+        fit_norm_deb.append(fit_norm_deb_prev)
         fit_SH.append(fit_SH_prev)
 
     if options.verbose == True:
@@ -1176,8 +1178,10 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fis
     fish_num.write_Fisher(n_S_arr)
     fish_deb.write_mean_std(n_S_arr)
     if options.do_fit_stan == True:
-        if re.search('norm', options.likelihood) is not None:
-            fit_norm.write_mean_std(n_S_arr)
+        if re.search('norm_biased', options.likelihood) is not None:
+            fit_norm_num.write_mean_std(n_S_arr)
+        if re.search('norm_deb', options.likelihood) is not None:
+            fit_norm_deb.write_mean_std(n_S_arr)
         if re.search('SH', options.likelihood) is not None:
             fit_SH.write_mean_std(n_S_arr)
 
@@ -1292,18 +1296,21 @@ def main(argv=None):
             fit_norm = fit_norm_num
         elif re.search('norm_deb', options.likelihood) is not None:
             fit_norm = fit_norm_deb
+        else:
+            fit_norm = fit_norm_num  # Dummy variable, could be changed to make more error-proof
         # Can add true_cov, true_inv_cov
         # TODO: also assign fit_SH with this scheme
  
         simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options) 
 
-        write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options)
+        write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, \
+                      fit_norm_num, fit_norm_deb, fit_SH, options)
 
 
     # Read simulations
     if re.search('r', options.mode) is not None:
 
-        read_from_file(sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, \
+        read_from_file(sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_norm, \
                        fit_norm_num, fit_norm_deb, fit_SH, param)
 
 
