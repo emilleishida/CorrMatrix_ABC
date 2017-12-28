@@ -432,7 +432,11 @@ class Results:
 		for i, n_S in enumerate(n):
 		    if n_S > 0:
 			if n_panel == 1 or i != 1 or len(n)<10:
-			    lab = '{:.2g}'.format(float(n_D) / float(n_S))
+                            frac = float(n_D) / float(n_S)
+                            if frac > 100:
+			        lab = '{:.3g}'.format(frac)
+                            else:
+			        lab = '{:.2g}'.format(frac)
 		        else:
 			    lab = ''
 			x2_loc.append(flinlog(n_S))
