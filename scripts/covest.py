@@ -96,7 +96,7 @@ def get_n_S_R_from_fit_file(file_base, npar=2):
             raise
 
     n_S = np.array(dat['n_S'].data)
-    n_R   = (len(dat.keys()) - 1) / 2 / 2
+    n_R   = (len(dat.keys()) - 1) / 2 / npar
 
     return n_S, n_R
 

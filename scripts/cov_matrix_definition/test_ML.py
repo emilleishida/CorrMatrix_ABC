@@ -926,11 +926,11 @@ def fit_corr(x1, cov_true, cov_est, n_jobs=3):
     """
 
     import pystan
-    #start = time.time()
-    #fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=n_jobs, verbose=False, n_jobs=n_jobs)
+    start = time.time()
+    fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=n_jobs, verbose=False, n_jobs=n_jobs)
 
     # Testing: fast call to pystan
-    fit = pystan.stan(model_code=stan_code, data=toy_data, iter=1, chains=1, verbose=False, n_jobs=n_jobs)
+    #fit = pystan.stan(model_code=stan_code, data=toy_data, iter=1, chains=1, verbose=False, n_jobs=n_jobs)
 
     end = time.time()
 
@@ -1143,6 +1143,7 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fis
 
         # Initialise results
         n_S, n_R         = get_n_S_R_from_fit_file(sigma_ML.file_base, npar=1)
+        print('MKDEBUG previous n_R = {}'.format(n_R))
         n_n_S            = len(n_S)
 
         sigma_ML_prev    = Results(sigma_ML.par_name, n_n_S, n_R, file_base=sigma_ML.file_base)
@@ -1184,6 +1185,8 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fis
         if re.search('norm_deb', options.likelihood) is not None:
             fit_norm_deb.write_mean_std(n_S_arr)
         if re.search('SH', options.likelihood) is not None:
+            print('MKDEBUG writing fit_SH, new shape:')
+            print('MKDEBUG, ', fit_SH.mean['a'].shape)
             fit_SH.write_mean_std(n_S_arr)
 
     sigma_ML.write_mean_std(n_S_arr)
@@ -1311,7 +1314,7 @@ def main(argv=None):
     # Read simulations
     if re.search('r', options.mode) is not None:
 
-        read_from_file(sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_norm, \
+        read_from_file(sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, \
                        fit_norm_num, fit_norm_deb, fit_SH, param)
 
 
