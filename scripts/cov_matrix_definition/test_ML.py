@@ -993,7 +993,7 @@ def fit_corr_SH(x1, cov_true, cov_est_inv, n_jobs=3):
         chi2 = (y - mu)' * cov_est_inv * (y - mu);
 
         #target += pow(1.0 + chi2/(1.0 + nobs), -nobs/2.0);
-        # MKDEBUG test: log-likelihood, see fit_corr_true_inv_cov
+        # Bug fix (12/2017): targe += log-likelihood, not likelihood, see fit_corr_true_inv_cov
         target += log(1.0 + chi2/(1.0 + nobs)) * -nobs/2.0;
     }
     """
@@ -1143,7 +1143,6 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fis
 
         # Initialise results
         n_S, n_R         = get_n_S_R_from_fit_file(sigma_ML.file_base, npar=1)
-        print('MKDEBUG previous n_R = {}'.format(n_R))
         n_n_S            = len(n_S)
 
         sigma_ML_prev    = Results(sigma_ML.par_name, n_n_S, n_R, file_base=sigma_ML.file_base)
@@ -1185,8 +1184,6 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fis
         if re.search('norm_deb', options.likelihood) is not None:
             fit_norm_deb.write_mean_std(n_S_arr)
         if re.search('SH', options.likelihood) is not None:
-            print('MKDEBUG writing fit_SH, new shape:')
-            print('MKDEBUG, ', fit_SH.mean['a'].shape)
             fit_SH.write_mean_std(n_S_arr)
 
     sigma_ML.write_mean_std(n_S_arr)
