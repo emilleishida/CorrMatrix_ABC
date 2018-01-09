@@ -19,12 +19,21 @@ Create simulation as model:
         - either simulate shear/kappa Gaussian field with C_l
           as (co-)variance, measure hat C_l or hat xi_+- = model.
         - or simulate hat C_l as Wishart using C_l as input.
+          Procedure:
+            - Get C_l from nicaea, this is the diagonal of my `true'
+              covariance matrix Sigma_ll' = delta_ll' C_l.
+            - Draw covariance from Wishart_{n_S-1}(Sigma, n_D).
+              Return from model_cov.
+
+    - What do we use as summary statistic?
+        - For data d=gamma_i, s=C_l? Or d=gamma_i, and use C_l in distance?
 
 Input:
     - Survey: size, number of galaxies, (mask),
       redshift distribution (sample from it for model!), number of z-bins,
       angular scales.
     - Parameters, prior values
+
 """
 
 # Compability with python2.x for x>6
