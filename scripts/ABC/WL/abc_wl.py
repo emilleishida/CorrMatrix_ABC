@@ -4,9 +4,11 @@ from cosmoabc.priors import flat_prior
 from cosmoabc.ABC_sampler import ABC
 from cosmoabc.plots import plot_2p
 from cosmoabc.ABC_functions import read_input
-from wl_functions import linear_dist, model_cov, model_Cl, gaussian_prior
+from wl_functions import linear_dist, model_Cl, gaussian_prior
 
 import numpy as np
+import os
+
 from scipy.stats import uniform, multivariate_normal
 from statsmodels.stats.weightstats import DescrStatsW
 
@@ -39,7 +41,7 @@ def get_cov_Gauss(ell, C_ell, f_sky, sigma_eps, nbar):
         covariance matrix
     """
 
-    # 'Observed' or total (signal + shot noise) power spectrum
+    # Total (signal + shot noise) power spectrum
     C_ell_tot = C_ell + sigma_eps**2 / (2 * nbar)
 
     D         = 1.0 / (f_sky * (2.0 * ell + 1)) * C_ell_tot**2
@@ -120,6 +122,15 @@ Parameters['f_sky'] = float(Parameters['f_sky'][0])
 Parameters['sigma_eps'] = float(Parameters['sigma_eps'][0])
 Parameters['nbar'] = float(Parameters['nbar'][0])
 
+Parameters['lmin'] = float(Parameters['lmin'][0])
+Parameters['lmax'] = float(Parameters['lmax'][0])
+Parameters['nell'] = float(Parameters['nell'][0])
+
+Parameters['path_to_nicaea'] = Parameters['path_to_nicaea'][0]
+if Parameters['path_to_nicaea'][0] != '/':
+    # Relative path, add $HOME
+    Parameters['path_to_nicaea'] = '{}/{}'.format(os.environ['HOME'], Parameters['path_to_nicaea'])
+
 # set functions
 Parameters['simulation_func'] = model_Cl
 Parameters['distance_func'] = linear_dist
@@ -142,13 +153,14 @@ cov = np.diag([Parameters['sig'] for i in range(Parameters['nobs'])])
 # TBD
 
 # Call nicaea
-# TBD
+#nicaea_ABC.run_nicaea(Parameters['path_to_nicaea'], Parameters['lmin'], \
+    #Parameters['lmax'], Parameters['nell'])
 
 # Read nicaea output
-ell, C_ell = nicaea_ABC.read_Cl('.', 'P_kappa')
+ell, C_ell_obs = nicaea_ABC.read_Cl('.', 'P_kappa')
 
 # add to parameter dictionary
-Parameters['dataset1'] = np.array([[ell[i], C_ell[i]] for i in range(Parameters['nobs'])])
+Parameters['dataset1'] = np.array([[ell[i], C_ell_obs[i]] for i in range(Parameters['nobs'])])
 
 # add observed catalog to simulation parameters
 if bool(Parameters['xfix']):
@@ -161,7 +173,7 @@ if bool(Parameters['xfix']):
 nbar_amin2  = units.Unit('{}/arcmin**2'.format(Parameters['nbar']))
 nbar_rad2   = nbar_amin2.to('1/rad**2')
 # We use the same C_ell as the 'observation', from above
-cov         = get_cov_Gauss(ell, C_ell, Parameters['f_sky'], Parameters['sigma_eps'], nbar_rad2)
+cov         = get_cov_Gauss(ell, C_ell_obs, Parameters['f_sky'], Parameters['sigma_eps'], nbar_rad2)
 
 # Estimate covariance as sample from Wishart distribution
 Parameters['nsim'] = int(Parameters['nsim'][0])

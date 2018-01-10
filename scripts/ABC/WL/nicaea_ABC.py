@@ -14,7 +14,33 @@ Functions are copied from ~/python/nicaea.py
 """
 
 
+import covest
+
 from astropy.io import ascii
+
+
+
+def run_nicaea(path, lmin, lmax, nell):
+    """Calls nicaea.
+
+    Parameters
+    ----------
+    path: string
+        path to nicaea
+    lmin: double
+        minimum ell
+    lmax: double
+        maximume ell
+    nell: int
+        number of ell modes
+
+    Returns
+    -------
+    None
+    """
+
+    Lstr = '-L \'{} {} {}\''.format(lmin, lmax, nell)
+    covest.run_cmd('{}/bin/lensingdemo -D 0 {} -H 1'.format(path, Lstr), verbose=True, stop=True)
 
 
 
@@ -41,6 +67,7 @@ def read_Cl(path, fname):
     c_ell = dat['P_k^00(l)'].data
 
     return ell, c_ell
+
 
 
 def create_link(dst, path_cosmo):

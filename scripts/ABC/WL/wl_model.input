@@ -36,6 +36,14 @@ f_sky		= 0.3				   # covered sky fraction of survey
 sigma_eps	= 0.29				   # intrinsic ellipticity dispersion per component
 nbar            = 30				   # Number density of galaxies per arcmin^2
 
+# Wishart-Normal model
+lmin = 10
+lmax = 5000
+nell = 50
+
+path_to_nicaea = astro/nicaea/versions/nicaea_2.7
+#path_to_nicaea = astro/ECOSSTAT-work
+
 
 M 		= 100				   # number of particle in each particle system
 Mini            = 200                              # number of draws for 1st particle system

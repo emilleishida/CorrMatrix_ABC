@@ -35,46 +35,13 @@ def model_Cl(p):
     # Sample hat Cl from Norm(Cl, hat Sigma)
 
     ell     = p['dataset1'][:,0]
+    # Here, C_ell should be obtained from calling nicaea
     C_ell   = p['dataset1'][:,1]
     cov_est = p['cov']
 
     C_ell_est = multivariate_normal.rvs(mean=C_ell, cov=p['cov'])
 
     return np.array([[ell[i], C_ell_est[i]] for i in range(int(p['nobs']))])
-
-
-
-def model_cov(p):
-    """Linear model.
-
-    input: p - dict: keywords 
-                a, scalar - angular coefficient
-                b, scalar - linear coefficient
-                sig, scalar - scatter
-                xmin, xmax, int - bounderies for explanatory variable
-                nobs, int - number of observations in a catalog
-                cov, matrix - covariance matrix between observations
-                
-
-    output: y, array - draw from normal distribution with mean
-                        a*x + b and scatter sig          
-    """
-    if bool(p['xfix']):
-        try:                
-            x = p['dataset1'][:,0]
-        except KeyError:
-            raise ValueError('Observed data not defined! \n if you are doing distance tests, set xfix=0')
-
-    else:
-        x = uniform.rvs(loc=p['xmin'], scale=p['xmax'] - p['xmin'], size=int(p['nobs']))
-
-    
-    x.sort()
-    ytrue = np.array(p['a']*x + p['b'])
-
-    y = multivariate_normal.rvs(mean=ytrue, cov=p['cov'])
-
-    return np.array([[x[i], y[i]] for i in range(int(p['nobs']))])
 
 
 

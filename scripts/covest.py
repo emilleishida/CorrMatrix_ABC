@@ -4,6 +4,9 @@ import sys
 import os
 import numpy as np
 import errno
+import subprocess
+import shlex
+
 
 #import matplotlib
 #matplotlib.use("Agg")
@@ -633,6 +636,55 @@ def error(str, val=1, stop=True, verbose=True):
 
 
 
+def check_error_stop(ex_list, verbose=True, stop=False):
+    """Check error list and stop if one or more are != 0 and stop=True
+
+    Parameters
+    ----------
+    ex_list: list of integers
+        List of exit codes
+    verbose: boolean
+        Verbose output, default=True
+    stop: boolean
+        If False (default), does not stop program
+
+    Returns
+    -------
+    s: integer
+        sum of absolute values of exit codes
+    """
+
+    if ex_list is None:
+        s = 0
+    else:
+        s = sum([abs(i) for i in ex_list])
+
+
+    # Evaluate exit codes
+    if s > 0:
+        n_ex = sum([1 for i in ex_list if i != 0])
+        if verbose is True:
+            if len(ex_list) == 1:
+                print_color('red', 'The last command returned sum|exit codes|={}'.format(s), end='')
+            else:
+                print_color('red', '{} of the last {} commands returned sum|exit codes|={}'.format(n_ex, len(ex_list), s), end='')
+        if stop is True:
+            print_color('red', ', stopping')
+        else:
+            print_color('red', ', continuing')
+
+        if stop is True:
+            sys.exit(s)
+
+
+    return s
+
+
+def print_color(col, txt, end='\n'):
+    print(txt, end=end)
+
+
+
 def warning(str):
     """Prints message to stderr
         """
@@ -796,4 +848,94 @@ def log_command(argv, name=None, close_no_return=True):
 
 
 
+def run_cmd(cmd_list, run=True, verbose=True, stop=False, parallel=True, file_list=None, devnull=False):
+    """Run shell command or a list of commands using subprocess.Popen().
+
+    Parameters
+    ----------
+
+    cmd_list: string, or array of strings
+        list of commands
+    run: bool
+        If True (default), run commands. run=False is for testing and debugging purpose
+    verbose: bool
+        If True (default), verbose output
+    stop: bool
+        If False (default), do not stop after command exits with error.
+    parallel: bool
+        If True (default), run commands in parallel, i.e. call subsequent comands via
+        subprocess.Popen() without waiting for the previous job to finish.
+    file_list: array of strings
+        If file_list[i] exists, cmd_list[i] is not run. Default value is None
+    devnull: boolean
+        If True, all output is suppressed. Default is False.
+
+    Returns
+    -------
+    sum_ex: int
+        Sum of exit codes of all commands
+    """
+
+    if type(cmd_list) is not list:
+        cmd_list = [cmd_list]
+
+    if verbose is True and len(cmd_list) > 1:
+        print('Running {} commands, parallel = {}'.format(len(cmd_list), parallel))
+
+    ex_list   = []
+    pipe_list = []
+    for i, cmd in enumerate(cmd_list):
+
+        ex = 0
+
+        if run is True:
+
+            # Check for existing file
+            if file_list is not None and os.path.isfile(file_list[i]):
+                if verbose is True:
+                    print('Skipping command \'{}\', file \'{}\' exists'.format(cmd, file_list[i]))
+            else:
+                if verbose is True:
+                        print('Running command \'{0}\''.format(cmd))
+
+                # Run command
+                try:
+                    cmds = shlex.split(cmd)
+                    if devnull is True:
+                        pipe = subprocess.Popen(cmds, stdout=subprocess.DEVNULL)
+                    else:
+                        pipe = subprocess.Popen(cmds)
+
+                    if parallel is False:
+                        # Wait for process to terminate
+                        pipe.wait()
+
+                    pipe_list.append(pipe)
+
+                    # If process has not terminated, ex will be None
+                    #ex = pipe.returncode
+                except OSError as e:
+                    print('Error: {0}'.format(e.strerror))
+                    ex = e.errno
+
+                    check_error_stop([ex], verbose=verbose, stop=stop)
+
+        else:
+            if verbose is True:
+                print('Not running command \'{0}\''.format(cmd))
+
+        ex_list.append(ex)
+
+
+    if parallel is True:
+        for i, pipe in enumerate(pipe_list):
+            pipe.wait()
+
+            # Update exit code list
+            ex_list[i] = pipe.returncode
+
+
+    s = check_error_stop(ex_list, verbose=verbose, stop=stop)
+
+    return s
 
