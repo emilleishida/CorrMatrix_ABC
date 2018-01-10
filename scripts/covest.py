@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import sys
 import os
 import numpy as np
@@ -142,7 +144,7 @@ class Results:
             self.std[p]    = np.zeros(shape = (n_n_S, n_R))
 
         self.F  = np.zeros(shape = (n_n_S, n_R, 2, 2))
-	self.fs = 16
+        self.fs = 16
 
 
     def set(self, par, i, run, which='mean'):
@@ -341,7 +343,7 @@ class Results:
             fac_xlim = 1.6
             xmin = n[0]/fac_xlim
             xmax = n[-1]*fac_xlim
-	    rotation = 'vertical'
+            rotation = 'vertical'
         else:
             fac_xlim   = 1.05
             xmin = (n[0]-5)/fac_xlim**5
@@ -406,51 +408,51 @@ class Results:
                 plt.ylabel('<{}>'.format(which))
                 ax.set_yscale(self.yscale[j])
                 ax.legend(frameon=False)
-		plt.xlim(xmin, xmax)
+                plt.xlim(xmin, xmax)
 
 		# x-ticks
                 ax = plt.gca().xaxis
-		ax.set_major_formatter(ScalarFormatter())
-		plt.ticklabel_format(axis='x', style='sci')
+                ax.set_major_formatter(ScalarFormatter())
+                plt.ticklabel_format(axis='x', style='sci')
 		# Remove first tick label due to text overlap if little space
-		x_loc = []
-		x_lab = []
-		for i, n_S in enumerate(n):
-	            x_loc.append(n_S)
-		    if n_panel == 1 or i != 1 or len(n)<10:
-			lab = '{}'.format(n_S)
-		    else:
-			lab = ''
-		    x_lab.append(lab)
-		plt.xticks(x_loc, x_lab, rotation=rotation)
-    		ax.label.set_size(self.fs)
+                x_loc = []
+                x_lab = []
+                for i, n_S in enumerate(n):
+                    x_loc.append(n_S)
+                    if n_panel == 1 or i != 1 or len(n)<10:
+                        lab = '{}'.format(n_S)
+                    else:
+                        lab = ''
+                x_lab.append(lab)
+                plt.xticks(x_loc, x_lab, rotation=rotation)
+                ax.label.set_size(self.fs)
 
 		# Second x-axis
                 ax2 = plt.twiny()
-		x2_loc = []
-		x2_lab = []
-		for i, n_S in enumerate(n):
-		    if n_S > 0:
-			if n_panel == 1 or i != 1 or len(n)<10:
+                x2_loc = []
+                x2_lab = []
+                for i, n_S in enumerate(n):
+                    if n_S > 0:
+                        if n_panel == 1 or i != 1 or len(n)<10:
                             frac = float(n_D) / float(n_S)
                             if frac > 100:
-			        lab = '{:.3g}'.format(frac)
+                                lab = '{:.3g}'.format(frac)
                             else:
-			        lab = '{:.2g}'.format(frac)
-		        else:
-			    lab = ''
-			x2_loc.append(flinlog(n_S))
-		        x2_lab.append(lab)
-		plt.xticks(x2_loc, x2_lab)
-		ax2.set_xlabel('$n_{\\rm d} / n_{\\rm s}$', size=self.fs)
+                                lab = '{:.2g}'.format(frac)
+                        else:
+                            lab = ''
+                            x2_loc.append(flinlog(n_S))
+                            x2_lab.append(lab)
+                        plt.xticks(x2_loc, x2_lab)
+                ax2.set_xlabel('$n_{\\rm d} / n_{\\rm s}$', size=self.fs)
                 for tick in ax2.get_xticklabels():
                     tick.set_rotation(90)
-		plt.xlim(flinlog(xmin), flinlog(xmax))
+                plt.xlim(flinlog(xmin), flinlog(xmax))
 
                 plot_sth = True
 
         if plot_sth == True:
-	    plt.tight_layout(h_pad=5.0)
+            plt.tight_layout(h_pad=5.0)
             plt.savefig('{}.pdf'.format(self.file_base), bbox_inches="tight")
 
 
@@ -518,20 +520,20 @@ class Results:
 
 	# x-ticks
         ax = plt.gca().xaxis
-	ax.set_major_formatter(ScalarFormatter())
-	plt.ticklabel_format(axis='x', style='sci')
+        ax.set_major_formatter(ScalarFormatter())
+        plt.ticklabel_format(axis='x', style='sci')
 
 	# Second x-axis
-	x_loc, x_lab = plt.xticks()
-	ax2 = plt.twiny()
-	x2_loc = []
-	x2_lab = []
-	for i, n_S in enumerate(x_loc):
+        x_loc, x_lab = plt.xticks()
+        ax2 = plt.twiny()
+        x2_loc = []
+        x2_lab = []
+        for i, n_S in enumerate(x_loc):
             if n_S > 0:
                 x2_loc.append(n_S)
-	        x2_lab.append('{:.2g}'.format(float(n_D) / float(n_S)))
-	plt.xticks(x2_loc, x2_lab)
-	ax2.set_xlabel('$n_{\\rm d} / n_{\\rm s}$', size=self.fs)
+                x2_lab.append('{:.2g}'.format(float(n_D) / float(n_S)))
+        plt.xticks(x2_loc, x2_lab)
+        ax2.set_xlabel('$n_{\\rm d} / n_{\\rm s}$', size=self.fs)
 
         # y-scale
         plt.ylim(8e-9, 1e-2)
@@ -781,10 +783,10 @@ def log_command(argv, name=None, close_no_return=True):
         if ']' in a or ']' in a:
             a = '\"{}\"'.format(a)
 
-        print>>f, a,
+        print(a, file=f, end='')
         #print>>f, ' ',
 
-    print>>f, ''
+    print('', file=f)
 
     if close_no_return == False:
         return f
