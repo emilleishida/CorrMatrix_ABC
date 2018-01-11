@@ -4,7 +4,7 @@ from cosmoabc.priors import flat_prior
 from cosmoabc.ABC_sampler import ABC
 from cosmoabc.plots import plot_2p
 from cosmoabc.ABC_functions import read_input
-from wl_functions import linear_dist, model_Cl, gaussian_prior
+from wl_functions import linear_dist, model_Cl, gaussian_prior, model_cov
 
 import numpy as np
 import os
@@ -111,12 +111,8 @@ filename = 'wl_model.input'
 #read  user input
 Parameters = read_input(filename)
 
-Parameters['xmin'] = float(Parameters['xmin'][0])
-Parameters['xmax'] = float(Parameters['xmax'][0])
-Parameters['a'] = float(Parameters['a'][0])
-Parameters['b'] = float(Parameters['b'][0])
-Parameters['sig'] = float(Parameters['sig'][0])
-Parameters['nobs'] = int(Parameters['nobs'][0])
+Parameters['Omega_m'] = float(Parameters['Omega_m'][0])
+Parameters['sigma_8'] = float(Parameters['sigma_8'][0])
 
 Parameters['f_sky'] = float(Parameters['f_sky'][0])
 Parameters['sigma_eps'] = float(Parameters['sigma_eps'][0])
@@ -124,47 +120,41 @@ Parameters['nbar'] = float(Parameters['nbar'][0])
 
 Parameters['lmin'] = float(Parameters['lmin'][0])
 Parameters['lmax'] = float(Parameters['lmax'][0])
-Parameters['nell'] = float(Parameters['nell'][0])
+Parameters['nell'] = int(Parameters['nell'][0])
+Parameters['simulation_input']['lmin'] = Parameters['lmin']
+Parameters['simulation_input']['lmax'] = Parameters['lmax']
+Parameters['simulation_input']['nell'] = Parameters['nell']
 
 Parameters['path_to_nicaea'] = Parameters['path_to_nicaea'][0]
 if Parameters['path_to_nicaea'][0] != '/':
     # Relative path, add $HOME
     Parameters['path_to_nicaea'] = '{}/{}'.format(os.environ['HOME'], Parameters['path_to_nicaea'])
+Parameters['simulation_input']['path_to_nicaea'] = Parameters['path_to_nicaea']
 
 # set functions
 Parameters['simulation_func'] = model_Cl
+#Parameters['simulation_func'] = model_cov
 Parameters['distance_func'] = linear_dist
-Parameters['prior']['a']['func'] = gaussian_prior
-Parameters['prior']['b']['func'] = gaussian_prior
+Parameters['prior']['Omega_m']['func'] = gaussian_prior
+Parameters['prior']['sigma_8']['func'] = gaussian_prior
 
-# construnct 1 instance of exploratory variable
-x = uniform.rvs(loc=Parameters['xmin'], scale=Parameters['xmax'] - Parameters['xmin'], size=Parameters['nobs'])
-x.sort()
-
-# fiducial model
-ytrue = Parameters['a']*x + Parameters['b']
-
-# real covariance matrix
-cov = np.diag([Parameters['sig'] for i in range(Parameters['nobs'])]) 
-
-# generate catalog
 
 # Write nicaea parameter files
 # TBD
 
 # Call nicaea
-#nicaea_ABC.run_nicaea(Parameters['path_to_nicaea'], Parameters['lmin'], \
-    #Parameters['lmax'], Parameters['nell'])
+nicaea_ABC.run_nicaea(Parameters['path_to_nicaea'], Parameters['lmin'], \
+    Parameters['lmax'], Parameters['nell'])
 
 # Read nicaea output
 ell, C_ell_obs = nicaea_ABC.read_Cl('.', 'P_kappa')
 
+
 # add to parameter dictionary
-Parameters['dataset1'] = np.array([[ell[i], C_ell_obs[i]] for i in range(Parameters['nobs'])])
+Parameters['dataset1'] = np.array([[ell[i], C_ell_obs[i]] for i in range(Parameters['nell'])])
 
 # add observed catalog to simulation parameters
-if bool(Parameters['xfix']):
-    Parameters['simulation_input']['dataset1'] = Parameters['dataset1']
+Parameters['simulation_input']['dataset1'] = Parameters['dataset1']
 
 #############################################
 ### Covariance
@@ -178,6 +168,7 @@ cov         = get_cov_Gauss(ell, C_ell_obs, Parameters['f_sky'], Parameters['sig
 # Estimate covariance as sample from Wishart distribution
 Parameters['nsim'] = int(Parameters['nsim'][0])
 cov_est = sample_cov_Wishart(cov, Parameters['nsim'])
+#cov_est = get_cov_ML(ytrue, cov, Parameters['nsim'])
 
 # add covariance to user input parameters
 Parameters['simulation_input']['cov'] = cov_est

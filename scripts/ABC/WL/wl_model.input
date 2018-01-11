@@ -1,7 +1,7 @@
 path_to_obs		= None   	           # path to observed data 
 
-param_to_fit 		= a b                                      # parameters to fit
-param_to_sim    	= a b sig  xmin xmax nobs cov xfix f_sky sigma_eps nbar      # parameters needed for simulation
+param_to_fit 		= Omega_m sigma_8                                      # parameters to fit
+param_to_sim    	= Omega_m sigma_8 lmin lmax nell f_sky sigma_eps nbar      # parameters needed for simulation
 
 prior_func	        = gaussian_prior gaussian_prior      # one prior function for each parameter
                                                    # under consideration 
@@ -12,25 +12,19 @@ distance_func	= linear_dist                      # distance function
 
 dist_dim = 1              #
 
-a_prior_par_name      = pmean pstd               # parameters for prior distribution  
-a_prior_par_val       = 2.0  4.0                 # values for prior distribution   
+Omega_m_prior_par_name      = pmean pstd               # parameters for prior distribution  
+Omega_m_prior_par_val       = 0.27 4.0                 # values for prior distribution   
 
-b_prior_par_name       = pmean  pstd              # parameters for prior distribution
-b_prior_par_val        =  1.0  5.0                # values for prior distribution
+sigma_8_prior_par_name       = pmean  pstd              # parameters for prior distribution
+sigma_8_prior_par_val        =  0.8  5.0                # values for prior distribution
 
 	
-a_lim                  = -2.0  4.0               # extreme limits for parametes
-b_lim                  = -3.0  5.0                # 
+Omega_m_lim                  = 0.05  1.5               # extreme limits for parametes
+sigma_8_lim                  = 0.0  2.0                # extreme limits for parametes
 	          
-sig		= 5.0                              #  fiducial scatter
-a               = 1.0                              #  angular coefficient
-b               = 0.0                              #  linear coefficient
+Omega_m         = 0.27                             #  matter density parameter
+sigma_8         = 0.8                              #  normalisation
 nsim            = 800                              #  number of simulations for covariance matrix
-xmin            = -100                             #   min value for exploratory variable
-xmax            = 100                              #   max value for exploratory variable
-nobs            = 50                               #   number of observations
-cov             = 1                                #   covariance matrix to be determined in Python file
-xfix            = 0                                #   if 0, generate new x in each simulation, otherwise use observed x 
 
 f_sky		= 0.3				   # covered sky fraction of survey
 sigma_eps	= 0.29				   # intrinsic ellipticity dispersion per component
@@ -41,8 +35,8 @@ lmin = 10
 lmax = 5000
 nell = 50
 
-path_to_nicaea = astro/nicaea/versions/nicaea_2.7
-#path_to_nicaea = astro/ECOSSTAT-work
+#path_to_nicaea = astro/nicaea/versions/nicaea_2.7
+path_to_nicaea = astro/ECOSSTAT-work
 
 
 M 		= 100				   # number of particle in each particle system

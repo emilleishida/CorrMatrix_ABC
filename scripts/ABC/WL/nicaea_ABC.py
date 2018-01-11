@@ -19,8 +19,7 @@ import covest
 from astropy.io import ascii
 
 
-
-def run_nicaea(path, lmin, lmax, nell):
+def run_nicaea(path, lmin, lmax, nell, par_name=None, par_val=None):
     """Calls nicaea.
 
     Parameters
@@ -33,6 +32,10 @@ def run_nicaea(path, lmin, lmax, nell):
         maximume ell
     nell: int
         number of ell modes
+    par_name: array of string, optional, default=None
+        parameter names for on-the-fly updates
+    par_val: array of float, optiona, default=None
+	parameter values corresponding to par_nam 
 
     Returns
     -------
@@ -40,7 +43,11 @@ def run_nicaea(path, lmin, lmax, nell):
     """
 
     Lstr = '-L \'{} {} {}\''.format(lmin, lmax, nell)
-    covest.run_cmd('{}/bin/lensingdemo -D 0 {} -H 1'.format(path, Lstr), verbose=True, stop=True)
+    parstr = '' 
+    if par_name is not None:
+        for i, name in enumerate(par_name):
+            parstr = '{} --{} {}'.format(parstr, name, par_val[i])
+    covest.run_cmd('{}/bin/lensingdemo -D 0 {} {} -H 1 -q'.format(path, Lstr, parstr), verbose=True, stop=True)
 
 
 
