@@ -144,9 +144,7 @@ Parameters['prior']['Omega_m']['func'] = gaussian_prior
 Parameters['prior']['sigma_8']['func'] = gaussian_prior
 
 
-# Write nicaea parameter files
-# TBD
-
+# Get 'observation' (fiducial model)
 # Call nicaea
 nicaea_ABC.run_nicaea(Parameters['path_to_nicaea'], Parameters['lmin'], \
     Parameters['lmax'], Parameters['nell'])
