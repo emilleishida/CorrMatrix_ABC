@@ -30,17 +30,21 @@ xmin            = -100                             #   min value for exploratory
 xmax            = 100                              #   max value for exploratory variable
 nobs            = 750                              #   number of observations
 cov             = 1                                #   covariance matrix to be determined in Python file
-xfix            = 0                                #   if 0, generate new x in each simulation, otherwise use observed x 
+xfix            = 1                                #   if 0, generate new x in each simulation, otherwise use observed x 
 
 M 		= 100				   # number of particle in each particle system
 Mini            = 200                              # number of draws for 1st particle system
-#delta 		= 0.0025				   # convergence criteria
+#delta 		= 0.0025			   # convergence criteria
 delta		= 0.025
 qthreshold 	= 0.75				   # quantile in distance threshold 
 
 file_root 	= linear_PS                        # root to output files names 
 screen          = 0			           # rather (1) or not (0) to screen outputs
+<<<<<<< HEAD
+ncores          = 4				   # number of cores
+=======
 ncores          = -1				   # number of cores
+>>>>>>> daa129ce279d48441c39c83c806da254678e7630
 split_output    = 1                                # number of intermediate steps written to file
 
 
