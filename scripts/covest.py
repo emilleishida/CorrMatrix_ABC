@@ -1,9 +1,65 @@
+from __future__ import print_function
+
 import sys
 import os
 import numpy as np
+import errno
+import subprocess
+import shlex
+
+
+#import matplotlib
+#matplotlib.use("Agg")
 import pylab as plt
+from matplotlib.ticker import ScalarFormatter
+
 from astropy.table import Table, Column
 from astropy.io import ascii
+
+
+
+def alpha_new(n_S, n_D):
+    """Return precision matrix estimate bias prefactor alpha.
+       IK17 (5).
+    """
+
+    return (n_S - n_D - 2.0)/(n_S - 1.0)
+
+
+
+def get_n_S_arr(n_S_min, n_D, f_n_S_max, n_n_S, n_S=None):
+    """Return array of values of n_S=number of simulations.
+
+    Parameters
+    ----------
+    n_S_min: int
+        smallest n_S
+    n_D: int
+        number of data points
+    f_n_S_max: float
+        largest n_S = f_n_S_max * n_D
+    n_n_S: int
+        number of values for n_S
+    n_S: array of int, optional, default=None
+        array of number of simulations, overrides all other arguments if not None
+
+    Returns
+    -------
+    n_S_arr: array of int
+        array with n_S values
+    n_n_S: int
+        number of n_S values
+    """
+
+    if n_S != None:
+        n_S_arr = np.array(n_S)
+        n_n_S   = len(n_S_arr)
+    else:
+        start   = n_S_min
+        stop    = n_D * f_n_S_max
+        n_S_arr = np.logspace(np.log10(start), np.log10(stop), n_n_S, dtype='int')
+ 
+    return n_S_arr, n_n_S
 
 
 
@@ -15,6 +71,39 @@ def no_bias(n, n_D, par):
     """
 
     return np.asarray([par] * len(n))
+
+
+def get_n_S_R_from_fit_file(file_base, npar=2):
+    """Return array of number of simulations, n_n_S, and number of runs, n_R from fit output file.
+
+    Parameters
+    ----------
+    file_base: string
+        input file name base (without extension)
+    npar: int
+        number of parameters, default=2
+
+    Returns
+    -------
+    n_S: array of int
+        array of number of simulations
+    n_R: int
+        number of runs
+    """
+
+    in_name = '{}.txt'.format(file_base)
+    try:
+        dat = ascii.read(in_name)
+    except IOError as exc:
+        if exc.errno == errno.ENOENT:
+            error('File {} not found'.format(in_name))
+        else:
+            raise
+
+    n_S = np.array(dat['n_S'].data)
+    n_R   = (len(dat.keys()) - 1) / 2 / npar
+
+    return n_S, n_R
 
 
 
@@ -32,7 +121,6 @@ class param:
         return vars(self)
 
 
-
 class Results:
     """Store results of Fisher matrix and MCMC sampling
     """
@@ -45,6 +133,7 @@ class Results:
         self.mean      = {}
         self.std       = {}
         self.par_name  = par_name
+
         self.file_base = file_base
 
         if np.isscalar(yscale):
@@ -57,7 +146,8 @@ class Results:
             self.mean[p]   = np.zeros(shape = (n_n_S, n_R))
             self.std[p]    = np.zeros(shape = (n_n_S, n_R))
 
-        self.F = np.zeros(shape = (n_n_S, n_R, 2, 2))
+        self.F  = np.zeros(shape = (n_n_S, n_R, 2, 2))
+        self.fs = 16
 
 
     def set(self, par, i, run, which='mean'):
@@ -81,19 +171,28 @@ class Results:
         return std_var
 
 
-    def read_mean_std(self, format='ascii'):
+    def read_mean_std(self, format='ascii', verbose=False):
         """Read mean and std from file
         """
 
         n_n_S, n_R = self.mean[self.par_name[0]].shape
         if format == 'ascii':
-            dat = ascii.read('{}.txt'.format(self.file_base))
-            for p in self.par_name:
-                for run in range(n_R):
-                    col_name = 'mean[{0:s}]_run{1:02d}'.format(p, run)
-                    self.mean[p].transpose()[run] = dat[col_name]
-                    col_name = 'std[{0:s}]_run{1:02d}'.format(p, run)
-                    self.std[p].transpose()[run] = dat[col_name]
+            in_name = '{}.txt'.format(self.file_base)
+            try:
+                dat = ascii.read(in_name)
+                for p in self.par_name:
+                    for run in range(n_R):
+                        col_name = 'mean[{0:s}]_run{1:02d}'.format(p, run)
+                        self.mean[p].transpose()[run] = dat[col_name]
+                        col_name = 'std[{0:s}]_run{1:02d}'.format(p, run)
+                        self.std[p].transpose()[run] = dat[col_name]
+            except IOError as exc:
+                if exc.errno == errno.ENOENT:
+                    if verbose == True:
+                        warning('File {} not found'.format(in_name))
+                    pass
+                else:
+                    raise
 
 
     def write_mean_std(self, n, format='ascii'):
@@ -198,7 +297,7 @@ class Results:
         return True
 
 
-    def plot_mean_std(self, n, n_D, par=None):
+    def plot_mean_std(self, n, n_D, par=None, boxwidth=None, xlog=False):
         """Plot mean and std versus number of realisations n
 
         Parameters
@@ -209,6 +308,10 @@ class Results:
             dimension of data vector
         par: dictionary of array of float, optional
             input parameter values and errors, default=None
+        boxwidth: float, optional
+            box width for box plots, default: None, width is determined from n
+        xlog: bool, optional
+            logarithmic x-axis, default False
 
         Returns
         -------
@@ -220,12 +323,35 @@ class Results:
         marker     = ['.', 'D']
         markersize = [6] * len(marker)
         color      = ['b', 'g']
-        fac_xlim   = 1.05
 
         plot_sth = False
-        plot_init(n_D, n_R)
+        plot_init(n_D, n_R, raise_title=True, fs=self.fs)
 
-        box_width = (n[1] - n[0]) / 2
+        if boxwidth == None:
+            if xlog == False:
+                if len(n) > 1:
+                    box_width = (n[1] - n[0]) / 2
+                else:
+                    box_width = 50
+            else:
+                if len(n) > 1:
+                    box_width = np.sqrt(n[1]/n[0]) # ?
+                else:
+                    box_width = 0.1
+            
+        else:
+            box_width = boxwidth
+
+        if xlog == True:
+            fac_xlim = 1.6
+            xmin = n[0]/fac_xlim
+            xmax = n[-1]*fac_xlim
+            rotation = 'vertical'
+        else:
+            fac_xlim   = 1.05
+            xmin = (n[0]-5)/fac_xlim**5
+            xmax = n[-1]*fac_xlim
+            rotation = 'vertical'
 
         # Set the number of required subplots (1 or 2)
         j_panel = {}
@@ -240,6 +366,12 @@ class Results:
             n_panel = 1
             j_panel[j_panel.keys()[0]] = 1
 
+        if xlog == True:
+            width   = lambda p, box_width: 10**(np.log10(p)+box_width/2.)-10**(np.log10(p)-box_width/2.)
+            flinlog = lambda x: np.log(x)
+        else:
+            width   = lambda p, box_width: np.zeros(len(n)) + float(box_width)
+            flinlog = lambda x: x
 
         for j, which in enumerate(['mean', 'std']):
             for i, p in enumerate(self.par_name):
@@ -248,40 +380,87 @@ class Results:
                     ax = plt.subplot(1, n_panel, j_panel[which])
 
                     if y.shape[1] > 1:
-                        bplot = plt.boxplot(y.transpose(), positions=n, sym='.', widths=box_width)
+                        bplot = plt.boxplot(y.transpose(), positions=n, sym='.', widths=width(n, box_width))
                         for key in bplot:
                             plt.setp(bplot[key], color=color[i], linewidth=2)
                         plt.setp(bplot['whiskers'], linestyle='-', linewidth=2)
                     else:
                         plt.plot(n, y.mean(axis=1), marker[i], ms=markersize[i], color=color[i])
 
+                    if xlog == True:
+                        ax.set_xscale('log')
+
+                    n_fine = np.arange(n[0], n[-1], len(n)/10.0)
                     my_par = par[which]
                     if self.fct is not None and which in self.fct:
                         # Define high-resolution array for smoother lines
-                        n_fine = np.arange(n[0], n[-1], len(n)/10.0)
                         plt.plot(n_fine, self.fct[which](n_fine, n_D, my_par[i]), '{}-.'.format(color[i]), linewidth=2)
 
-                    plt.plot(n, no_bias(n, n_D, my_par[i]), '{}-'.format(color[i]), label='{}$({})$'.format(which, p), linewidth=2)
+                    plt.plot(n_fine, no_bias(n_fine, n_D, my_par[i]), '{}-'.format(color[i]), \
+			     label='{}$({})$'.format(which, p), linewidth=2)
 
         # Finalize plot
         for j, which in enumerate(['mean', 'std']):
             if which in j_panel:
+
+		# Get main axes
                 ax = plt.subplot(1, n_panel, j_panel[which])
+
+		# Main-axes settings
                 plt.xlabel('$n_{\\rm s}$')
                 plt.ylabel('<{}>'.format(which))
-                #plt.xticks2()?bo alpha, or n_d / n_s
-                plt.xticks(rotation = 'vertical')
-                plt.xlim((n[0]-5)/fac_xlim**3, n[-1]*fac_xlim)
                 ax.set_yscale(self.yscale[j])
+                ax.legend(frameon=False)
+                plt.xlim(xmin, xmax)
+
+		# x-ticks
+                ax = plt.gca().xaxis
+                ax.set_major_formatter(ScalarFormatter())
+                plt.ticklabel_format(axis='x', style='sci')
+		# Remove first tick label due to text overlap if little space
+                x_loc = []
+                x_lab = []
+                for i, n_S in enumerate(n):
+                    x_loc.append(n_S)
+                    if n_panel == 1 or i != 1 or len(n)<10:
+                        lab = '{}'.format(n_S)
+                    else:
+                        lab = ''
+                x_lab.append(lab)
+                plt.xticks(x_loc, x_lab, rotation=rotation)
+                ax.label.set_size(self.fs)
+
+		# Second x-axis
+                ax2 = plt.twiny()
+                x2_loc = []
+                x2_lab = []
+                for i, n_S in enumerate(n):
+                    if n_S > 0:
+                        if n_panel == 1 or i != 1 or len(n)<10:
+                            frac = float(n_D) / float(n_S)
+                            if frac > 100:
+                                lab = '{:.3g}'.format(frac)
+                            else:
+                                lab = '{:.2g}'.format(frac)
+                        else:
+                            lab = ''
+                            x2_loc.append(flinlog(n_S))
+                            x2_lab.append(lab)
+                        plt.xticks(x2_loc, x2_lab)
+                ax2.set_xlabel('$n_{\\rm d} / n_{\\rm s}$', size=self.fs)
+                for tick in ax2.get_xticklabels():
+                    tick.set_rotation(90)
+                plt.xlim(flinlog(xmin), flinlog(xmax))
+
                 plot_sth = True
 
-                ax.legend(frameon=False)
-
         if plot_sth == True:
-            plt.savefig('{}.pdf'.format(self.file_base))
+            plt.tight_layout(h_pad=5.0)
+            plt.savefig('{}.pdf'.format(self.file_base), bbox_inches="tight")
 
 
-    def plot_std_var(self, n, n_D, par=None):
+
+    def plot_std_var(self, n, n_D, par=None, sig_var_noise=None):
         """Plot standard deviation of parameter variance
         """
 
@@ -289,13 +468,22 @@ class Results:
         color = ['g', 'm']
 
         plot_sth = False
-        plot_init(n_D, n_R)
-        ax = plt.subplot(1, 1, 1)
+        plot_init(n_D, n_R, fs=self.fs)
+
+        # For output ascii file
+        cols  = [n]
+        names = ['# n_S']
 
         for i, p in enumerate(self.par_name):
             y = self.get_std_var(p)
             if y.any():
-                plt.plot(n, y, marker='o', color=color[i], label='$\sigma[\sigma^2({})]$'.format(p), linestyle='None')
+                plt.plot(n, y, marker='o', color=color[i], label='$\sigma(\sigma^2_{})$'.format(p), linestyle='None')
+                cols.append(y)
+                names.append('sigma(sigma^2_{})'.format(p))
+
+                if sig_var_noise != None:
+                    plt.plot(n, y - sig_var_noise[i], marker='o', mfc='none', color=color[i], \
+                             label='$\sigma(\sigma^2_{0}) - \sigma_n(\sigma^2_{0})$'.format(p), linestyle='None')
 
         for i, p in enumerate(self.par_name):
             y = self.get_std_var(p)
@@ -303,47 +491,99 @@ class Results:
                 if par is not None:
                     n_fine = np.arange(n[0], n[-1], len(n)/10.0)
                     if 'std_var' in self.fct:
-                        plot_add_legend(i==0, n_fine, self.fct['std_var'](n_fine, n_D, par[i]), '-', color=color[i], label='This work')
+                        plot_add_legend(i==0, n_fine, self.fct['std_var'](n_fine, n_D, par[i]), \
+                                        '-', color=color[i], label='This work')
+                        cols.append(self.fct['std_var'](n, n_D, par[i]))
+                        names.append('IJ17({})'.format(p))
+
                     if 'std_var_TJK13' in self.fct:
-                        plot_add_legend(i==0, n_fine, self.fct['std_var_TJK13'](n_fine, n_D, par[i]), '--', color=color[i], label='TJK13')
+                        plot_add_legend(i==0, n_fine, self.fct['std_var_TJK13'](n_fine, n_D, par[i]), \
+                                        '--', color=color[i], label='TJK13')
+                        cols.append(self.fct['std_var_TJK13'](n, n_D, par[i]))
+                        names.append('TJK13({})'.format(p))
+
                     if 'std_var_TJ14' in self.fct:
-                        plot_add_legend(i==0, n_fine, self.fct['std_var_TJ14'](n_fine, n_D, par[i]), '-.', color=color[i], label='TJ14', linewidth=2)
+                        plot_add_legend(i==0, n_fine, self.fct['std_var_TJ14'](n_fine, n_D, par[i]), \
+                                        '-.', color=color[i], label='TJ14', linewidth=2)
+                        cols.append(self.fct['std_var_TJ14'](n, n_D, par[i]))
+                        names.append('TJ14({})'.format(p))
 
-                plt.xlabel('$n_{\\rm s}$')
-                plt.ylabel('std(var)')
-                plt.legend(loc='best', numpoints=1, frameon=False)
-                ax.set_yscale('log')
-                plot_sth = True
+                    plot_sth = True
 
+        # Finalize plot
+
+	# Get main axes
+        ax = plt.subplot(1, 1, 1)
+
+	# Main-axes settings
+        plt.xlabel('$n_{\\rm s}$')
+        plt.ylabel('std(var)')
+        ax.set_yscale('log')
+        ax.legend(loc='best', numpoints=1, frameon=False)
+
+	# x-ticks
+        ax = plt.gca().xaxis
+        ax.set_major_formatter(ScalarFormatter())
+        plt.ticklabel_format(axis='x', style='sci')
+
+	# Second x-axis
+        x_loc, x_lab = plt.xticks()
+        ax2 = plt.twiny()
+        x2_loc = []
+        x2_lab = []
+        for i, n_S in enumerate(x_loc):
+            if n_S > 0:
+                x2_loc.append(n_S)
+                x2_lab.append('{:.2g}'.format(float(n_D) / float(n_S)))
+        plt.xticks(x2_loc, x2_lab)
+        ax2.set_xlabel('$n_{\\rm d} / n_{\\rm s}$', size=self.fs)
+
+        # y-scale
         plt.ylim(8e-9, 1e-2)
 
+
+        ### Output
+        outbase = 'std_2{}'.format(self.file_base)
+
+        # Plot/pdf
         if plot_sth == True:
-            plt.savefig('std_2{}.pdf'.format(self.file_base))
+            plt.savefig('{}.pdf'.format(outbase))
+
+        # Ascii
+        t = Table(cols, names=names)
+        f = open('{}.txt'.format(outbase), 'w')  
+        ascii.write(t, f, delimiter='\t')
+        f.close()
 
 
 
-def plot_init(n_D, n_R):
+def plot_init(n_D, n_R, raise_title=False, fs=16):
 
     fig = plt.figure()
     fig.subplots_adjust(bottom=0.16)
-    #plt.tight_layout() # makes space for large labels
+
     ax = plt.gca()
-
-    fs = 16
-
     ax.yaxis.label.set_size(fs)
     ax.xaxis.label.set_size(fs)
+
     plt.tick_params(axis='both', which='major', labelsize=fs)
 
+    plt.rcParams.update({'figure.autolayout': True})
+
     if n_R>0:
-        add_title(n_D, n_R, fs)
+        add_title(n_D, n_R, fs, raise_title=raise_title)
 
 
 
-def add_title(n_D, n_R, fs):
+def add_title(n_D, n_R, fs, raise_title=False):
     """Adds title to plot."""
 
-    plt.suptitle('$n_{{\\rm d}}={}$ data points, $n_{{\\rm r}}={}$ runs'.format(n_D, n_R), fontsize=fs)
+    if raise_title == True:
+        y = 1.1
+    else:
+        y = 1
+
+    plt.suptitle('$n_{{\\rm d}}={}$ data points, $n_{{\\rm r}}={}$ runs'.format(n_D, n_R), fontsize=fs, y=y)
 
 
 
@@ -377,16 +617,79 @@ def error(str, val=1, stop=True, verbose=True):
     None
     """
 
+    if stop == True:
+        col = '31' # red
+    else:
+        col = '33' # orange
+
     if verbose is True:
-        print>>sys.stderr, "\x1b[31m{}\x1b[0m".format(str),
+        print>>sys.stderr, "\x1b[{}m{}\x1b[0m".format(col, str),
 
     if stop is False:
         if verbose is True:
-            print>>sys.stderr,  "\x1b[31m{}, continuing...\x1b[0m".format(str),
+            print>>sys.stderr,  "\x1b[{}m, continuing...\x1b[0m".format(col),
+            print>>sys.stderr, ''
     else:
         if verbose is True:
             print>>sys.stderr, ''
         sys.exit(val)
+
+
+
+def check_error_stop(ex_list, verbose=True, stop=False):
+    """Check error list and stop if one or more are != 0 and stop=True
+
+    Parameters
+    ----------
+    ex_list: list of integers
+        List of exit codes
+    verbose: boolean
+        Verbose output, default=True
+    stop: boolean
+        If False (default), does not stop program
+
+    Returns
+    -------
+    s: integer
+        sum of absolute values of exit codes
+    """
+
+    if ex_list is None:
+        s = 0
+    else:
+        s = sum([abs(i) for i in ex_list])
+
+
+    # Evaluate exit codes
+    if s > 0:
+        n_ex = sum([1 for i in ex_list if i != 0])
+        if verbose is True:
+            if len(ex_list) == 1:
+                print_color('red', 'The last command returned sum|exit codes|={}'.format(s), end='')
+            else:
+                print_color('red', '{} of the last {} commands returned sum|exit codes|={}'.format(n_ex, len(ex_list), s), end='')
+        if stop is True:
+            print_color('red', ', stopping')
+        else:
+            print_color('red', ', continuing')
+
+        if stop is True:
+            sys.exit(s)
+
+
+    return s
+
+
+def print_color(col, txt, end='\n'):
+    print(txt, end=end)
+
+
+
+def warning(str):
+    """Prints message to stderr
+        """
+
+    error('Warning: ' + str, val=None, stop=False, verbose=True)
 
 
 
@@ -532,10 +835,10 @@ def log_command(argv, name=None, close_no_return=True):
         if ']' in a or ']' in a:
             a = '\"{}\"'.format(a)
 
-        print>>f, a,
+        print(a, file=f, end='')
         #print>>f, ' ',
 
-    print>>f, ''
+    print('', file=f)
 
     if close_no_return == False:
         return f
@@ -545,4 +848,94 @@ def log_command(argv, name=None, close_no_return=True):
 
 
 
+def run_cmd(cmd_list, run=True, verbose=True, stop=False, parallel=True, file_list=None, devnull=False):
+    """Run shell command or a list of commands using subprocess.Popen().
+
+    Parameters
+    ----------
+
+    cmd_list: string, or array of strings
+        list of commands
+    run: bool
+        If True (default), run commands. run=False is for testing and debugging purpose
+    verbose: bool
+        If True (default), verbose output
+    stop: bool
+        If False (default), do not stop after command exits with error.
+    parallel: bool
+        If True (default), run commands in parallel, i.e. call subsequent comands via
+        subprocess.Popen() without waiting for the previous job to finish.
+    file_list: array of strings
+        If file_list[i] exists, cmd_list[i] is not run. Default value is None
+    devnull: boolean
+        If True, all output is suppressed. Default is False.
+
+    Returns
+    -------
+    sum_ex: int
+        Sum of exit codes of all commands
+    """
+
+    if type(cmd_list) is not list:
+        cmd_list = [cmd_list]
+
+    if verbose is True and len(cmd_list) > 1:
+        print('Running {} commands, parallel = {}'.format(len(cmd_list), parallel))
+
+    ex_list   = []
+    pipe_list = []
+    for i, cmd in enumerate(cmd_list):
+
+        ex = 0
+
+        if run is True:
+
+            # Check for existing file
+            if file_list is not None and os.path.isfile(file_list[i]):
+                if verbose is True:
+                    print('Skipping command \'{}\', file \'{}\' exists'.format(cmd, file_list[i]))
+            else:
+                if verbose is True:
+                        print('Running command \'{0}\''.format(cmd))
+
+                # Run command
+                try:
+                    cmds = shlex.split(cmd)
+                    if devnull is True:
+                        pipe = subprocess.Popen(cmds, stdout=subprocess.DEVNULL)
+                    else:
+                        pipe = subprocess.Popen(cmds)
+
+                    if parallel is False:
+                        # Wait for process to terminate
+                        pipe.wait()
+
+                    pipe_list.append(pipe)
+
+                    # If process has not terminated, ex will be None
+                    #ex = pipe.returncode
+                except OSError as e:
+                    print('Error: {0}'.format(e.strerror))
+                    ex = e.errno
+
+                    check_error_stop([ex], verbose=verbose, stop=stop)
+
+        else:
+            if verbose is True:
+                print('Not running command \'{0}\''.format(cmd))
+
+        ex_list.append(ex)
+
+
+    if parallel is True:
+        for i, pipe in enumerate(pipe_list):
+            pipe.wait()
+
+            # Update exit code list
+            ex_list[i] = pipe.returncode
+
+
+    s = check_error_stop(ex_list, verbose=verbose, stop=stop)
+
+    return s
 

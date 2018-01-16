@@ -95,8 +95,14 @@ def parse_options(p_def):
     parser.add_option('-m', '--mode', dest='mode', type='string', default=p_def.mode,
         help='Mode: \'s\'=simulate, \'r\'=read ABC dirs, \'R\'=read master file, default={}'.format(p_def.mode))
 
+    parser.add_option('-b', '--boxwidth', dest='boxwidth', type='float', default=None,
+        help='box width for box plot, default=None, determined from n_S array')
+    parser.add_option('', '--xlog', dest='xlog', action='store_true',
+        help='logarithmic x-axis for box plots')
+
     parser.add_option('', '--template_dir', dest='templ_dir', type='string', default=p_def.templ_dir,
         help='Template directory, default=\'{}\''.format(p_def.templ_dir))
+
 
     parser.add_option('-v', '--verbose', dest='verbose', action='store_true', help='verbose output')
 
@@ -492,22 +498,7 @@ def main(argv=None):
 
 
     # Number of simulations
-
-    if param.n_S == None:
-        start = param.n_S_min
-        stop  = int(param.n_D * param.f_n_S_max)
-        n_S_arr = np.logspace(np.log10(start), np.log10(stop), param.n_n_S, dtype='int')
-    else:
-        n_S_arr = param.n_S
-
-    # Examples of runs:
-    #  [1, 2]
-    #  58 .. 584
-    #   4 .. 46
-    # default: 755 .. 7500
-
-
-    n_n_S = len(n_S_arr)
+    n_S_arr, n_n_S = get_n_S_arr(param.n_S_min, param.n_D, param.f_n_S_max, param.n_n_S, n_S=param.n_S)
 
 
     # Display n_S array and exit
@@ -541,7 +532,7 @@ def main(argv=None):
 
     par = my_string_split(param.spar, num=2, verbose=param.verbose, stop=True)
     param.par = [float(p) for p in par]
-    fit_ABC.plot_mean_std(n_S_arr, param.n_D, par={'mean': param.par, 'std': dpar_exact})
+    fit_ABC.plot_mean_std(n_S_arr, param.n_D, par={'mean': param.par, 'std': dpar_exact}, boxwidth=param.boxwidth, xlog=param.xlog)
 
 
     return 0

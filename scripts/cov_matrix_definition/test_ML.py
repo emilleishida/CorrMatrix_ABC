@@ -2,6 +2,8 @@
 
 import numpy as np
 from scipy.stats import norm, uniform, multivariate_normal
+#import matplotlib
+#matplotlib.use("Agg")
 import pylab as plt
 import sys
 import os
@@ -35,17 +37,6 @@ test_ML.py   -D 750   -p   1_0   -s   5   -v   -m r  -r   -n   4   --n_n_S   10 
 """The following functions correspond to the expectation values for Gaussian
    distributions. See Taylor, Joachimi & Kitching (2013), TKB13
 """
-
-
-
-def alpha_new(n_S, n_D):
-    """Return precision matrix estimate bias prefactor alpha.
-       IK17 (5).
-    """
-
-    return (n_S - n_D - 2.0)/(n_S - 1.0)
-
-
 
 
 def alpha(n_S, n_D):
@@ -140,7 +131,7 @@ def std_fish_biased_TJK13(n, n_D, par):
 
 def std_fish_deb_TJ14(n, n_D, par):
     """Improved error on variance from the Fisher matrix.
-       From TJ14 (12). This seems to be the case of the debiased precision matrix..
+       From TJ14 (12). This seems to be the case of the debiased precision matrix.
     """
 
     n_P = 2  # Number of parameters
@@ -259,6 +250,8 @@ def plot_det(n, x, sig2, delta, F, n_R):
 
 def plot_std_fish_biased_ana(par_name, n, x, sig2, delta, F=None, n_R=0):
 
+    EPS = 1e-6
+
     n_D = len(x)
     plot_init(n_D, n_R)
     ax = plt.subplot(1, 1, 1)
@@ -294,26 +287,24 @@ def plot_std_fish_biased_ana(par_name, n, x, sig2, delta, F=None, n_R=0):
                 else:
                     fmean = F[i,0,:]
                 det = fmean[0,0] * fmean[1,1] - fmean[0,1] ** 2
-                #print('{} {} {}'.format(nn, det, 1.0/det))
-                # MKDEBUG 24/10: I can reproduce theory curve if I take theory det.
-                # Uncomment following line.
-                #det = 75000000.0
-                # So maybe it is indeed higher-order terms that would reproduce data?
-                # Or extra uncertainty from inverse in det?
 
             for run in range(n_R):
                 f     = F[i,run]
+
                 if mode == 1:    # Numerical inverse
-                    Fm1[run] = np.linalg.inv(F[i,run])
+                    if f.any():
+                        Fm1[run] = np.linalg.inv(f)
 
                 elif mode == 2:  # Analytical inverse
                     det = f[0,0] * f[1,1] - f[0,1] ** 2
-                    Fm1[run,0,0] = f[1,1] / det
-                    Fm1[run,1,1] = f[0,0] / det
+                    if det > EPS:
+                        Fm1[run,0,0] = f[1,1] / det
+                        Fm1[run,1,1] = f[0,0] / det
 
                 elif mode == 3:  # Analytical inverse with mean determinant (first-order term)
-                    Fm1[run,0,0] = f[1,1] / det
-                    Fm1[run,1,1] = f[0,0] / det
+                    if det > EPS:
+                        Fm1[run,0,0] = f[1,1] / det
+                        Fm1[run,1,1] = f[0,0] / det
 
             std_a.append(np.std(Fm1[:,0,0]))
             std_b.append(np.std(Fm1[:,1,1]))
@@ -382,17 +373,20 @@ def params_default():
         parameter values
     """
 
+    n_D = 750
+
     p_def = param(
-        n_D = 750,
+        n_D = n_D,
         n_R = 10,
         n_n_S = 10,
-        f_n_S_max = 10,
+        f_n_S_max = 10.0,
+        n_S_min = n_D + 5,
         spar = '1.0 0.0',
         sig2 = 5.0,
         mode   = 's',
         do_fit_stan = False,
         do_fish_ana = False,
-        likelihood  = 'norm',
+        likelihood  = 'norm_deb',
         n_jobs = 1,
         random_seed = False,
     )
@@ -426,8 +420,13 @@ def parse_options(p_def):
         help='Number of runs per simulation, default={}'.format(p_def.n_R))
     parser.add_option('', '--n_n_S', dest='n_n_S', type='int', default=p_def.n_n_S,
         help='Number of n_S, where n_S is the number of simulation, default={}'.format(p_def.n_n_S))
-    parser.add_option('', '--f_n_S_max', dest='f_n_S_max', type='int', default=p_def.f_n_S_max,
+    parser.add_option('', '--f_n_S_max', dest='f_n_S_max', type='float', default=p_def.f_n_S_max,
         help='Maximum n_S = n_D x f_n_S_max, default: f_n_S_max={}'.format(p_def.f_n_S_max))
+    parser.add_option('', '--n_S_min', dest='n_S_min', type='int', default=p_def.n_S_min,
+        help='Minimum n_S, default=n_D+5 ({})'.format(p_def.n_S_min))
+    parser.add_option('', '--n_S', dest='str_n_S', type='string', default=None,
+        help='Array of n_S, default=None. If given, overrides n_S_min, n_n_S and f_n_S_max')
+
 
     parser.add_option('-p', '--par', dest='spar', type='string', default=p_def.spar,
         help='list of parameter values, default=\'{}\''.format(p_def.spar))
@@ -440,6 +439,8 @@ def parse_options(p_def):
         help='Calculate analytical Fisher matrix, default={}'.format(p_def.do_fish_ana))
     parser.add_option('-L', '--like', dest='likelihood', type='string', default=p_def.likelihood,
         help='Likelihood for MCMC, one in \'norm\'|\'SH\', default=\'{}\''.format(p_def.likelihood))
+    parser.add_option('', '--sig_var_noise', dest='sig_var_noise', type='string',
+        help='MCMC \'noise\' to be subtracted from sigma(var) plots for fits, default=None')
 
     parser.add_option('-m', '--mode', dest='mode', type='string', default=p_def.mode,
         help='Mode: \'s\'=simulate, \'r\'=read, default={}'.format(p_def.mode))
@@ -476,6 +477,8 @@ def check_options(options):
             error('Adding simulations (-a) only possible with random seed (-r)')
         if re.search('r', options.mode) is not None:
             error('Adding simulations (-a) is not  possible in read mode (-m r)')
+        if not os.path.isfile('sigma_ML.txt'):
+            error('Previous file \'sigma_ML.txt\' necessary for option -a (adding simulations)')
 
     if re.search('s', options.mode) is not None and re.search('r', options.mode) is not None:
         error('Simulation and read mode (-m rs) not possible simultaneously') 
@@ -515,10 +518,23 @@ def update_param(p_def, options):
             setattr(param, key, getattr(options, key))
 
     # Do extra stuff if necessary
-    par = my_string_split(param.spar, num=2, verbose=options.verbose, stop=True)
+    par = my_string_split(param.spar, num=2, verbose=param.verbose, stop=True)
     options.par = [float(p) for p in par]
     options.a = options.par[0]
     options.b = options.par[1]
+
+    tmp = my_string_split(param.sig_var_noise, num=2, verbose=param.verbose, stop=True)
+    if tmp != None:
+        param.sig_var_noise = [float(s) for s in tmp]
+    else:
+        param.sig_var_noise = None
+
+    if options.str_n_S == None:
+        param.n_S = None
+    else:
+        str_n_S_list = my_string_split(options.str_n_S, verbose=False, stop=True)
+        param.n_S = [int(str_n_S) for str_n_S in str_n_S_list]
+
 
     return param
 
@@ -781,6 +797,86 @@ def debias_cov(cov_est_inv, n_S):
 
 
 
+def bias_cov(cov_est, n_S):
+    """Bias covariance matrix such that the inverse of the returned matrix is debiased.
+       This multiplies cov_est with the inverse factor compared to bias_inv_cov.
+    """
+
+    n_D   = cov_est.shape[0]
+    if n_S - n_D - 2 <= 0:
+        print('Number of simulations {} too small for data dimension = {}, resulting in singular covariance'.format(n_S, n_D))
+    alpha = (n_S - n_D - 2.0) / (n_S - 1.0)
+
+    return 1/alpha * cov_est
+
+
+def fit_corr_inv_true(x1, cov_true, sig2, n_jobs=3):
+    """
+    Generates one draw from a multivariate normal distribution
+    and performs the linear fit using the true inverse 
+    diagonal covariance
+
+    input:  x1, mean of multivariate normal distribution - vector of floats
+            sig2, variance
+            n_jobs, number of parallel jobs
+
+    output: fit, Stan fitting object
+    """
+
+    # Fit
+    toy_data = {}                  # build data dictionary
+    toy_data['nobs'] = len(x1)     # sample size = n_D
+    toy_data['x'] = x1             # explanatory variable
+
+    # cov = covariance of the data!
+    y = multivariate_normal.rvs(mean=x1, cov=cov_true, size=1)
+    toy_data['y'] = y              # response variable, here one realisation
+
+    # set estimated covariance matrix for fitting
+    cov_inv = np.diag([1.0/sig2 for i in range(len(x1))])
+    toy_data['cov_inv'] = cov_inv
+
+    # STAN code
+    # the fitting code does not believe that observations are correlated!
+    stan_code = """
+    data {
+        int<lower=0> nobs;
+        vector[nobs] x;
+        vector[nobs] y; 
+        matrix[nobs, nobs] cov_inv;
+    }
+    parameters {
+        real a;
+        real b;                                                              
+    }
+    model {
+        vector[nobs] mu;
+        real chi2;
+
+        mu = b + a * x;
+
+        chi2 = (y - mu)' * cov_inv * (y - mu);
+
+        target += -chi2/2;
+    }
+    """
+
+    import pystan
+    start = time.time()
+    fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=n_jobs, verbose=False, n_jobs=n_jobs)
+
+    # Testing: fast call to pystan
+    #fit = pystan.stan(model_code=stan_code, data=toy_data, iter=1, chains=1, verbose=False, n_jobs=n_jobs)
+
+    end = time.time()
+
+    #elapsed = end - start
+    #print 'elapsed time = ' + str(elapsed)
+
+    return fit
+
+
+
 def fit_corr(x1, cov_true, cov_est, n_jobs=3):
     """
     Generates one draw from a multivariate normal distribution
@@ -831,7 +927,11 @@ def fit_corr(x1, cov_true, cov_est, n_jobs=3):
 
     import pystan
     start = time.time()
-    fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=3, verbose=False, n_jobs=n_jobs)
+    fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=n_jobs, verbose=False, n_jobs=n_jobs)
+
+    # Testing: fast call to pystan
+    #fit = pystan.stan(model_code=stan_code, data=toy_data, iter=1, chains=1, verbose=False, n_jobs=n_jobs)
+
     end = time.time()
 
     #elapsed = end - start
@@ -892,20 +992,53 @@ def fit_corr_SH(x1, cov_true, cov_est_inv, n_jobs=3):
 
         chi2 = (y - mu)' * cov_est_inv * (y - mu);
 
-        target += pow(1.0 + chi2/(1.0 + nobs), -nobs/2.0);
+        #target += pow(1.0 + chi2/(1.0 + nobs), -nobs/2.0);
+        # Bug fix (12/2017): targe += log-likelihood, not likelihood, see fit_corr_true_inv_cov
+        target += log(1.0 + chi2/(1.0 + nobs)) * -nobs/2.0;
     }
     """
 
 
     import pystan
     start = time.time()
-    fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=3, verbose=False, n_jobs=n_jobs)
+    fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=n_jobs, verbose=False, n_jobs=n_jobs)
     end = time.time()
 
     #elapsed = end - start
     #print 'elapsed time = ' + str(elapsed)
 
     return fit
+
+
+
+def set_fit_MCMC(fit, res, i, run):
+    """Set mean and std of fit according to stan output res.
+    
+    Parameters
+    ----------
+    fit: class Results
+        fit data
+    res: stan fitting object
+        fit output
+    i: int
+        current n_S index
+    run: int
+        current run number
+
+    Returns
+    -------
+    None
+    """
+
+    la  = res.extract(permuted=True)
+    par  = []
+    dpar = []
+    for p in fit.par_name:
+        par.append(np.mean(la[p]))
+        dpar.append(np.std(la[p]))
+
+    fit.set(par, i, run, which='mean')
+    fit.set(dpar, i, run, which='std')
 
 
 
@@ -968,33 +1101,40 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_an
 
             # MCMC fit of Parameters
             if options.do_fit_stan == True:
-                if options.likelihood == 'norm':
+                if re.search('norm_biased', options.likelihood) is not None:
                     if options.verbose == True:
-                        print('Running MCMC with mv normal likelihood')
+                        print('Running MCMC with mv normal likelihood and biased inverse covariance')
+
                     res = fit_corr(x1, cov, cov_est, n_jobs=options.n_jobs)
-                    fit = fit_norm
-                elif options.likelihood == 'SH':
+                    set_fit_MCMC(fit_norm, res, i, run)
+
+                elif re.search('norm_deb', options.likelihood) is not None:
+                    if options.verbose == True:
+                        print('Running MCMC with mv normal likelihood and debiased inverse covariance')
+
+                    cov_est_biased  = bias_cov(cov_est, n_S)
+                    res = fit_corr(x1, cov, cov_est_biased, n_jobs=options.n_jobs)
+
+                    # Using true covariance in likelihood
+                    #print('MKDEBUG: cc branch, use true cov for testing')
+                    #res = fit_corr(x1, cov, cov, n_jobs=options.n_jobs)
+
+                    # Using true inverse covariance in likelihood
+                    #print('MKDEBUG: cc branch, use true *inverse* cov for testing')
+                    #res = fit_corr_inv_true(x1, cov, options.sig2, n_jobs=options.n_jobs)
+
+                    set_fit_MCMC(fit_norm, res, i, run)
+
+                if re.search('SH', options.likelihood) is not None:
                     if options.verbose == True:
                         print('Running MCMC with Sellentin&Heavens (SH) likelihood')
                     res = fit_corr_SH(x1, cov, cov_est_inv, n_jobs=options.n_jobs)
-                    fit = fit_SH
-                else:
-                    error('Invalid likelihood \'{}\''.format(options.likelihood))
+                    set_fit_MCMC(fit_SH, res, i, run)
 
-                la  = res.extract(permuted=True)
-                par  = []
-                dpar = []
-                for p in fit.par_name:
-                    par.append(np.mean(la[p]))
-                    dpar.append(np.std(la[p]))
+                
 
-                fit.set(par, i, run, which='mean')
-                fit.set(dpar, i, run, which='std')
-
-
-
-
-def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options):
+def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, \
+                  fit_norm_num, fit_norm_deb, fit_SH, options):
     """Write simulated runs to files"""
 
     if options.add_simulations == True:
@@ -1002,19 +1142,22 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fis
             print('Reading previous simulations from disk')
 
         # Initialise results
-        n_n_S, n_R  = numbers_from_file(sigma_ML.file_base, 1)
+        n_S, n_R         = get_n_S_R_from_fit_file(sigma_ML.file_base, npar=1)
+        n_n_S            = len(n_S)
+
         sigma_ML_prev    = Results(sigma_ML.par_name, n_n_S, n_R, file_base=sigma_ML.file_base)
         sigma_m1_ML_prev = Results(sigma_m1_ML.par_name, n_n_S, n_R, file_base=sigma_m1_ML.file_base)
         sigma_m1_ML_deb_prev = Results(sigma_m1_ML_deb.par_name, n_n_S, n_R, file_base=sigma_m1_ML_deb.file_base)
         fish_ana_prev    = Results(fish_ana.par_name, n_n_S, n_R, file_base=fish_ana.file_base, fct=fish_ana.fct)
         fish_num_prev    = Results(fish_num.par_name, n_n_S, n_R, file_base=fish_num.file_base, fct=fish_num.fct, yscale='linear')
         fish_deb_prev    = Results(fish_deb.par_name, n_n_S, n_R, file_base=fish_deb.file_base, fct=fish_deb.fct)
-        fit_norm_prev    = Results(fit_norm.par_name, n_n_S, n_R, file_base=fit_norm.file_base, fct=fit_norm.fct)
+        fit_norm_num_prev = Results(fit_norm_num.par_name, n_n_S, n_R, file_base=fit_norm_num.file_base, fct=fit_norm_num.fct)
+        fit_norm_deb_prev = Results(fit_norm_deb.par_name, n_n_S, n_R, file_base=fit_norm_deb.file_base, fct=fit_norm_deb.fct)
         fit_SH_prev      = Results(fit_SH.par_name, n_n_S, n_R, file_base=fit_SH.file_base, fct=fit_SH.fct)
 
         # Fill results from files
-        read_from_file(sigma_ML_prev, sigma_m1_ML_prev, sigma_m1_ML_deb_prev, fish_ana_prev, fish_num_prev, fish_deb_prev, fit_norm_prev, \
-                       fit_SH_prev, options)
+        read_from_file(sigma_ML_prev, sigma_m1_ML_prev, sigma_m1_ML_deb_prev, fish_ana_prev, fish_num_prev, fish_deb_prev, \
+                       fit_norm_num_prev, fit_norm_deb_prev, fit_SH_prev, options)
 
         # Add new results
         sigma_ML.append(sigma_ML_prev)
@@ -1023,7 +1166,8 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fis
         fish_ana.append(fish_ana_prev)
         fish_num.append(fish_num_prev)
         fish_deb.append(fish_deb_prev)
-        fit_norm.append(fit_norm_prev)
+        fit_norm_num.append(fit_norm_num_prev)
+        fit_norm_deb.append(fit_norm_deb_prev)
         fit_SH.append(fit_SH_prev)
 
     if options.verbose == True:
@@ -1035,12 +1179,12 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fis
     fish_num.write_Fisher(n_S_arr)
     fish_deb.write_mean_std(n_S_arr)
     if options.do_fit_stan == True:
-        if options.likelihood == 'norm':
-            fit_norm.write_mean_std(n_S_arr)
-        elif options.likelihood == 'SH':
+        if re.search('norm_biased', options.likelihood) is not None:
+            fit_norm_num.write_mean_std(n_S_arr)
+        if re.search('norm_deb', options.likelihood) is not None:
+            fit_norm_deb.write_mean_std(n_S_arr)
+        if re.search('SH', options.likelihood) is not None:
             fit_SH.write_mean_std(n_S_arr)
-        else:
-             error('Invalid likelihood \'{}\''.format(options.likelihood))
 
     sigma_ML.write_mean_std(n_S_arr)
     sigma_m1_ML.write_mean_std(n_S_arr)
@@ -1048,29 +1192,32 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fis
 
 
 
-def read_from_file(sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options):
+def read_from_file(sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, \
+                   fit_norm_num, fit_norm_deb, fit_SH, param):
     """Read simulated runs from files"""
 
-    if options.verbose == True:
+    if param.verbose == True:
         print('Reading simulations from disk')
 
-    if options.do_fish_ana == True:
+    if param.do_fish_ana == True:
         fish_ana.read_mean_std()
-    fish_num.read_mean_std()
+    fish_num.read_mean_std(verbose=param.verbose)
     fish_num.read_Fisher()
-    fish_deb.read_mean_std()
+    fish_deb.read_mean_std(verbose=param.verbose)
 
-    if options.do_fit_stan:
-        # Reading both irrespective of -L (likelihood) flag
-        fit_norm.read_mean_std()
-        fit_SH.read_mean_std()
+    if param.do_fit_stan:
+        if re.search('norm_biased', param.likelihood) is not None:
+            fit_norm_num.read_mean_std(verbose=param.verbose)
+        if re.search('norm_deb', param.likelihood) is not None:
+            fit_norm_deb.read_mean_std(verbose=param.verbose)
+        if re.search('SH', param.likelihood) is not None:
+            fit_SH.read_mean_std(verbose=param.verbose)
 
-    sigma_ML.read_mean_std()
-    sigma_m1_ML.read_mean_std()
-    sigma_m1_ML_deb.read_mean_std()
+    sigma_ML.read_mean_std(verbose=param.verbose)
+    sigma_m1_ML.read_mean_std(verbose=param.verbose)
+    sigma_m1_ML_deb.read_mean_std(verbose=param.verbose)
 
     
-
 
 # Main program
 def main(argv=None):
@@ -1111,10 +1258,12 @@ def main(argv=None):
     delta    = 200                   # Width of uniform distribution for x
 
     # Number of simulations
-    start = options.n_D + 5
-    stop  = options.n_D * options.f_n_S_max
-    n_S_arr = np.logspace(np.log10(start), np.log10(stop), options.n_n_S, dtype='int')
-    n_n_S = len(n_S_arr)
+    n_S_arr, n_n_S = get_n_S_arr(param.n_S_min, param.n_D, param.f_n_S_max, param.n_n_S, n_S=param.n_S)
+
+    # Display n_S array and exit
+    if re.search('d', param.mode) is not None:
+        print('n_S =', n_S_arr)
+        return 0
 
 
     # Initialisation of results
@@ -1123,14 +1272,18 @@ def main(argv=None):
     sigma_m1_ML_deb = Results(tr_name, n_n_S, options.n_R, file_base='sigma_m1_ML_deb', fct={'mean': no_bias})
 
     fish_ana = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_ana', yscale='log', fct={'std': par_fish})
+
+    # Removed: 'std_var': std_fish_biased, IK17 calculation
     fish_num = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_num', yscale='log', \
-                       fct={'std': par_fish, 'std_var': std_fish_biased, 'std_var_TJK13': std_fish_biased_TJK13, 'std_var_TJ14': std_fish_biased_TJ14})
+                       fct={'std': par_fish, 'std_var_TJK13': std_fish_biased_TJK13, 'std_var_TJ14': std_fish_biased_TJ14})
     fish_deb = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_deb', yscale='log', \
                        fct={'std': no_bias, 'std_var_TJK13': std_fish_deb, 'std_var_TJ14': std_fish_deb_TJ14})
-    fit_norm = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_norm', yscale=['linear', 'log'],
-                       fct={'std': par_fish, 'std_var': std_fish_biased})
+    fit_norm_num = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_norm', yscale=['linear', 'log'],
+                       fct={'std': par_fish, 'std_var_TJK13': std_fish_biased_TJK13, 'std_var_TJ14': std_fish_biased_TJ14})
+    fit_norm_deb = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_norm_deb', yscale=['linear', 'log'],
+                       fct={'std': no_bias, 'std_var_TJK13': std_fish_deb, 'std_var_TJ14': std_fish_deb_TJ14})
     fit_SH   = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_SH', yscale=['linear', 'log'],
-                       fct={'std': par_fish, 'std_var': std_fish_biased})
+                       fct={'std': par_fish, 'std_var_TJK13': std_fish_biased_TJK13, 'std_var_TJ14': std_fish_biased_TJ14})
 
     # Data
     x1 = uniform.rvs(loc=-delta/2, scale=delta, size=options.n_D)        # exploratory variable
@@ -1139,16 +1292,27 @@ def main(argv=None):
 
     # Create simulations
     if re.search('s', options.mode) is not None:
+
+        if re.search('norm_biased', options.likelihood) is not None:
+            fit_norm = fit_norm_num
+        elif re.search('norm_deb', options.likelihood) is not None:
+            fit_norm = fit_norm_deb
+        else:
+            fit_norm = fit_norm_num  # Dummy variable, could be changed to make more error-proof
+        # Can add true_cov, true_inv_cov
+        # TODO: also assign fit_SH with this scheme
  
         simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options) 
 
-        write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options)
+        write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, \
+                      fit_norm_num, fit_norm_deb, fit_SH, options)
 
 
     # Read simulations
     if re.search('r', options.mode) is not None:
 
-        read_from_file(sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options)
+        read_from_file(sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, \
+                       fit_norm_num, fit_norm_deb, fit_SH, param)
 
 
     dpar_exact, det = Fisher_error_ana(x1, options.sig2, delta, mode=-1)
@@ -1168,8 +1332,12 @@ def main(argv=None):
     fish_num.plot_mean_std(n_S_arr, options.n_D, par={'std': dpar_exact})
     fish_deb.plot_mean_std(n_S_arr, options.n_D, par={'std': dpar_exact})
     if options.do_fit_stan == True:
-        fit_norm.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact})
-        fit_SH.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact})
+        if re.search('norm_biased', options.likelihood) is not None:
+            fit_norm_num.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact})
+        if re.search('norm_deb', options.likelihood) is not None:
+            fit_norm_deb.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact})
+        if re.search('SH', options.likelihood) is not None:
+            fit_SH.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact})
 
     dpar2 = dpar_exact**2
 
@@ -1177,16 +1345,20 @@ def main(argv=None):
 
     fish_deb.plot_std_var(n_S_arr, options.n_D, par=dpar2)
     if options.do_fit_stan == True:
-        fit_norm.plot_std_var(n_S_arr, options.n_D, par=dpar2)
-        fit_SH.plot_std_var(n_S_arr, options.n_D, par=dpar2)
+        if re.search('norm_biased', options.likelihood) is not None:
+            fit_norm_num.plot_std_var(n_S_arr, options.n_D, par=dpar2, sig_var_noise=param.sig_var_noise)
+        if re.search('norm_deb', options.likelihood) is not None:
+            fit_norm_deb.plot_std_var(n_S_arr, options.n_D, par=dpar2, sig_var_noise=param.sig_var_noise)
+        if re.search('SH', options.likelihood) is not None:
+            fit_SH.plot_std_var(n_S_arr, options.n_D, par=dpar2, sig_var_noise=param.sig_var_noise)
 
     sigma_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [options.sig2]})
     sigma_m1_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [1/options.sig2]})
     sigma_m1_ML_deb.plot_mean_std(n_S_arr, options.n_D, par={'mean': [1/options.sig2]})
 
-    plot_std_fish_biased_ana(par_name, n_S_arr, x1, options.sig2, delta, F=fish_num.F, n_R=options.n_R)
-    plot_det(n_S_arr, x1, options.sig2, delta, fish_num.F, options.n_R)
-    plot_A_alpha2(n_S_arr, options.n_D, dpar2[1])
+    #plot_std_fish_biased_ana(par_name, n_S_arr, x1, options.sig2, delta, F=fish_num.F, n_R=options.n_R)
+    #plot_det(n_S_arr, x1, options.sig2, delta, fish_num.F, options.n_R)
+    #plot_A_alpha2(n_S_arr, options.n_D, dpar2[1])
 
     ### End main program
 
