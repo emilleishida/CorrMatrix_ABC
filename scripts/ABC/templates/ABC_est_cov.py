@@ -140,7 +140,7 @@ op2 = open('num_res.dat', 'w')
 op2.write('a_mean    ' + str(a_results.mean) + '\n')
 op2.write('a_std     ' + str(a_results.std_mean) + '\n\n\n')
 op2.write('b_mean    ' + str(b_results.mean) + '\n')
-op2.write('b_std     ' + str(b_results.std_mean))
+op2.write('b_std     ' + str(b_results.std_mean) + '\n')
 op2.close()
 
 print 'Numerical results:'

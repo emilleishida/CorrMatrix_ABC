@@ -623,15 +623,18 @@ def error(str, val=1, stop=True, verbose=True):
         col = '33' # orange
 
     if verbose is True:
-        print>>sys.stderr, "\x1b[{}m{}\x1b[0m".format(col, str),
+        #print>>sys.stderr, "\x1b[{}m{}\x1b[0m".format(col, str),
+        print("\x1b[{}m{}\x1b[0m".format(col, str), file=sys.stderr, end='')
 
     if stop is False:
         if verbose is True:
-            print>>sys.stderr,  "\x1b[{}m, continuing...\x1b[0m".format(col),
-            print>>sys.stderr, ''
+            #print>>sys.stderr,  "\x1b[{}m, continuing...\x1b[0m".format(col),
+            #print>>sys.stderr, ''
+            print("\x1b[{}m, continuing...\x1b[0m".format(col), file=sys.stderr, end='')
+            print(file=sys.stderr)
     else:
         if verbose is True:
-            print>>sys.stderr, ''
+            print(file=sys.stderr)
         sys.exit(val)
 
 
@@ -837,6 +840,7 @@ def log_command(argv, name=None, close_no_return=True):
             a = '\"{}\"'.format(a)
 
         print(a, file=f, end='')
+        print(' ', end='', file=f)
 
     print('', file=f)
 
