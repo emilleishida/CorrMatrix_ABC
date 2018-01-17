@@ -36,7 +36,7 @@ lmax = 5000
 nell = 50
 
 #path_to_nicaea = astro/nicaea/versions/nicaea_2.7
-path_to_nicaea = astro/ECOSSTAT-work
+path_to_nicaea = $NICAEA/
 
 
 M 		= 100				   # number of particle in each particle system

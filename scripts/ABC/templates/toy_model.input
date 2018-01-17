@@ -33,7 +33,7 @@ xfix            = 1                                #   if 0, generate new x in e
 
 M 		= 100				   # number of particle in each particle system
 Mini            = 200                              # number of draws for 1st particle system
-#delta 		= 0.0025				   # convergence criteria
+#delta 		= 0.0025			   # convergence criteria
 delta		= 0.025
 qthreshold 	= 0.75				   # quantile in distance threshold 
 

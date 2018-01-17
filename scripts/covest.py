@@ -426,7 +426,7 @@ class Results:
                         lab = '{}'.format(n_S)
                     else:
                         lab = ''
-                x_lab.append(lab)
+                    x_lab.append(lab)
                 plt.xticks(x_loc, x_lab, rotation=rotation)
                 ax.label.set_size(self.fs)
 
@@ -444,9 +444,9 @@ class Results:
                                 lab = '{:.2g}'.format(frac)
                         else:
                             lab = ''
-                            x2_loc.append(flinlog(n_S))
-                            x2_lab.append(lab)
-                        plt.xticks(x2_loc, x2_lab)
+                        x2_loc.append(flinlog(n_S))
+                        x2_lab.append(lab)
+                plt.xticks(x2_loc, x2_lab)
                 ax2.set_xlabel('$n_{\\rm d} / n_{\\rm s}$', size=self.fs)
                 for tick in ax2.get_xticklabels():
                     tick.set_rotation(90)
@@ -680,6 +680,7 @@ def check_error_stop(ex_list, verbose=True, stop=False):
     return s
 
 
+
 def print_color(col, txt, end='\n'):
     print(txt, end=end)
 
@@ -836,7 +837,6 @@ def log_command(argv, name=None, close_no_return=True):
             a = '\"{}\"'.format(a)
 
         print(a, file=f, end='')
-        #print>>f, ' ',
 
     print('', file=f)
 
@@ -938,4 +938,7 @@ def run_cmd(cmd_list, run=True, verbose=True, stop=False, parallel=True, file_li
     s = check_error_stop(ex_list, verbose=verbose, stop=stop)
 
     return s
+
+
+
 

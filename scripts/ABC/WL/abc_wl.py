@@ -8,6 +8,7 @@ from wl_functions import linear_dist, model_Cl, gaussian_prior, model_cov
 
 import numpy as np
 import os
+import re
 
 from scipy.stats import uniform, multivariate_normal
 from statsmodels.stats.weightstats import DescrStatsW
@@ -126,9 +127,13 @@ Parameters['simulation_input']['lmax'] = Parameters['lmax']
 Parameters['simulation_input']['nell'] = Parameters['nell']
 
 Parameters['path_to_nicaea'] = Parameters['path_to_nicaea'][0]
-if Parameters['path_to_nicaea'][0] != '/':
+#if Parameters['path_to_nicaea'][0] != '/':
     # Relative path, add $HOME
-    Parameters['path_to_nicaea'] = '{}/{}'.format(os.environ['HOME'], Parameters['path_to_nicaea'])
+    #Parameters['path_to_nicaea'] = '{}/{}'.format(os.environ['HOME'], Parameters['path_to_nicaea'])
+
+# Replace $VAR with environment variable value
+Parameters['path_to_nicaea'] = re.sub('(\$\w*)', os.environ['NICAEA'], Parameters['path_to_nicaea'])
+
 Parameters['simulation_input']['path_to_nicaea'] = Parameters['path_to_nicaea']
 
 # set functions
@@ -139,9 +144,7 @@ Parameters['prior']['Omega_m']['func'] = gaussian_prior
 Parameters['prior']['sigma_8']['func'] = gaussian_prior
 
 
-# Write nicaea parameter files
-# TBD
-
+# Get 'observation' (fiducial model)
 # Call nicaea
 nicaea_ABC.run_nicaea(Parameters['path_to_nicaea'], Parameters['lmin'], \
     Parameters['lmax'], Parameters['nell'])
