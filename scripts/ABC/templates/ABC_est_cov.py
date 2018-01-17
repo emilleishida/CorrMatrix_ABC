@@ -2,13 +2,31 @@ from cosmoabc.priors import flat_prior
 from cosmoabc.ABC_sampler import ABC
 from cosmoabc.plots import plot_2p
 from cosmoabc.ABC_functions import read_input
-from toy_model_functions import model, linear_dist, model, model_cov, gaussian_prior
+from toy_model_functions import model, linear_dist, linear_dist_data, model, model_cov, gaussian_prior
 
 import numpy as np
 from scipy.stats import uniform, multivariate_normal
 from statsmodels.stats.weightstats import DescrStatsW
 
+
 def get_cov_ML(mean, cov, size):
+    """Return maximum-likelihood estime of covariance matrix, from
+       realisations of a multi-variate Normal
+    
+    Parameters
+    ----------
+    mean: array(double)
+        mean of mv normal
+    cov: array(double)
+        covariance matrix of mv normal
+    size: int
+        dimension of data vector, cov is size x size matrix
+
+    Returns
+    -------
+    cov_est: matrix of double
+        estimated covariance matrix, dimension size x size
+    """
 
     y2 = multivariate_normal.rvs(mean=mean, cov=cov, size=size)
     # y2[:,j] = realisations for j-th data entry
@@ -55,8 +73,8 @@ Parameters['nobs'] = int(Parameters['nobs'][0])
 
 # set functions
 Parameters['simulation_func'] = model_cov
-#Parameters['simulation_func'] = model
-Parameters['distance_func'] = linear_dist
+#Parameters['distance_func'] = linear_dist
+Parameters['distance_func'] = linear_dist_data # Why not read parameter value?
 Parameters['prior']['a']['func'] = gaussian_prior
 Parameters['prior']['b']['func'] = gaussian_prior
 

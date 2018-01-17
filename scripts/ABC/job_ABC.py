@@ -21,9 +21,6 @@ from optparse import OptionGroup
 
 import numpy as np
 
-sys.path.append('..')
-sys.path.append('../..')
-sys.path.append('{}/astro/ABC/CorrMatrix_ABC/scripts'.format(os.environ['HOME']))
 from covest import *
 
 
