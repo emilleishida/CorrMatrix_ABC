@@ -438,7 +438,7 @@ def parse_options(p_def):
     parser.add_option('', '--fish_ana', dest='do_fish_ana', action='store_true',
         help='Calculate analytical Fisher matrix, default={}'.format(p_def.do_fish_ana))
     parser.add_option('-L', '--like', dest='likelihood', type='string', default=p_def.likelihood,
-        help='Likelihood for MCMC, one in \'norm\'|\'SH\', default=\'{}\''.format(p_def.likelihood))
+        help='Likelihood for MCMC, one in \'norm_deb\'|\'norm_biased\'|\'SH\', default=\'{}\''.format(p_def.likelihood))
     parser.add_option('', '--sig_var_noise', dest='sig_var_noise', type='string',
         help='MCMC \'noise\' to be subtracted from sigma(var) plots for fits, default=None')
 
