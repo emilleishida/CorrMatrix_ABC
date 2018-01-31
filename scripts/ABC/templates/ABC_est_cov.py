@@ -74,7 +74,7 @@ Parameters['nobs'] = int(Parameters['nobs'][0])
 # set functions
 Parameters['simulation_func'] = model_cov
 #Parameters['distance_func'] = linear_dist
-Parameters['distance_func'] = linear_dist_data # Why not read parameter value?
+Parameters['distance_func'] = linear_dist_data
 Parameters['prior']['a']['func'] = gaussian_prior
 Parameters['prior']['b']['func'] = gaussian_prior
 
@@ -103,8 +103,13 @@ Parameters['nsim'] = int(Parameters['nsim'][0])
 cov_est = get_cov_ML(ytrue, cov, Parameters['nsim'])
 
 # add covariance to user input parameters
-#Parameters['cov'] = cov_est
 Parameters['simulation_input']['cov'] = cov_est
+# this is necessary in data-based distance (?)
+cov_est_inv = np.linalg.inv(cov_est)
+Parameters['cov_est_inv'] = cov_est_inv
+
+# For distance testing script
+np.savetxt('cov_est_inv.txt', cov_est_inv)
 #############################################
 
 #initiate ABC sampler

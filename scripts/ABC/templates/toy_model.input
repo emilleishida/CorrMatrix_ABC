@@ -31,10 +31,10 @@ nobs            = 750                              #   number of observations
 cov             = 1                                #   covariance matrix to be determined in Python file
 xfix            = 1                                #   if 0, generate new x in each simulation, otherwise use observed x 
 
-M 		= 100				   # number of particle in each particle system
-Mini            = 200                              # number of draws for 1st particle system
+M 		= 10				   # number of particle in each particle system
+Mini            = 20                              # number of draws for 1st particle system
 #delta 		= 0.0025			   # convergence criteria
-delta		= 0.025
+delta		= 0.5
 qthreshold 	= 0.75				   # quantile in distance threshold 
 
 file_root 	= linear_PS                        # root to output files names 
