@@ -61,6 +61,7 @@ def model(p):
 
     return np.array([[x[i], y[i]] for i in range(int(p['nobs']))])
 
+
 def model_cov(p):
     """Linear model.
 
@@ -183,8 +184,6 @@ def linear_dist_data(d2, p):
 
     y_sim = d2[:,1]
     y_obs = p['dataset1'][:,1]
-
-    n     = y_sim.shape[0]
 
     y_delta = y_sim - y_obs
     
