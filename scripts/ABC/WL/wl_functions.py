@@ -29,40 +29,6 @@ import nicaea_ABC
 
 
 
-def model_cov(p):
-    """Linear model.
-
-    input: p - dict: keywords 
-                a, scalar - angular coefficient
-                b, scalar - linear coefficient
-                sig, scalar - scatter
-                xmin, xmax, int - bounderies for explanatory variable
-                nobs, int - number of observations in a catalog
-                cov, matrix - covariance matrix between observations
-                
-
-    output: y, array - draw from normal distribution with mean
-                        a*x + b and scatter sig          
-    """
-    if bool(p['xfix']):
-        try:
-            x = p['dataset1'][:,0]
-        except KeyError:
-            raise ValueError('Observed data not defined! \n if you are doing distance tests, set xfix=0')
-
-    else:
-        x = uniform.rvs(loc=p['xmin'], scale=p['xmax'] - p['xmin'], size=int(p['nobs']))
-
-
-    x.sort()
-    ytrue = np.array(p['a']*x + p['b'])
-
-    y = multivariate_normal.rvs(mean=ytrue, cov=p['cov'])
-
-    return np.array([[x[i], y[i]] for i in range(int(p['nobs']))])
-
-
-
 def model_Cl(p):
     """Return model angular power spectrum.
        For now: Simulate Sigma from Wishart distribution, then
@@ -120,42 +86,37 @@ def gaussian_prior(par, func=False):
         return dist
 
 
-def linear_dist(d2, p):
+
+def linear_dist_data(d2, p):
+    """Distance between observed and simulated catalogues using
+       least squres between observed and simulated data points y.
+
+    Parameters
+    ----------
+    d2: array(double, 2)
+        simulated catalogue
+    p: dictionary
+        input parameters
+
+    Returns
+    -------
+    dist: double
+        distance
     """
-    Distance between observed and simulated catalogues. 
 
-    input: d2 -> array of simulated catalogue
-           p -> dictonary of input parameters
+    C_ell_sim = d2[:,1]
+    C_ell_obs = p['dataset1'][:,1]
 
-    output: list of 1 scalar (distance)
-    """
+    dC = C_ell_sim - C_ell_obs
 
-    data_sim = {}
-    data_sim['x'] = d2[:,0]
-    data_sim['y'] = d2[:,1]
+    # Unweighted distances
+    dist    = np.sqrt(sum(dC**2))
 
-    data_obs = {}
-    data_obs['x'] = p['dataset1'][:,0]
-    data_obs['y'] = p['dataset1'][:,1]
+    # Least squares weighted by covariance
+    #cov_est_inv = p['cov_est_inv']
+    #dist = np.einsum('i,ij,j', dC, cov_est_inv, dC)
+    #dist = np.sqrt(dist)
 
-    data1_sim = np.array([[data_sim['x'][k], 1] for k in range(data_sim['x'].shape[0])])
-    data1_obs =  np.array([[data_obs['x'][k], 1] for k in range(data_obs['x'].shape[0])])
+    return np.atleast_1d(dist)
 
 
-    mod_sim0 = sm.OLS(data_sim['y'], data1_sim)
-    mod_obs0 = sm.OLS(data_obs['y'], data1_obs)
-
-    mod_sim = mod_sim0.fit()
-    mod_obs = mod_obs0.fit()
-      
-    delta_a = mod_sim.params[0] - mod_obs.params[0]
-    delta_b = abs(mod_sim.params[1]) - abs(mod_obs.params[1])
-   
-    res = np.sqrt(pow(delta_a,2) + pow(delta_b, 2) )
-
-    return np.atleast_1d(res)
-
-    
-    
-
-    

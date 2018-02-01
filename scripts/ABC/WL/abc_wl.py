@@ -4,7 +4,7 @@ from cosmoabc.priors import flat_prior
 from cosmoabc.ABC_sampler import ABC
 from cosmoabc.plots import plot_2p
 from cosmoabc.ABC_functions import read_input
-from wl_functions import linear_dist, model_Cl, gaussian_prior, model_cov
+from wl_functions import linear_dist_data, model_Cl, gaussian_prior
 
 import numpy as np
 import os
@@ -138,8 +138,7 @@ Parameters['simulation_input']['path_to_nicaea'] = Parameters['path_to_nicaea']
 
 # set functions
 Parameters['simulation_func'] = model_Cl
-#Parameters['simulation_func'] = model_cov
-Parameters['distance_func'] = linear_dist
+Parameters['distance_func'] = linear_dist_data
 Parameters['prior']['Omega_m']['func'] = gaussian_prior
 Parameters['prior']['sigma_8']['func'] = gaussian_prior
 
@@ -173,7 +172,7 @@ Parameters['nsim'] = int(Parameters['nsim'][0])
 cov_est = sample_cov_Wishart(cov, Parameters['nsim'])
 #cov_est = get_cov_ML(ytrue, cov, Parameters['nsim'])
 
-# add covariance to user input parameters
+# add covariance to user input parameters, to be used in model
 Parameters['simulation_input']['cov'] = cov_est
 #############################################
 
