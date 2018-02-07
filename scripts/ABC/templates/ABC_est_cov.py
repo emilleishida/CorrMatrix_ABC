@@ -73,8 +73,8 @@ Parameters['nobs'] = int(Parameters['nobs'][0])
 
 # set functions
 Parameters['simulation_func'] = model_cov
-#Parameters['distance_func'] = linear_dist
-Parameters['distance_func'] = linear_dist_data
+Parameters['distance_func'] = linear_dist
+#Parameters['distance_func'] = linear_dist_data
 Parameters['prior']['a']['func'] = gaussian_prior
 Parameters['prior']['b']['func'] = gaussian_prior
 

@@ -1,14 +1,14 @@
 path_to_obs		= None   	           # path to observed data 
 
 param_to_fit 		= Omega_m sigma_8                                      # parameters to fit
-param_to_sim    	= Omega_m sigma_8 lmin lmax nell f_sky sigma_eps nbar      # parameters needed for simulation
+param_to_sim    	= Omega_m sigma_8 lmin lmax nell f_sky sigma_eps nbar path_to_nicaea      # parameters needed for simulation
 
 prior_func	        = gaussian_prior gaussian_prior      # one prior function for each parameter
                                                    # under consideration 
 
-simulation_func = model_cov                            # simulation function
+simulation_func = model_Cl                            # simulation function
 #simulation_func = model                            # simulation function
-distance_func	= linear_dist                      # distance function
+distance_func	= linear_dist_data                      # distance function
 
 dist_dim = 1              #
 
@@ -36,7 +36,7 @@ lmax = 5000
 nell = 50
 
 #path_to_nicaea = astro/nicaea/versions/nicaea_2.7
-path_to_nicaea = $NICAEA/
+path_to_nicaea = $NICAEA
 
 
 M 		= 100				   # number of particle in each particle system
