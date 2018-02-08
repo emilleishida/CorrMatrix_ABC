@@ -403,26 +403,26 @@ class Results:
         for j, which in enumerate(['mean', 'std']):
             if which in j_panel:
 
-		# Get main axes
+		        # Get main axes
                 ax = plt.subplot(1, n_panel, j_panel[which])
 
-		# Main-axes settings
+		        # Main-axes settings
                 plt.xlabel('$n_{\\rm s}$')
                 plt.ylabel('<{}>'.format(which))
                 ax.set_yscale(self.yscale[j])
                 ax.legend(frameon=False)
                 plt.xlim(xmin, xmax)
 
-		# x-ticks
+		        # x-ticks
                 ax = plt.gca().xaxis
                 ax.set_major_formatter(ScalarFormatter())
                 plt.ticklabel_format(axis='x', style='sci')
-		# Remove first tick label due to text overlap if little space
+		        # For MCMC: Remove second tick label due to text overlap if little space
                 x_loc = []
                 x_lab = []
                 for i, n_S in enumerate(n):
                     x_loc.append(n_S)
-                    if n_panel == 1 or i != 1 or len(n)<10:
+                    if n_panel == 1 or i != 1 or len(n)<10 or n_S<n_D:
                         lab = '{}'.format(n_S)
                     else:
                         lab = ''
@@ -430,13 +430,13 @@ class Results:
                 plt.xticks(x_loc, x_lab, rotation=rotation)
                 ax.label.set_size(self.fs)
 
-		# Second x-axis
+		        # Second x-axis
                 ax2 = plt.twiny()
                 x2_loc = []
                 x2_lab = []
                 for i, n_S in enumerate(n):
                     if n_S > 0:
-                        if n_panel == 1 or i != 1 or len(n)<10:
+                        if n_panel == 1 or i != 1 or len(n)<10 or n_S<n_D:
                             frac = float(n_D) / float(n_S)
                             if frac > 100:
                                 lab = '{:.3g}'.format(frac)
@@ -453,6 +453,13 @@ class Results:
                 plt.xlim(flinlog(xmin), flinlog(xmax))
 
                 plot_sth = True
+
+            # Set y limits by hand to be the same for all sampling plot (which have two panels)
+            if n_panel == 2:
+                if which == 'mean':
+                    plt.ylim(-2, 2)
+                if which == 'std':
+                    plt.ylim(1e-4, 3e-1)
 
         if plot_sth == True:
             plt.tight_layout(h_pad=5.0)

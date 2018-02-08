@@ -450,6 +450,9 @@ def parse_options(p_def):
     parser.add_option('-n', '--n_jobs', dest='n_jobs', type='int', default=p_def.n_jobs,
         help='Number of parallel jobs, default={}'.format(p_def.n_jobs))
 
+    parser.add_option('-b', '--boxwidth', dest='boxwidth', type='float', default=None,
+        help='box width for box plot, default=None, determined from n_S array')
+
     parser.add_option('-v', '--verbose', dest='verbose', action='store_true', help='verbose output')
 
     options, args = parser.parse_args()
@@ -1333,11 +1336,11 @@ def main(argv=None):
     fish_deb.plot_mean_std(n_S_arr, options.n_D, par={'std': dpar_exact})
     if options.do_fit_stan == True:
         if re.search('norm_biased', options.likelihood) is not None:
-            fit_norm_num.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact})
+            fit_norm_num.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact}, boxwidth=param.boxwidth)
         if re.search('norm_deb', options.likelihood) is not None:
-            fit_norm_deb.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact})
+            fit_norm_deb.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact}, boxwidth=param.boxwidth)
         if re.search('SH', options.likelihood) is not None:
-            fit_SH.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact})
+            fit_SH.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact}, boxwidth=param.boxwidth)
 
     dpar2 = dpar_exact**2
 
