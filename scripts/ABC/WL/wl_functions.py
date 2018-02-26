@@ -19,6 +19,7 @@ as long as you respect the input/ouput requirements and
 
 import numpy as np
 import os
+import re
 from scipy.stats import norm,  multivariate_normal
 from scipy.stats import uniform
 from scipy import stats
@@ -35,23 +36,33 @@ def model_Cl(p):
        C_l = diag(Sigma_ll').
     """
 
-    # Sample hat Cl from Norm(Cl, hat Sigma)
 
-    #ell     = p['dataset1'][:,0]
-    #C_ell   = p['dataset1'][:,1]
-
+    # MKDEBUG TODO: Assign parameters given in model input file
     Omega_m = p['Omega_m']
     sigma_8 = p['sigma_8']
 
+
+    # This is necessary for plot_ABC.py, which does not go via abc_wl.py
+    p['path_to_nicaea'] = re.sub('(\$\w*)', os.environ['NICAEA'], p['path_to_nicaea'])
+
+    # Run nicaea to produce model Cl
     nicaea_ABC.run_nicaea(p['path_to_nicaea'], p['lmin'], p['lmax'], p['nell'], \
         par_name = ['Omega_m', 'sigma_8'], par_val = [Omega_m, sigma_8])
 
     ell, C_ell = nicaea_ABC.read_Cl('.', 'P_kappa')
 
     # Covariance assumed to be constant
-    cov_est = p['cov']
 
-    C_ell_est = multivariate_normal.rvs(mean=C_ell, cov=p['cov'])
+    if 'cov' in p:
+        # This script is called after abc_wl.py (ABC run)
+        cov_est = p['cov']
+    else:
+        # This script is called from plot_ABC.py: Need to get cov from disk
+        print('Reading cov_est.txt from disk')
+        cov_est = np.loadtxt('cov_est.txt')
+
+    # Sample hat Cl from Norm(Cl, hat Sigma)
+    C_ell_est = multivariate_normal.rvs(mean=C_ell, cov=cov_est)
 
     return np.array([[ell[i], C_ell_est[i]] for i in range(int(p['nell']))])
 

@@ -127,14 +127,12 @@ Parameters['simulation_input']['lmax'] = Parameters['lmax']
 Parameters['simulation_input']['nell'] = Parameters['nell']
 
 Parameters['path_to_nicaea'] = Parameters['path_to_nicaea'][0]
-#if Parameters['path_to_nicaea'][0] != '/':
+#if Parameters['simulation_input']['path_to_nicaea'][0] != '/':
     # Relative path, add $HOME
-    #Parameters['path_to_nicaea'] = '{}/{}'.format(os.environ['HOME'], Parameters['path_to_nicaea'])
+    #Parameters['simulation_input']['path_to_nicaea'] = '{}/{}'.format(os.environ['HOME'], Parameters['simulation_input']['path_to_nicaea'])
 
 # Replace $VAR with environment variable value
 Parameters['path_to_nicaea'] = re.sub('(\$\w*)', os.environ['NICAEA'], Parameters['path_to_nicaea'])
-
-Parameters['simulation_input']['path_to_nicaea'] = Parameters['path_to_nicaea']
 
 # set functions
 Parameters['simulation_func'] = model_Cl
@@ -172,7 +170,11 @@ Parameters['nsim'] = int(Parameters['nsim'][0])
 cov_est = sample_cov_Wishart(cov, Parameters['nsim'])
 #cov_est = get_cov_ML(ytrue, cov, Parameters['nsim'])
 
+# For reading in wl_functions.py when called by plot_ABC.py
+np.savetxt('cov_est.txt', cov_est)
+
 # add covariance to user input parameters, to be used in model
+Parameters['cov'] = cov_est
 Parameters['simulation_input']['cov'] = cov_est
 #############################################
 
