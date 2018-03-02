@@ -7,7 +7,7 @@ prior_func	        = gaussian_prior gaussian_prior      # one prior function for
                                                    # under consideration 
 
 simulation_func = model_Cl                            # simulation function
-#simulation_func = model                            # simulation function
+#simulation_func = model_cov                            # simulation function
 distance_func	= linear_dist_data                      # distance function
 
 dist_dim = 1              #
@@ -24,16 +24,16 @@ sigma_8_lim                  = 0.0  2.0                # extreme limits for para
 	          
 Omega_m         = 0.27                             #  matter density parameter
 sigma_8         = 0.8                              #  normalisation
-nsim            = 800                              #  number of simulations for covariance matrix
+nsim            = 100                              #  number of simulations for covariance matrix
 
-f_sky		= 0.3				   # covered sky fraction of survey
+f_sky		= 0.004				   # covered sky fraction of survey
 sigma_eps	= 0.29				   # intrinsic ellipticity dispersion per component
-nbar            = 30				   # Number density of galaxies per arcmin^2
+nbar            = 13				   # Number density of galaxies per arcmin^2
 
 # Wishart-Normal model
-lmin = 10
+lmin = 50
 lmax = 5000
-nell = 50
+nell = 10
 
 #path_to_nicaea = astro/nicaea/versions/nicaea_2.7
 path_to_nicaea = $NICAEA

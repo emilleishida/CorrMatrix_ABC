@@ -37,6 +37,7 @@ def model_Cl(p):
     """
 
 
+    # MKDEBUG TODO: Assign parameters given in model input file
     Omega_m = p['Omega_m']
     sigma_8 = p['sigma_8']
 
