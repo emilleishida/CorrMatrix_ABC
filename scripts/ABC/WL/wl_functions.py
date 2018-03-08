@@ -121,12 +121,17 @@ def linear_dist_data(d2, p):
     dC = C_ell_sim - C_ell_obs
 
     # Unweighted distances
-    dist    = np.sqrt(sum(dC**2))
+    #dist    = np.sqrt(sum(dC**2))
 
     # Least squares weighted by covariance
-    #cov_est_inv = p['cov_est_inv']
-    #dist = np.einsum('i,ij,j', dC, cov_est_inv, dC)
-    #dist = np.sqrt(dist)
+    if 'cov_true_inv' in p:
+        cov_inv = p['cov_true_inv']
+    else:
+        print('Reading cov_true_inv.txt from disk')
+        cov_inv = np.loadtxt('cov_true_inv.txt')
+
+    dist = np.einsum('i,ij,j', dC, cov_inv, dC)
+    dist = np.sqrt(dist)
 
     return np.atleast_1d(dist)
 
