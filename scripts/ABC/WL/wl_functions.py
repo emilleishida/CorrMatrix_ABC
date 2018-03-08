@@ -57,7 +57,7 @@ def model_Cl(p):
         # This script is called after abc_wl.py (ABC run)
         cov_est = p['cov']
     else:
-        # This script is called from plot_ABC.py: Need to get cov from disk
+        # This script is called from plot_ABC.py or test_ABC_distance.py: Need to get cov from disk
         print('Reading cov_est.txt from disk')
         cov_est = np.loadtxt('cov_est.txt')
 
