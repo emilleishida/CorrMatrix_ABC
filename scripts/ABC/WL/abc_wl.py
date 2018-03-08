@@ -170,12 +170,16 @@ Parameters['nsim'] = int(Parameters['nsim'][0])
 cov_est = sample_cov_Wishart(cov, Parameters['nsim'])
 #cov_est = get_cov_ML(ytrue, cov, Parameters['nsim'])
 
-# For reading in wl_functions.py when called by plot_ABC.py
-np.savetxt('cov_est.txt', cov_est)
 
 # add covariance to user input parameters, to be used in model
 Parameters['cov'] = cov_est
 Parameters['simulation_input']['cov'] = cov_est
+cov_true_inv = np.linalg.inv(cov)
+Parameters['cov_true_inv'] = cov_true_inv
+
+# For reading in wl_functions.py when called by plot_ABC.py or test_ABC_distance.py
+np.savetxt('cov_est.txt', cov_est)
+np.savetxt('cov_true_inv.txt', cov_true_inv)
 #############################################
 
 #initiate ABC sampler
