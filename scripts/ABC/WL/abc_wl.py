@@ -112,8 +112,15 @@ filename = 'wl_model.input'
 #read  user input
 Parameters = read_input(filename)
 
-Parameters['Omega_m'] = float(Parameters['Omega_m'][0])
-Parameters['sigma_8'] = float(Parameters['sigma_8'][0])
+# Possible input parameters.
+pars = ['Omega_m', 'sigma_8']
+
+for par in pars:
+    if par in Parameters:
+        Parameters[par] = float(Parameters[par][0])
+
+#Parameters['Omega_m'] = float(Parameters['Omega_m'][0])
+#Parameters['sigma_8'] = float(Parameters['sigma_8'][0])
 
 Parameters['f_sky'] = float(Parameters['f_sky'][0])
 Parameters['sigma_eps'] = float(Parameters['sigma_eps'][0])
@@ -137,8 +144,13 @@ Parameters['path_to_nicaea'] = re.sub('(\$\w*)', os.environ['NICAEA'], Parameter
 # set functions
 Parameters['simulation_func'] = model_Cl
 Parameters['distance_func'] = linear_dist_data
-Parameters['prior']['Omega_m']['func'] = gaussian_prior
-Parameters['prior']['sigma_8']['func'] = gaussian_prior
+
+for par in pars:
+    if par in Parameters:
+        Parameters['prior'][par]['func'] = gaussian_prior
+        
+#Parameters['prior']['Omega_m']['func'] = gaussian_prior
+#Parameters['prior']['sigma_8']['func'] = gaussian_prior
 
 
 # Get 'observation' (fiducial model)
