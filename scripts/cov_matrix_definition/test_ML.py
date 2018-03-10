@@ -861,6 +861,7 @@ def fit_corr_inv_true(x1, cov_true, sig2, n_jobs=3):
     }
     """
 
+    sys.path.insert(0, '/sps/euclid/Users/mkilbing/.local/lib/python2.7/site-packages')
     import pystan
     start = time.time()
     fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=n_jobs, verbose=False, n_jobs=n_jobs)
@@ -925,6 +926,7 @@ def fit_corr(x1, cov_true, cov_est, n_jobs=3):
     }
     """
 
+    sys.path.insert(0, '/sps/euclid/Users/mkilbing/.local/lib/python2.7/site-packages')
     import pystan
     start = time.time()
     fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=n_jobs, verbose=False, n_jobs=n_jobs)
@@ -993,12 +995,13 @@ def fit_corr_SH(x1, cov_true, cov_est_inv, n_jobs=3):
         chi2 = (y - mu)' * cov_est_inv * (y - mu);
 
         #target += pow(1.0 + chi2/(1.0 + nobs), -nobs/2.0);
-        # Bug fix (12/2017): targe += log-likelihood, not likelihood, see fit_corr_true_inv_cov
+        # Bug fix (12/2017): target += log-likelihood, not likelihood, see fit_corr_true_inv_cov
         target += log(1.0 + chi2/(1.0 + nobs)) * -nobs/2.0;
     }
     """
 
 
+    sys.path.insert(0, '/sps/euclid/Users/mkilbing/.local/lib/python2.7/site-packages')
     import pystan
     start = time.time()
     fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=n_jobs, verbose=False, n_jobs=n_jobs)
