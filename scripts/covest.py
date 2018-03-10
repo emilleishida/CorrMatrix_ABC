@@ -945,7 +945,6 @@ def run_cmd(cmd_list, run=True, verbose=True, stop=False, parallel=True, file_li
             # Update exit code list
             ex_list[i] = pipe.returncode
 
-
     s = check_error_stop(ex_list, verbose=verbose, stop=stop)
 
     return s

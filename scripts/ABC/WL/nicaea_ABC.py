@@ -47,7 +47,12 @@ def run_nicaea(path, lmin, lmax, nell, par_name=None, par_val=None):
     if par_name is not None:
         for i, name in enumerate(par_name):
             parstr = '{} --{} {}'.format(parstr, name, par_val[i])
-    covest.run_cmd('{}/bin/lensingdemo -D 0 {} {} -H 1 -q'.format(path, Lstr, parstr), verbose=True, stop=True)
+    err = covest.run_cmd('{}/bin/lensingdemo -D 0 {} {} -H 1'.format(path, Lstr, parstr), verbose=True, stop=False)
+
+    if err != 0:
+        print('Nicaea returned with error code {}'.format(err))
+
+    return err
 
 
 

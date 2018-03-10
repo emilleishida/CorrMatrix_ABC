@@ -59,8 +59,8 @@ def model_Cl(p):
 
     if err != 0:
 
-        ell       = np.zeros(size=p['nell'])
-        C_ell_est = np.zeros(size=p['nell']) 
+        ell       = np.zeros(shape=p['nell'])
+        C_ell_est = np.zeros(shape=p['nell']) 
 
     else:
 
