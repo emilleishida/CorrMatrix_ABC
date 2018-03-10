@@ -52,8 +52,14 @@ def get_n_S_arr(n_S_min, n_D, f_n_S_max, n_n_S, n_S=None):
     else:
         start   = n_S_min
         stop    = n_D * f_n_S_max
-        n_S_arr = np.logspace(np.log10(start), np.log10(stop), n_n_S, dtype='int')
- 
+        # python3
+        if sys.version_info.major == 3:
+            n_S_arr = np.logspace(np.log10(start), np.log10(stop), n_n_S, dtype='int')
+        elif sys.version_info.major == 2:
+            n_S_arr = [int(nS) for nS in np.logspace(np.log10(start), np.log10(stop), n_n_S)]
+        else:
+            error('Invalid python version', sys.version_info)
+
     return n_S_arr, n_n_S
 
 
