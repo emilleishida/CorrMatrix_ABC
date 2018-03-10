@@ -2,8 +2,8 @@
 
 import numpy as np
 from scipy.stats import norm, uniform, multivariate_normal
-import matplotlib
-matplotlib.use("Agg")
+#import matplotlib
+#matplotlib.use("Agg")
 import pylab as plt
 import sys
 import os
@@ -438,7 +438,7 @@ def parse_options(p_def):
     parser.add_option('', '--fish_ana', dest='do_fish_ana', action='store_true',
         help='Calculate analytical Fisher matrix, default={}'.format(p_def.do_fish_ana))
     parser.add_option('-L', '--like', dest='likelihood', type='string', default=p_def.likelihood,
-        help='Likelihood for MCMC, one in \'norm\'|\'SH\', default=\'{}\''.format(p_def.likelihood))
+        help='Likelihood for MCMC, one in \'norm_deb\'|\'norm_biased\'|\'SH\', default=\'{}\''.format(p_def.likelihood))
     parser.add_option('', '--sig_var_noise', dest='sig_var_noise', type='string',
         help='MCMC \'noise\' to be subtracted from sigma(var) plots for fits, default=None')
 
@@ -449,6 +449,9 @@ def parse_options(p_def):
 
     parser.add_option('-n', '--n_jobs', dest='n_jobs', type='int', default=p_def.n_jobs,
         help='Number of parallel jobs, default={}'.format(p_def.n_jobs))
+
+    parser.add_option('-b', '--boxwidth', dest='boxwidth', type='float', default=None,
+        help='box width for box plot, default=None, determined from n_S array')
 
     parser.add_option('-v', '--verbose', dest='verbose', action='store_true', help='verbose output')
 
@@ -1336,11 +1339,11 @@ def main(argv=None):
     fish_deb.plot_mean_std(n_S_arr, options.n_D, par={'std': dpar_exact})
     if options.do_fit_stan == True:
         if re.search('norm_biased', options.likelihood) is not None:
-            fit_norm_num.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact})
+            fit_norm_num.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact}, boxwidth=param.boxwidth)
         if re.search('norm_deb', options.likelihood) is not None:
-            fit_norm_deb.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact})
+            fit_norm_deb.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact}, boxwidth=param.boxwidth)
         if re.search('SH', options.likelihood) is not None:
-            fit_SH.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact})
+            fit_SH.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact}, boxwidth=param.boxwidth)
 
     dpar2 = dpar_exact**2
 

@@ -2,13 +2,31 @@ from cosmoabc.priors import flat_prior
 from cosmoabc.ABC_sampler import ABC
 from cosmoabc.plots import plot_2p
 from cosmoabc.ABC_functions import read_input
-from toy_model_functions import model, linear_dist, model, model_cov, gaussian_prior
+from toy_model_functions import model, linear_dist, linear_dist_data, model, model_cov, gaussian_prior
 
 import numpy as np
 from scipy.stats import uniform, multivariate_normal
 from statsmodels.stats.weightstats import DescrStatsW
 
+
 def get_cov_ML(mean, cov, size):
+    """Return maximum-likelihood estime of covariance matrix, from
+       realisations of a multi-variate Normal
+    
+    Parameters
+    ----------
+    mean: array(double)
+        mean of mv normal
+    cov: array(double)
+        covariance matrix of mv normal
+    size: int
+        dimension of data vector, cov is size x size matrix
+
+    Returns
+    -------
+    cov_est: matrix of double
+        estimated covariance matrix, dimension size x size
+    """
 
     y2 = multivariate_normal.rvs(mean=mean, cov=cov, size=size)
     # y2[:,j] = realisations for j-th data entry
@@ -55,8 +73,8 @@ Parameters['nobs'] = int(Parameters['nobs'][0])
 
 # set functions
 Parameters['simulation_func'] = model_cov
-#Parameters['simulation_func'] = model
 Parameters['distance_func'] = linear_dist
+#Parameters['distance_func'] = linear_dist_data
 Parameters['prior']['a']['func'] = gaussian_prior
 Parameters['prior']['b']['func'] = gaussian_prior
 
@@ -85,8 +103,13 @@ Parameters['nsim'] = int(Parameters['nsim'][0])
 cov_est = get_cov_ML(ytrue, cov, Parameters['nsim'])
 
 # add covariance to user input parameters
-#Parameters['cov'] = cov_est
 Parameters['simulation_input']['cov'] = cov_est
+# this is necessary in data-based distance (?)
+cov_est_inv = np.linalg.inv(cov_est)
+Parameters['cov_est_inv'] = cov_est_inv
+
+# For distance testing script
+np.savetxt('cov_est_inv.txt', cov_est_inv)
 #############################################
 
 #initiate ABC sampler
@@ -122,7 +145,7 @@ op2 = open('num_res.dat', 'w')
 op2.write('a_mean    ' + str(a_results.mean) + '\n')
 op2.write('a_std     ' + str(a_results.std_mean) + '\n\n\n')
 op2.write('b_mean    ' + str(b_results.mean) + '\n')
-op2.write('b_std     ' + str(b_results.std_mean))
+op2.write('b_std     ' + str(b_results.std_mean) + '\n')
 op2.close()
 
 print 'Numerical results:'

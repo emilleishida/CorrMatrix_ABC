@@ -61,6 +61,7 @@ def model(p):
 
     return np.array([[x[i], y[i]] for i in range(int(p['nobs']))])
 
+
 def model_cov(p):
     """Linear model.
 
@@ -126,7 +127,8 @@ def gaussian_prior(par, func=False):
 
 def linear_dist(d2, p):
     """
-    Distance between observed and simulated catalogues. 
+    Distance between observed and simulated catalogues using
+    least sqares between observed fitted and simulated parameters a, b.
 
     input: d2 -> array of simulated catalogue
            p -> dictonary of input parameters
@@ -143,7 +145,7 @@ def linear_dist(d2, p):
     data_obs['y'] = p['dataset1'][:,1]
 
     data1_sim = np.array([[data_sim['x'][k], 1] for k in range(data_sim['x'].shape[0])])
-    data1_obs =  np.array([[data_obs['x'][k], 1] for k in range(data_obs['x'].shape[0])])
+    data1_obs = np.array([[data_obs['x'][k], 1] for k in range(data_obs['x'].shape[0])])
 
 
     mod_sim0 = sm.OLS(data_sim['y'], data1_sim)
@@ -160,6 +162,38 @@ def linear_dist(d2, p):
     return np.atleast_1d(res)
 
     
-    
+def linear_dist_data(d2, p):
+    """Distance between observed and simulated catalogues using
+       least squres between observed and simulated data points y.
 
+    Parameters
+    ----------
+    d2: array(double, 2)
+        simulated catalogue
+    p: dictionary
+        input parameters
+
+    Returns
+    -------
+    dist: double
+        distance
+    """
+
+    if bool(p['xfix']) == False:
+        raise ValueError('Parameter xfix needs to be 1 for linear_dist_data distance')
+
+    y_sim = d2[:,1]
+    y_obs = p['dataset1'][:,1]
+
+    y_delta = y_sim - y_obs
     
+    # Unweighted distances
+    #dist    = np.sqrt(sum(y_delta**2))
+
+    # Least squares weighted by covariance
+    cov_est_inv = p['cov_est_inv']
+    dist = np.einsum('i,ij,j', y_delta, cov_est_inv, y_delta)
+    dist = np.sqrt(dist)
+
+    return np.atleast_1d(dist)
+

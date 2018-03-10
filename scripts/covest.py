@@ -1,7 +1,12 @@
+from __future__ import print_function
+
 import sys
 import os
 import numpy as np
 import errno
+import subprocess
+import shlex
+
 
 #import matplotlib
 #matplotlib.use("Agg")
@@ -148,7 +153,7 @@ class Results:
             self.std[p]    = np.zeros(shape = (n_n_S, n_R))
 
         self.F  = np.zeros(shape = (n_n_S, n_R, 2, 2))
-	self.fs = 16
+        self.fs = 16
 
 
     def set(self, par, i, run, which='mean'):
@@ -347,7 +352,7 @@ class Results:
             fac_xlim = 1.6
             xmin = n[0]/fac_xlim
             xmax = n[-1]*fac_xlim
-	    rotation = 'vertical'
+            rotation = 'vertical'
         else:
             fac_xlim   = 1.05
             xmin = (n[0]-5)/fac_xlim**5
@@ -404,59 +409,66 @@ class Results:
         for j, which in enumerate(['mean', 'std']):
             if which in j_panel:
 
-		# Get main axes
+		        # Get main axes
                 ax = plt.subplot(1, n_panel, j_panel[which])
 
-		# Main-axes settings
+		        # Main-axes settings
                 plt.xlabel('$n_{\\rm s}$')
                 plt.ylabel('<{}>'.format(which))
                 ax.set_yscale(self.yscale[j])
                 ax.legend(frameon=False)
-		plt.xlim(xmin, xmax)
+                plt.xlim(xmin, xmax)
 
-		# x-ticks
+		        # x-ticks
                 ax = plt.gca().xaxis
-		ax.set_major_formatter(ScalarFormatter())
-		plt.ticklabel_format(axis='x', style='sci')
-		# Remove first tick label due to text overlap if little space
-		x_loc = []
-		x_lab = []
-		for i, n_S in enumerate(n):
-	            x_loc.append(n_S)
-		    if n_panel == 1 or i != 1 or len(n)<10:
-			lab = '{}'.format(n_S)
-		    else:
-			lab = ''
-		    x_lab.append(lab)
-		plt.xticks(x_loc, x_lab, rotation=rotation)
-    		ax.label.set_size(self.fs)
+                ax.set_major_formatter(ScalarFormatter())
+                plt.ticklabel_format(axis='x', style='sci')
+		        # For MCMC: Remove second tick label due to text overlap if little space
+                x_loc = []
+                x_lab = []
+                for i, n_S in enumerate(n):
+                    x_loc.append(n_S)
+                    if n_panel == 1 or i != 1 or len(n)<10 or n_S<n_D:
+                        lab = '{}'.format(n_S)
+                    else:
+                        lab = ''
+                    x_lab.append(lab)
+                plt.xticks(x_loc, x_lab, rotation=rotation)
+                ax.label.set_size(self.fs)
 
-		# Second x-axis
+		        # Second x-axis
                 ax2 = plt.twiny()
-		x2_loc = []
-		x2_lab = []
-		for i, n_S in enumerate(n):
-		    if n_S > 0:
-			if n_panel == 1 or i != 1 or len(n)<10:
+                x2_loc = []
+                x2_lab = []
+                for i, n_S in enumerate(n):
+                    if n_S > 0:
+                        if n_panel == 1 or i != 1 or len(n)<10 or n_S<n_D:
                             frac = float(n_D) / float(n_S)
                             if frac > 100:
-			        lab = '{:.3g}'.format(frac)
+                                lab = '{:.3g}'.format(frac)
                             else:
-			        lab = '{:.2g}'.format(frac)
-		        else:
-			    lab = ''
-			x2_loc.append(flinlog(n_S))
-		        x2_lab.append(lab)
-		plt.xticks(x2_loc, x2_lab)
-		ax2.set_xlabel('$n_{\\rm d} / n_{\\rm s}$', size=self.fs)
+                                lab = '{:.2g}'.format(frac)
+                        else:
+                            lab = ''
+                        x2_loc.append(flinlog(n_S))
+                        x2_lab.append(lab)
+                plt.xticks(x2_loc, x2_lab)
+                ax2.set_xlabel('$n_{\\rm d} / n_{\\rm s}$', size=self.fs)
                 for tick in ax2.get_xticklabels():
                     tick.set_rotation(90)
-		plt.xlim(flinlog(xmin), flinlog(xmax))
+                plt.xlim(flinlog(xmin), flinlog(xmax))
 
                 plot_sth = True
 
+            # Set y limits by hand to be the same for all sampling plot (which have two panels)
+            if n_panel == 2:
+                if which == 'mean':
+                    plt.ylim(-2, 2)
+                if which == 'std':
+                    plt.ylim(1e-4, 3e-1)
+
         if plot_sth == True:
-	    plt.tight_layout(h_pad=5.0)
+            plt.tight_layout(h_pad=5.0)
             plt.savefig('{}.pdf'.format(self.file_base), bbox_inches="tight")
 
 
@@ -524,20 +536,20 @@ class Results:
 
 	# x-ticks
         ax = plt.gca().xaxis
-	ax.set_major_formatter(ScalarFormatter())
-	plt.ticklabel_format(axis='x', style='sci')
+        ax.set_major_formatter(ScalarFormatter())
+        plt.ticklabel_format(axis='x', style='sci')
 
 	# Second x-axis
-	x_loc, x_lab = plt.xticks()
-	ax2 = plt.twiny()
-	x2_loc = []
-	x2_lab = []
-	for i, n_S in enumerate(x_loc):
+        x_loc, x_lab = plt.xticks()
+        ax2 = plt.twiny()
+        x2_loc = []
+        x2_lab = []
+        for i, n_S in enumerate(x_loc):
             if n_S > 0:
                 x2_loc.append(n_S)
-	        x2_lab.append('{:.2g}'.format(float(n_D) / float(n_S)))
-	plt.xticks(x2_loc, x2_lab)
-	ax2.set_xlabel('$n_{\\rm d} / n_{\\rm s}$', size=self.fs)
+                x2_lab.append('{:.2g}'.format(float(n_D) / float(n_S)))
+        plt.xticks(x2_loc, x2_lab)
+        ax2.set_xlabel('$n_{\\rm d} / n_{\\rm s}$', size=self.fs)
 
         # y-scale
         plt.ylim(8e-9, 1e-2)
@@ -624,16 +636,69 @@ def error(str, val=1, stop=True, verbose=True):
         col = '33' # orange
 
     if verbose is True:
-        print>>sys.stderr, "\x1b[{}m{}\x1b[0m".format(col, str),
+        #print>>sys.stderr, "\x1b[{}m{}\x1b[0m".format(col, str),
+        print("\x1b[{}m{}\x1b[0m".format(col, str), file=sys.stderr, end='')
 
     if stop is False:
         if verbose is True:
-            print>>sys.stderr,  "\x1b[{}m, continuing...\x1b[0m".format(col),
-            print>>sys.stderr, ''
+            #print>>sys.stderr,  "\x1b[{}m, continuing...\x1b[0m".format(col),
+            #print>>sys.stderr, ''
+            print("\x1b[{}m, continuing...\x1b[0m".format(col), file=sys.stderr, end='')
+            print(file=sys.stderr)
     else:
         if verbose is True:
-            print>>sys.stderr, ''
+            print(file=sys.stderr)
         sys.exit(val)
+
+
+
+def check_error_stop(ex_list, verbose=True, stop=False):
+    """Check error list and stop if one or more are != 0 and stop=True
+
+    Parameters
+    ----------
+    ex_list: list of integers
+        List of exit codes
+    verbose: boolean
+        Verbose output, default=True
+    stop: boolean
+        If False (default), does not stop program
+
+    Returns
+    -------
+    s: integer
+        sum of absolute values of exit codes
+    """
+
+    if ex_list is None:
+        s = 0
+    else:
+        s = sum([abs(i) for i in ex_list])
+
+
+    # Evaluate exit codes
+    if s > 0:
+        n_ex = sum([1 for i in ex_list if i != 0])
+        if verbose is True:
+            if len(ex_list) == 1:
+                print_color('red', 'The last command returned sum|exit codes|={}'.format(s), end='')
+            else:
+                print_color('red', '{} of the last {} commands returned sum|exit codes|={}'.format(n_ex, len(ex_list), s), end='')
+        if stop is True:
+            print_color('red', ', stopping')
+        else:
+            print_color('red', ', continuing')
+
+        if stop is True:
+            sys.exit(s)
+
+
+    return s
+
+
+
+def print_color(col, txt, end='\n'):
+    print(txt, end=end)
 
 
 
@@ -787,16 +852,108 @@ def log_command(argv, name=None, close_no_return=True):
         if ']' in a or ']' in a:
             a = '\"{}\"'.format(a)
 
-        print>>f, a,
-        #print>>f, ' ',
+        print(a, file=f, end='')
+        print(' ', end='', file=f)
 
-    print>>f, ''
+    print('', file=f)
 
     if close_no_return == False:
         return f
 
     if name != 'sys.stdout' and name != 'sys.stderr':
         f.close()
+
+
+
+def run_cmd(cmd_list, run=True, verbose=True, stop=False, parallel=True, file_list=None, devnull=False):
+    """Run shell command or a list of commands using subprocess.Popen().
+
+    Parameters
+    ----------
+
+    cmd_list: string, or array of strings
+        list of commands
+    run: bool
+        If True (default), run commands. run=False is for testing and debugging purpose
+    verbose: bool
+        If True (default), verbose output
+    stop: bool
+        If False (default), do not stop after command exits with error.
+    parallel: bool
+        If True (default), run commands in parallel, i.e. call subsequent comands via
+        subprocess.Popen() without waiting for the previous job to finish.
+    file_list: array of strings
+        If file_list[i] exists, cmd_list[i] is not run. Default value is None
+    devnull: boolean
+        If True, all output is suppressed. Default is False.
+
+    Returns
+    -------
+    sum_ex: int
+        Sum of exit codes of all commands
+    """
+
+    if type(cmd_list) is not list:
+        cmd_list = [cmd_list]
+
+    if verbose is True and len(cmd_list) > 1:
+        print('Running {} commands, parallel = {}'.format(len(cmd_list), parallel))
+
+    ex_list   = []
+    pipe_list = []
+    for i, cmd in enumerate(cmd_list):
+
+        ex = 0
+
+        if run is True:
+
+            # Check for existing file
+            if file_list is not None and os.path.isfile(file_list[i]):
+                if verbose is True:
+                    print('Skipping command \'{}\', file \'{}\' exists'.format(cmd, file_list[i]))
+            else:
+                if verbose is True:
+                        print('Running command \'{0}\''.format(cmd))
+
+                # Run command
+                try:
+                    cmds = shlex.split(cmd)
+                    if devnull is True:
+                        pipe = subprocess.Popen(cmds, stdout=subprocess.DEVNULL)
+                    else:
+                        pipe = subprocess.Popen(cmds)
+
+                    if parallel is False:
+                        # Wait for process to terminate
+                        pipe.wait()
+
+                    pipe_list.append(pipe)
+
+                    # If process has not terminated, ex will be None
+                    #ex = pipe.returncode
+                except OSError as e:
+                    print('Error: {0}'.format(e.strerror))
+                    ex = e.errno
+
+                    check_error_stop([ex], verbose=verbose, stop=stop)
+
+        else:
+            if verbose is True:
+                print('Not running command \'{0}\''.format(cmd))
+
+        ex_list.append(ex)
+
+
+    if parallel is True:
+        for i, pipe in enumerate(pipe_list):
+            pipe.wait()
+
+            # Update exit code list
+            ex_list[i] = pipe.returncode
+
+    s = check_error_stop(ex_list, verbose=verbose, stop=stop)
+
+    return s
 
 
 

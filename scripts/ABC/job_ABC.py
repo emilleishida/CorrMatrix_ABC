@@ -21,9 +21,6 @@ from optparse import OptionGroup
 
 import numpy as np
 
-sys.path.append('..')
-sys.path.append('../..')
-sys.path.append('{}/astro/ABC/CorrMatrix_ABC/scripts'.format(os.environ['HOME']))
 from covest import *
 
 
@@ -509,6 +506,8 @@ def main(argv=None):
     # Initialisation of results
     fit_ABC = Results(par_name, n_n_S, param.n_R, file_base='mean_std_ABC', yscale=['linear', 'log'])
 
+
+    # MKDEBUG TODO: n_D and nobs in toy_model.input should be consistent, if only for plotting reasons
 
     # Create simulations
     if re.search('s', param.mode) is not None:

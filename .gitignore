@@ -88,6 +88,8 @@ ENV/
 # Rope project settings
 .ropeproject
 log_test_ML.py
-reference
 scripts/cov_matrix_definition/local_runs
 log_job_ABC.py
+scripts/ABC/WL/runs
+nicaea/nicaea_2.7.1
+Untitled.ipynb

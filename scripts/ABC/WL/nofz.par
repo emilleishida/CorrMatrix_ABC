@@ -1,0 +1,5 @@
+### Redshift parameter file ###
+Nzbin           1
+snzmode         nz_read_from_files
+nzfile          nofz.0.2-1.3
+
