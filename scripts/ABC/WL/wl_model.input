@@ -26,14 +26,14 @@ Omega_m         = 0.27                             #  matter density parameter
 sigma_8         = 0.8                              #  normalisation
 nsim            = 100                              #  number of simulations for covariance matrix
 
-f_sky		= 0.004				   # covered sky fraction of survey
-sigma_eps	= 0.29				   # intrinsic ellipticity dispersion per component
-nbar            = 13				   # Number density of galaxies per arcmin^2
+f_sky		= 0.3636			   # covered sky fraction of survey
+sigma_eps	= 0.22				   # intrinsic ellipticity dispersion per component
+nbar            = 30				   # Number density of galaxies per arcmin^2
 
 # Wishart-Normal model
-lmin = 50
-lmax = 5000
-nell = 10
+lmin = 2.0
+lmax = 2500
+nell = 50
 
 #path_to_nicaea = astro/nicaea/versions/nicaea_2.7
 path_to_nicaea = $NICAEA
