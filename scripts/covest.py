@@ -409,8 +409,13 @@ class Results:
         for j, which in enumerate(['mean', 'std']):
             if which in j_panel:
 
-		        # Get main axes
+		# Get main axes
                 ax = plt.subplot(1, n_panel, j_panel[which])
+
+                # Dashed vertical line at n_S = n_D
+                #plt.plot([n_D, n_D], [plt.ylim()[0], plt.ylim()[1]], ':', linewidth=1)
+                plt.plot([n_D, n_D], [-1e2, 1e2], ':', linewidth=1)
+                plt.plot([n_D, n_D], [1e-5, 1e2], ':', linewidth=1)
 
 		        # Main-axes settings
                 plt.xlabel('$n_{\\rm s}$')
@@ -466,6 +471,7 @@ class Results:
                     plt.ylim(-2, 2)
                 if which == 'std':
                     plt.ylim(1e-4, 3e-1)
+
 
         if plot_sth == True:
             plt.tight_layout(h_pad=5.0)

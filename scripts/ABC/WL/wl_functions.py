@@ -32,8 +32,6 @@ import nicaea_ABC
 
 def model_Cl(p):
     """Return model angular power spectrum.
-       For now: Simulate Sigma from Wishart distribution, then
-       C_l = diag(Sigma_ll').
     """
 
 

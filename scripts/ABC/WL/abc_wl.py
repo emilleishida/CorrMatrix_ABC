@@ -74,25 +74,6 @@ def sample_cov_Wishart(cov, n_S):
     return cov_est
 
 
-def get_cov_ML(mean, cov, size):
-
-    y2 = multivariate_normal.rvs(mean=mean, cov=cov, size=size)
-    # y2[:,j] = realisations for j-th data entry
-    # y2[i,:] = data vector for i-th realisation
-
-    # Estimate mean (ML)
-    ymean = np.mean(y2, axis=0)
-
-    # calculate covariance matrix
-    cov_est = np.cov(y2, rowvar=False)
-
-    if size > 1:
-        pass
-    else:
-        cov_est = [[cov_est]]
-
-    return cov_est
-
 
 def weighted_std(data, weights): 
     """Taken from http://www.itl.nist.gov/div898/software/dataplot/refman2/ch2/weightsd.pdf"""
@@ -180,7 +161,6 @@ cov         = get_cov_Gauss(ell, C_ell_obs, Parameters['f_sky'], Parameters['sig
 # Estimate covariance as sample from Wishart distribution
 Parameters['nsim'] = int(Parameters['nsim'][0])
 cov_est = sample_cov_Wishart(cov, Parameters['nsim'])
-#cov_est = get_cov_ML(ytrue, cov, Parameters['nsim'])
 
 
 # add covariance to user input parameters, to be used in model
