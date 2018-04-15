@@ -8,14 +8,14 @@ import subprocess
 import shlex
 
 
-#import matplotlib
-#matplotlib.use("Agg")
-import pylab as plt
+import matplotlib
+matplotlib.use("Agg")
+#import pylab as plt
+import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 
-from astropy.table import Table, Column
-from astropy.io import ascii
 
+#from astropy.table import Table, Column
 
 
 def alpha_new(n_S, n_D):
@@ -24,6 +24,58 @@ def alpha_new(n_S, n_D):
     """
 
     return (n_S - n_D - 2.0)/(n_S - 1.0)
+
+
+
+def read_ascii(in_name):
+    """Read ascii file.
+
+    Parameters
+    ----------
+    in_name: string
+        input file name
+
+    Returns
+    ----
+    dat: array of named columns
+        file content
+    """
+    
+    #from astropy.io import ascii
+    #dat = ascii.read(in_name)
+
+    dat = np.genfromtxt(in_name, names=True, deletechars=['[]'])
+
+    return dat
+
+
+
+def write_ascii(file_base, cols, names):
+    """Write ascii file.
+
+    Parameters
+    ----------
+    file_base: string
+        output file name base
+    cols: matrix
+        data
+    names: array of string
+        column names
+
+    Returns
+    -------
+    None
+    """
+
+    #from astopy.table import Table, Columns
+    #t = Table(cols, names=names)
+    #f = open('{}.txt'.format(self.file_base), 'w')
+    #ascii.write(t, f, delimiter='\t')
+    #f.close()
+
+    header = ' '.join(names)[2:]
+    data   = np.array(cols).transpose()
+    np.savetxt('{}.txt'.format(file_base), data, header=header, fmt='%.10g')
 
 
 
@@ -99,15 +151,18 @@ def get_n_S_R_from_fit_file(file_base, npar=2):
 
     in_name = '{}.txt'.format(file_base)
     try:
-        dat = ascii.read(in_name)
+        #dat = ascii.read(in_name)
+        dat = read_ascii(in_name)
     except IOError as exc:
         if exc.errno == errno.ENOENT:
             error('File {} not found'.format(in_name))
         else:
             raise
 
-    n_S = np.array(dat['n_S'].data)
-    n_R   = (len(dat.keys()) - 1) / 2 / npar
+    #n_S = np.array(dat['n_S'].data)
+    n_S = dat['n_S']
+    #n_R   = (len(dat.keys()) - 1) / 2 / npar
+    n_R   = (len(dat.dtype) - 1) / 2 / npar
 
     return n_S, n_R
 
@@ -185,7 +240,11 @@ class Results:
         if format == 'ascii':
             in_name = '{}.txt'.format(self.file_base)
             try:
-                dat = ascii.read(in_name)
+                #dat = ascii.read(in_name)
+                dat = read_ascii(in_name)
+                my_n_S, my_n_R = get_n_S_R_from_fit_file(self.file_base)
+                if my_n_R != n_R:
+                    error('File {} has n_R={}, not {}'.format(in_name, my_n_R, n_R))
                 for p in self.par_name:
                     for run in range(n_R):
                         col_name = 'mean[{0:s}]_run{1:02d}'.format(p, run)
@@ -215,10 +274,8 @@ class Results:
                     names.append('mean[{0:s}]_run{1:02d}'.format(p, run))
                     cols.append(self.std[p].transpose()[run])
                     names.append('std[{0:s}]_run{1:02d}'.format(p, run))
-            t = Table(cols, names=names)
-            f = open('{}.txt'.format(self.file_base), 'w')
-            ascii.write(t, f, delimiter='\t')
-            f.close()
+
+            write_ascii(self.file_base, cols, names)
 
 
     def read_Fisher(self, format='ascii'):

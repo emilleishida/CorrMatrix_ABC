@@ -1,3 +1,6 @@
+import matplotlib
+matplotlib.use("Agg")
+
 from cosmoabc.priors import flat_prior
 from cosmoabc.ABC_sampler import ABC
 from cosmoabc.plots import plot_2p

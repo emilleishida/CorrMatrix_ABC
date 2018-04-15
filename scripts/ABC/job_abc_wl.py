@@ -45,6 +45,9 @@ import os
 import copy
 
 import numpy as np
+
+import matplotlib
+matplotlib.use("Agg")
 import pylab as plt
 
 from astropy.io import ascii
