@@ -131,6 +131,7 @@ def no_bias(n, n_D, par):
     return np.asarray([par] * len(n))
 
 
+
 def get_n_S_R_from_fit_file(file_base, npar=2):
     """Return array of number of simulations, n_n_S, and number of runs, n_R from fit output file.
 
@@ -232,7 +233,7 @@ class Results:
         return std_var
 
 
-    def read_mean_std(self, format='ascii', verbose=False):
+    def read_mean_std(self, format='ascii', npar=2, verbose=False):
         """Read mean and std from file
         """
 
@@ -242,7 +243,7 @@ class Results:
             try:
                 #dat = ascii.read(in_name)
                 dat = read_ascii(in_name)
-                my_n_S, my_n_R = get_n_S_R_from_fit_file(self.file_base)
+                my_n_S, my_n_R = get_n_S_R_from_fit_file(self.file_base, npar=npar)
                 if my_n_R != n_R:
                     error('File {} has n_R={}, not {}'.format(in_name, my_n_R, n_R))
                 for p in self.par_name:
@@ -286,7 +287,8 @@ class Results:
         if format == 'ascii':
             fname = 'F_{}.txt'.format(self.file_base)
             if os.path.isfile(fname):
-                dat = ascii.read(fname)
+                #dat = ascii.read(fname)
+                dat = read_ascii(fname)
                 for run in range(n_R):
                     for i in (0,1):
                         for j in (0,1):
@@ -308,10 +310,11 @@ class Results:
                         Fij = self.F[:, run, i, j]
                         cols.append(Fij.transpose())
                         names.append('F[{0:d},{1:d}]_run{2:02d}'.format(i, j, run))
-            t = Table(cols, names=names)
-            f = open('F_{}.txt'.format(self.file_base), 'w')
-            ascii.write(t, f, delimiter='\t')
-            f.close()
+            #t = Table(cols, names=names)
+            #f = open('F_{}.txt'.format(self.file_base), 'w')
+            #ascii.write(t, f, delimiter='\t')
+            #f.close()
+            write_ascii(self.file_base, cols, names)
 
 
     def append(self, new, verbose=False):
@@ -474,18 +477,18 @@ class Results:
                 plt.plot([n_D, n_D], [-1e2, 1e2], ':', linewidth=1)
                 plt.plot([n_D, n_D], [1e-5, 1e2], ':', linewidth=1)
 
-		        # Main-axes settings
+                # Main-axes settings
                 plt.xlabel('$n_{\\rm s}$')
                 plt.ylabel('<{}>'.format(which))
                 ax.set_yscale(self.yscale[j])
                 ax.legend(frameon=False)
                 plt.xlim(xmin, xmax)
 
-		        # x-ticks
+                # x-ticks
                 ax = plt.gca().xaxis
                 ax.set_major_formatter(ScalarFormatter())
                 plt.ticklabel_format(axis='x', style='sci')
-		        # For MCMC: Remove second tick label due to text overlap if little space
+	        # For MCMC: Remove second tick label due to text overlap if little space
                 x_loc = []
                 x_lab = []
                 for i, n_S in enumerate(n):
@@ -498,7 +501,7 @@ class Results:
                 plt.xticks(x_loc, x_lab, rotation=rotation)
                 ax.label.set_size(self.fs)
 
-		        # Second x-axis
+	        # Second x-axis
                 ax2 = plt.twiny()
                 x2_loc = []
                 x2_lab = []
@@ -621,15 +624,10 @@ class Results:
         ### Output
         outbase = 'std_2{}'.format(self.file_base)
 
-        # Plot/pdf
         if plot_sth == True:
             plt.savefig('{}.pdf'.format(outbase))
 
-        # Ascii
-        t = Table(cols, names=names)
-        f = open('{}.txt'.format(outbase), 'w')  
-        ascii.write(t, f, delimiter='\t')
-        f.close()
+        write_ascii(outbase, cols, names)
 
 
 

@@ -87,6 +87,14 @@ def par_fish(n, n_D, par):
 
     #return [np.sqrt(1.0 / alpha(n_S, n_D)) * par for n_S in n]
     return [np.sqrt(alpha_new(n_S, n_D)) * par for n_S in n]
+ 
+
+
+def par_fish_SH(n, n_D, par):
+    """Parameter RMS from Fisher matrix esimation of SH likelihood.
+    """
+
+    return [np.sqrt(2.0 * n / (n - 1.0)) * par for n_S in n]
 
 
 
@@ -123,9 +131,9 @@ def std_fish_biased_TJK13(n, n_D, par):
        Square root of IK17 (22).
     """
 
-    #return [np.sqrt(2 * A(n_S, n_D) / alpha(n_S, n_D)**4 * (n_S - n_D - 1)) * par for n_S in n] # checked
+    return [np.sqrt(2 * A(n_S, n_D) / alpha(n_S, n_D)**4 * (n_S - n_D - 1)) * par for n_S in n] # checked
 
-    return std_fish_deb(n, n_D, par) * alpha_new(n, n_D)
+    #return std_fish_deb(n, n_D, par) * alpha_new(n, n_D)
 
 
 
@@ -1219,9 +1227,9 @@ def read_from_file(sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, f
         if re.search('SH', param.likelihood) is not None:
             fit_SH.read_mean_std(verbose=param.verbose)
 
-    sigma_ML.read_mean_std(verbose=param.verbose)
-    sigma_m1_ML.read_mean_std(verbose=param.verbose)
-    sigma_m1_ML_deb.read_mean_std(verbose=param.verbose)
+    sigma_ML.read_mean_std(npar=1, verbose=param.verbose)
+    sigma_m1_ML.read_mean_std(npar=1, verbose=param.verbose)
+    sigma_m1_ML_deb.read_mean_std(npar=1, verbose=param.verbose)
 
     
 
@@ -1289,7 +1297,7 @@ def main(argv=None):
     fit_norm_deb = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_norm_deb', yscale=['linear', 'log'],
                        fct={'std': no_bias, 'std_var_TJK13': std_fish_deb, 'std_var_TJ14': std_fish_deb_TJ14})
     fit_SH   = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_SH', yscale=['linear', 'log'],
-                       fct={'std': par_fish, 'std_var_TJK13': std_fish_biased_TJK13, 'std_var_TJ14': std_fish_biased_TJ14})
+                       fct={'std': par_fish_SH, 'std_var_TJK13': std_fish_biased_TJK13, 'std_var_TJ14': std_fish_biased_TJ14})
 
     # Data
     x1 = uniform.rvs(loc=-delta/2, scale=delta, size=options.n_D)        # exploratory variable
