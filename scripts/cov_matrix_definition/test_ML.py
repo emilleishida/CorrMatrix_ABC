@@ -94,7 +94,7 @@ def par_fish_SH(n, n_D, par):
     """Parameter RMS from Fisher matrix esimation of SH likelihood.
     """
 
-    return [np.sqrt(2.0 * n / (n - 1.0)) * par for n_S in n]
+    return [np.sqrt(alpha_new(n_S, n_D) * 2.0 * n / (n - 1.0)) * par for n_S in n]
 
 
 
