@@ -20,7 +20,6 @@ from optparse import OptionParser
 from optparse import OptionGroup
 
 import numpy as np
-print(np.__file__)
 
 from covest import *
 
@@ -534,6 +533,8 @@ def main(argv=None):
     param.par = [float(p) for p in par]
     try:
         fit_ABC.plot_mean_std(n_S_arr, param.n_D, par={'mean': param.par, 'std': dpar_exact}, boxwidth=param.boxwidth, xlog=param.xlog)
+        dpar2 = dpar_exact**2
+        fit_ABC.plot_std_var(n_S_arr, param.n_D, par=dpar2)
     except:
         print('Plotting ABC mean and std failed, maybe display not available.')
 
