@@ -4,7 +4,7 @@ from cosmoabc.priors import flat_prior
 from cosmoabc.ABC_sampler import ABC
 from cosmoabc.plots import plot_2p
 from cosmoabc.ABC_functions import read_input
-from wl_functions import linear_dist_data, model_Cl, gaussian_prior
+from wl_functions import linear_dist_data_diag, model_Cl, gaussian_prior
 
 import numpy as np
 import os
@@ -124,7 +124,7 @@ Parameters['path_to_nicaea'] = re.sub('(\$\w*)', os.environ['NICAEA'], Parameter
 
 # set functions
 Parameters['simulation_func'] = model_Cl
-Parameters['distance_func'] = linear_dist_data
+Parameters['distance_func'] = linear_dist_data_diag
 
 for par in pars:
     if par in Parameters:

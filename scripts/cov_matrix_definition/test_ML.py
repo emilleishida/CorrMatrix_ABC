@@ -39,23 +39,6 @@ test_ML.py   -D 750   -p   1_0   -s   5   -v   -m r  -r   -n   4   --n_n_S   10 
 """
 
 
-def alpha(n_S, n_D):
-    """Return precision matrix estimate bias prefactor alpha.
-    """
-
-    return (n_S - 1.0)/(n_S - n_D - 2.0)
-
-
-
-def A(n_S, n_D):
-    """Return TJK13 (27)
-    """
-
-    A = alpha(n_S, n_D)**2 / ((n_S - n_D - 1.0) * (n_S - n_D - 4.0))
-
-    return A
-
-
 
 def A_corr(n_S, n_D):
     """Return TJK13 (28), this is A/alpha^2.
@@ -123,17 +106,6 @@ def std_fish_biased2(n, n_D, par):
 
     return [np.sqrt(2 * A(n_S, n_D) * ((n_S - n_D - 1))) / (alpha(n_S, n_D)**2) * par for n_S in n]
 
-
-
-def std_fish_biased_TJK13(n, n_D, par):
-    """0th-order error on variance from Fisher matrix with biased inverse covariance estimate.
-       From TJK13 (49) with A (27) instead of A_corr (28) in (49).
-       Square root of IK17 (22).
-    """
-
-    return [np.sqrt(2 * A(n_S, n_D) / alpha(n_S, n_D)**4 * (n_S - n_D - 1)) * par for n_S in n] # checked
-
-    #return std_fish_deb(n, n_D, par) * alpha_new(n, n_D)
 
 
 

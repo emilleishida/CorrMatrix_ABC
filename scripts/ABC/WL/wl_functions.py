@@ -52,7 +52,7 @@ def model_Cl(p):
     p['path_to_nicaea'] = re.sub('(\$\w*)', os.environ['NICAEA'], p['path_to_nicaea'])
 
     # Run nicaea to produce model Cl
-    err = nicaea_ABC.run_nicaea(p['path_to_nicaea'], p['lmin'], p['lmax'], p['nell'], \
+    err, C_ell_name = nicaea_ABC.run_nicaea(p['path_to_nicaea'], p['lmin'], p['lmax'], p['nell'], \
                                 par_name = par_name, par_val = par_val)
 
     if err != 0:
@@ -62,7 +62,8 @@ def model_Cl(p):
 
     else:
 
-        ell, C_ell = nicaea_ABC.read_Cl('.', 'P_kappa')
+        ell, C_ell = nicaea_ABC.read_Cl('.', C_ell_name)
+        os.unlink(C_ell_name)
 
         # Covariance assumed to be constant
 
@@ -111,9 +112,45 @@ def gaussian_prior(par, func=False):
 
 
 
+def linear_dist_data_diag(d2, p):
+    """Distance between observed and simulated catalogues using
+       one over estimated diagonal covariance elements.
+
+    Parameters
+    ----------
+    d2: array(double, 2)
+        simulated catalogue
+    p: dictionary
+        input parameters
+
+    Returns
+    -------
+    dist: double
+        distance
+    """
+
+    C_ell_sim = d2[:,1]
+    C_ell_obs = p['dataset1'][:,1]
+
+    dC = C_ell_sim - C_ell_obs
+
+
+    if 'cov' in p:
+        cov = p['cov']
+    else:
+        print('Reading cov_est.txt from disk')
+        cov = np.loadtxt('cov_est.txt')
+
+    # Least squares distance weighted by inverse diagonal elements of covariance
+    dist = np.sqrt(sum(dC**2/np.diag(cov)))
+
+    return np.atleast_1d(dist)
+
+
+
 def linear_dist_data(d2, p):
     """Distance between observed and simulated catalogues using
-       least squres between observed and simulated data points y.
+       true inverse covariance.
 
     Parameters
     ----------
@@ -147,5 +184,3 @@ def linear_dist_data(d2, p):
     dist = np.sqrt(dist)
 
     return np.atleast_1d(dist)
-
-
