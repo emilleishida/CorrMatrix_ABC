@@ -39,20 +39,32 @@ def run_nicaea(path, lmin, lmax, nell, par_name=None, par_val=None):
 
     Returns
     -------
-    None
+    err: int
+        error code
+    C_ell_name: string
+        name of C(ell) file = P_kappa<out_suf>
     """
 
     Lstr = '-L \'{} {} {}\''.format(lmin, lmax, nell)
     parstr = '' 
     if par_name is not None:
+        out_suf = ''
         for i, name in enumerate(par_name):
             parstr = '{} --{} {}'.format(parstr, name, par_val[i])
-    err = covest.run_cmd('{}/bin/lensingdemo -D 0 {} {} -H 1'.format(path, Lstr, parstr), verbose=True, stop=True)
+            out_suf = '{}_{}'.format(out_suf, par_val[i])
+        out_suf_str = ' --out_suf {}'.format(out_suf)
+    else:
+        out_suf     = ''
+        out_suf_str = ''
+
+    err = covest.run_cmd('{}/bin/lensingdemo -D 0 {} {} {} -q -H 1'.format(path, Lstr, parstr, out_suf_str), verbose=True, stop=True)
+
+    C_ell_name = 'P_kappa{}'.format(out_suf)
 
     if err != 0:
         print('Nicaea returned with error code {}'.format(err))
 
-    return err
+    return err, C_ell_name
 
 
 

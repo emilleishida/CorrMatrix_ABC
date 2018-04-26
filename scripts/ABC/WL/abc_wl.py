@@ -4,19 +4,21 @@ from cosmoabc.priors import flat_prior
 from cosmoabc.ABC_sampler import ABC
 from cosmoabc.plots import plot_2p
 from cosmoabc.ABC_functions import read_input
-from wl_functions import linear_dist_data, model_Cl, gaussian_prior
+from wl_functions import linear_dist_data_diag, model_Cl, gaussian_prior
 
 import numpy as np
 import os
 import re
 
-from scipy.stats import uniform, multivariate_normal
+from scipy.stats import multivariate_normal
 from statsmodels.stats.weightstats import DescrStatsW
 
 from astropy import units
 
 import nicaea_ABC
 import scipy.stats._multivariate as mv
+
+from covest import get_cov_ML
 
 
 
@@ -124,7 +126,7 @@ Parameters['path_to_nicaea'] = re.sub('(\$\w*)', os.environ['NICAEA'], Parameter
 
 # set functions
 Parameters['simulation_func'] = model_Cl
-Parameters['distance_func'] = linear_dist_data
+Parameters['distance_func'] = linear_dist_data_diag
 
 for par in pars:
     if par in Parameters:
@@ -160,7 +162,13 @@ cov         = get_cov_Gauss(ell, C_ell_obs, Parameters['f_sky'], Parameters['sig
 
 # Estimate covariance as sample from Wishart distribution
 Parameters['nsim'] = int(Parameters['nsim'][0])
-cov_est = sample_cov_Wishart(cov, Parameters['nsim'])
+size = cov.shape[0]
+if Parameters['nsim'] - 1 >= size:
+    cov_est = sample_cov_Wishart(cov, Parameters['nsim'])
+else:
+    # Cannot easily sample from Wishart distribution if dof<cov dimension,
+    # but can always create Gaussian rv and compute cov
+    cov_est = get_cov_ML(C_ell_obs, cov, size)
 
 
 # add covariance to user input parameters, to be used in model

@@ -34,7 +34,7 @@ def params_default():
 
     Returns
     -------
-    p_def: class mkstuff.param
+    p_def: class param
         parameter values
     """
 
@@ -62,7 +62,7 @@ def parse_options(p_def):
 
     Parameters
     ----------
-    p_def: class mkstuff.param
+    p_def: class param
         parameter values
 
     Returns
@@ -132,14 +132,14 @@ def update_param(p_def, options):
     
     Parameters
     ----------
-    p_def:  class mkstuff.param
+    p_def:  class param
         parameter values
     optiosn: tuple
         command line options
     
     Returns
     -------
-    param: class mkstuff.param
+    param: class param
         updated paramter values
     """
 
@@ -504,7 +504,7 @@ def main(argv=None):
         return 0
 
     # Initialisation of results
-    fit_ABC = Results(par_name, n_n_S, param.n_R, file_base='mean_std_ABC', yscale=['linear', 'log'])
+    fit_ABC = Results(par_name, n_n_S, param.n_R, file_base='mean_std_ABC', yscale=['linear', 'log'], fct={})
 
 
     # MKDEBUG TODO: n_D and nobs in toy_model.input should be consistent, if only for plotting reasons
@@ -534,7 +534,7 @@ def main(argv=None):
     try:
         fit_ABC.plot_mean_std(n_S_arr, param.n_D, par={'mean': param.par, 'std': dpar_exact}, boxwidth=param.boxwidth, xlog=param.xlog)
         dpar2 = dpar_exact**2
-        fit_ABC.plot_std_var(n_S_arr, param.n_D, par=dpar2)
+        fit_ABC.plot_std_var(n_S_arr, param.n_D, par=dpar2, xlog=param.xlog)
     except:
         print('Plotting ABC mean and std failed, maybe display not available.')
 

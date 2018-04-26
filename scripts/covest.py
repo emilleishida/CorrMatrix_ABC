@@ -14,7 +14,6 @@ import shlex
 import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 
-
 #from astropy.table import Table, Column
 
 
@@ -132,6 +131,37 @@ def no_bias(n, n_D, par):
 
 
 
+def alpha(n_S, n_D):
+    """Return precision matrix estimate bias prefactor alpha.
+    """
+
+    return (n_S - 1.0)/(n_S - n_D - 2.0)
+
+
+
+def A(n_S, n_D):
+    """Return TJK13 (27)
+    """
+
+    A = alpha(n_S, n_D)**2 / ((n_S - n_D - 1.0) * (n_S - n_D - 4.0))
+
+    return A
+
+
+
+def std_fish_biased_TJK13(n, n_D, par):
+    """0th-order error on variance from Fisher matrix with biased inverse covariance estimate.
+       From TJK13 (49) with A (27) instead of A_corr (28) in (49).
+       Square root of IK17 (22).
+    """
+
+    return [np.sqrt(2 * A(n_S, n_D) / alpha(n_S, n_D)**4 * (n_S - n_D - 1)) * par for n_S in n] # checked
+
+    #return std_fish_deb(n, n_D, par) * alpha_new(n, n_D)
+
+
+
+
 def get_n_S_R_from_fit_file(file_base, npar=2):
     """Return array of number of simulations, n_n_S, and number of runs, n_R from fit output file.
 
@@ -166,6 +196,26 @@ def get_n_S_R_from_fit_file(file_base, npar=2):
     n_R   = (len(dat.dtype) - 1) / 2 / npar
 
     return n_S, n_R
+
+
+def get_cov_ML(mean, cov, size):
+            
+    from scipy.stats import multivariate_normal
+
+    y2 = multivariate_normal.rvs(mean=mean, cov=cov, size=size)
+    # y2[:,j] = realisations for j-th data entry
+    # y2[i,:] = data vector for i-th realisation
+
+    
+    # Calculate covariance matrix via np
+    cov_est = np.cov(y2, rowvar=False)
+    
+    if size > 1:
+        pass
+    else:
+        cov_est = [[cov_est]]
+    
+    return cov_est
 
 
 
@@ -469,7 +519,7 @@ class Results:
         for j, which in enumerate(['mean', 'std']):
             if which in j_panel:
 
-		# Get main axes
+		        # Get main axes
                 ax = plt.subplot(1, n_panel, j_panel[which])
 
                 # Dashed vertical line at n_S = n_D
@@ -488,7 +538,7 @@ class Results:
                 ax = plt.gca().xaxis
                 ax.set_major_formatter(ScalarFormatter())
                 plt.ticklabel_format(axis='x', style='sci')
-	        # For MCMC: Remove second tick label due to text overlap if little space
+	            # For MCMC: Remove second tick label due to text overlap if little space
                 x_loc = []
                 x_lab = []
                 for i, n_S in enumerate(n):
@@ -501,7 +551,7 @@ class Results:
                 plt.xticks(x_loc, x_lab, rotation=rotation)
                 ax.label.set_size(self.fs)
 
-	        # Second x-axis
+	            # Second x-axis
                 ax2 = plt.twiny()
                 x2_loc = []
                 x2_lab = []
@@ -539,9 +589,24 @@ class Results:
 
 
 
-    def plot_std_var(self, n, n_D, par=None, sig_var_noise=None):
+    def plot_std_var(self, n, n_D, par=None, sig_var_noise=None, xlog=False):
         """Plot standard deviation of parameter variance
-        """
+
+        Parameters 
+        ---------- 
+        n: array of integer
+            number of realisations {n_S} for ML covariance
+        n_D: integer
+            dimension of data vector
+        par: dictionary of array of float, optional
+            input parameter values and errors, default=None
+        xlog: bool, optional
+            logarithmic x-axis, default False
+            
+        Returns 
+        -------     
+        None    
+        """         
 
         n_R = self.mean[self.par_name[0]].shape[1]
         color = ['g', 'm']
@@ -591,29 +656,44 @@ class Results:
 
         # Finalize plot
 
-	# Get main axes
+	    # Get main axes
         ax = plt.subplot(1, 1, 1)
 
-	# Main-axes settings
+        if xlog == True:
+            fac_xlim = 1.6
+            xmin = n[0]/fac_xlim
+            xmax = n[-1]*fac_xlim
+            #plt.xlim(np.log(xmin), np.log(xmax))
+            ax.set_xscale('log')
+            flinlog = lambda x: np.log(x)
+        else:
+            flinlog = lambda x: x
+
+	    # Main-axes settings
         plt.xlabel('$n_{\\rm s}$')
         plt.ylabel('std(var)')
         ax.set_yscale('log')
         ax.legend(loc='best', numpoints=1, frameon=False)
 
-	# x-ticks
+	    # x-ticks
         ax = plt.gca().xaxis
         ax.set_major_formatter(ScalarFormatter())
         plt.ticklabel_format(axis='x', style='sci')
 
-	# Second x-axis
+	    # Second x-axis
         x_loc, x_lab = plt.xticks()
         ax2 = plt.twiny()
         x2_loc = []
         x2_lab = []
         for i, n_S in enumerate(x_loc):
             if n_S > 0:
-                x2_loc.append(n_S)
-                x2_lab.append('{:.2g}'.format(float(n_D) / float(n_S)))
+                x2_loc.append(flinlog(n_S))
+                frac = float(n_D) / float(n_S)
+                if frac > 100:
+                    lab = '{:.0f}'.format(frac)
+                else:
+                    lab = '{:.2g}'.format(frac)
+                x2_lab.append(lab)
         plt.xticks(x2_loc, x2_lab)
         ax2.set_xlabel('$n_{\\rm d} / n_{\\rm s}$', size=self.fs)
 
