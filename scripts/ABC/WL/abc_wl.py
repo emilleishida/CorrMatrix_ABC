@@ -10,13 +10,15 @@ import numpy as np
 import os
 import re
 
-from scipy.stats import uniform, multivariate_normal
+from scipy.stats import multivariate_normal
 from statsmodels.stats.weightstats import DescrStatsW
 
 from astropy import units
 
 import nicaea_ABC
 import scipy.stats._multivariate as mv
+
+from covest import get_cov_ML
 
 
 
@@ -160,7 +162,13 @@ cov         = get_cov_Gauss(ell, C_ell_obs, Parameters['f_sky'], Parameters['sig
 
 # Estimate covariance as sample from Wishart distribution
 Parameters['nsim'] = int(Parameters['nsim'][0])
-cov_est = sample_cov_Wishart(cov, Parameters['nsim'])
+size = cov.shape[0]
+if Parameters['nsim'] - 1 >= size:
+    cov_est = sample_cov_Wishart(cov, Parameters['nsim'])
+else:
+    # Cannot easily sample from Wishart distribution if dof<cov dimension,
+    # but can always create Gaussian rv and compute cov
+    cov_est = get_cov_ML(C_ell_obs, cov, size)
 
 
 # add covariance to user input parameters, to be used in model

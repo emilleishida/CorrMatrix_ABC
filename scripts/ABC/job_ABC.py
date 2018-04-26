@@ -34,7 +34,7 @@ def params_default():
 
     Returns
     -------
-    p_def: class mkstuff.param
+    p_def: class param
         parameter values
     """
 
@@ -62,7 +62,7 @@ def parse_options(p_def):
 
     Parameters
     ----------
-    p_def: class mkstuff.param
+    p_def: class param
         parameter values
 
     Returns
@@ -132,14 +132,14 @@ def update_param(p_def, options):
     
     Parameters
     ----------
-    p_def:  class mkstuff.param
+    p_def:  class param
         parameter values
     optiosn: tuple
         command line options
     
     Returns
     -------
-    param: class mkstuff.param
+    param: class param
         updated paramter values
     """
 

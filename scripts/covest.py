@@ -14,7 +14,6 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 
-
 #from astropy.table import Table, Column
 
 
@@ -197,6 +196,26 @@ def get_n_S_R_from_fit_file(file_base, npar=2):
     n_R   = (len(dat.dtype) - 1) / 2 / npar
 
     return n_S, n_R
+
+
+def get_cov_ML(mean, cov, size):
+            
+    from scipy.stats import multivariate_normal
+
+    y2 = multivariate_normal.rvs(mean=mean, cov=cov, size=size)
+    # y2[:,j] = realisations for j-th data entry
+    # y2[i,:] = data vector for i-th realisation
+
+    
+    # Calculate covariance matrix via np
+    cov_est = np.cov(y2, rowvar=False)
+    
+    if size > 1:
+        pass
+    else:
+        cov_est = [[cov_est]]
+    
+    return cov_est
 
 
 
