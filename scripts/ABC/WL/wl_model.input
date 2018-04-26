@@ -35,7 +35,7 @@ lmin = 2.0
 lmax = 2500
 nell = 50
 
-#path_to_nicaea = astro/nicaea/versions/nicaea_2.7
+#path_to_nicaea = /Users/mkilbing/astro/nicaea/versions/github/nicaea
 path_to_nicaea = $NICAEA
 
 

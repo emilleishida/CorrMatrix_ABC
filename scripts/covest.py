@@ -8,8 +8,8 @@ import subprocess
 import shlex
 
 
-import matplotlib
-matplotlib.use("Agg")
+#import matplotlib
+#matplotlib.use("Agg")
 #import pylab as plt
 import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter

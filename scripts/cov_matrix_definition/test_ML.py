@@ -772,8 +772,6 @@ def get_cov_ML(mean, cov, size):
     # y2[:,j] = realisations for j-th data entry
     # y2[i,:] = data vector for i-th realisation
 
-    # Estimate mean (ML)
-    ymean = np.mean(y2, axis=0)
 
     # Calculate covariance matrix via np
     cov_est = np.cov(y2, rowvar=False)
@@ -782,6 +780,8 @@ def get_cov_ML(mean, cov, size):
     # 01/11 checked that this gives same results, with
     # test_ML.py -D 50 -p 1_0 --n_n_S 10 --f_n_S_max 10 -s 0.2 -m s -R 50 -v
     #n_D = len(mean)
+    # Estimate mean (ML)
+    #ymean = np.mean(y2, axis=0)
     #cov_est = get_cov_ML_by_hand(y2, ymean, cov, size, n_D)
     #print(cov_est)
 

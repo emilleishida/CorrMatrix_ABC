@@ -48,7 +48,7 @@ def model_Cl(p):
             par_val.append(p[par])
             par_name.append(par) 
 
-    # This is necessary for plot_ABC.py, which does not go via abc_wl.py
+    # This is necessary for plot_ABC.py, which has not already performed the substitution in abc_wl.py
     p['path_to_nicaea'] = re.sub('(\$\w*)', os.environ['NICAEA'], p['path_to_nicaea'])
 
     # Run nicaea to produce model Cl
