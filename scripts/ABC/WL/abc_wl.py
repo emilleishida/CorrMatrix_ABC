@@ -71,7 +71,9 @@ def sample_cov_Wishart(cov, n_S):
 
     # Sample covariance from Wishart distribution, with dof nu=n_S - 1
     W = mv.wishart(df=n_S - 1, scale=cov)
-    cov_est = W.rvs() / (n_S - 1)  ## Divide or not??
+
+    # Mean of Wishart distribution is cov/dof = cov/(n_S - 1)
+    cov_est = W.rvs() / (n_S - 1) 
 
     return cov_est
 
