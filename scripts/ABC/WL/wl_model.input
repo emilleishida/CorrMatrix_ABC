@@ -23,7 +23,7 @@ Omega_m_lim                  = 0.05  1.5               # extreme limits for para
 sigma_8_lim                  = 0.0  2.0                # extreme limits for parametes
 	          
 Omega_m         = 0.27                             #  matter density parameter
-sigma_8         = 0.8                              #  normalisation
+sigma_8         = 0.79                             #  normalisation
 nsim            = 100                              #  number of simulations for covariance matrix
 
 f_sky		= 0.3636			   # covered sky fraction of survey

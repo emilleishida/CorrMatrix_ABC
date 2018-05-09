@@ -9,7 +9,8 @@ n=${#files[@]}
 arg="$1"
 case "$arg" in
 	"ABC")
-		files{[$n]}=wl_functions.py
+		files[$n]=wl_functions.py
+		cp $base_dir/wl_model.input .
 		;;
 	"PMC")
 		;;

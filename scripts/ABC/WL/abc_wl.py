@@ -223,8 +223,10 @@ op2.close()
 print 'Numerical results:'
 print 'a:    ' + str(a_results.mean) + ' +- ' + str(a_results.std_mean)
 print 'b:    ' + str(b_results.mean) + ' +- ' + str(b_results.std_mean)
+print ''
 
 
 
 #plot results
 plot_2p( sampler_ABC.T, 'results.pdf' , Parameters)
+
