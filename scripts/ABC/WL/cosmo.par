@@ -8,7 +8,7 @@ h_100		0.73		# Dimensionless Hubble parameter
 Omega_b		0.049		# Baryon density
 Omega_nu_mass	0.0		# Massive neutrino density (so far only for CMB)
 Neff_nu_mass	0.0		# Effective number of massive neutrinos (only CMB)
-normalization	0.79  		# This is sigma_8 if normmode=0 below
+normalization	0.79   		# This is sigma_8 if normmode=0 below
 #normalization	2.12650000e-09	# This is A_S if normmode=0 below
 n_spec		0.96 		# Scalar power-spectrum index
 
