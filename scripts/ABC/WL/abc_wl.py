@@ -4,7 +4,7 @@ from cosmoabc.priors import flat_prior
 from cosmoabc.ABC_sampler import ABC
 from cosmoabc.plots import plot_2p
 from cosmoabc.ABC_functions import read_input
-from wl_functions import linear_dist_data_diag, model_Cl, gaussian_prior
+from wl_functions import linear_dist_data, linear_dist_data_diag, model_Cl
 
 import numpy as np
 import os
@@ -126,17 +126,20 @@ Parameters['path_to_nicaea'] = Parameters['path_to_nicaea'][0]
 # Replace $VAR with environment variable value
 Parameters['path_to_nicaea'] = re.sub('(\$\w*)', os.environ['NICAEA'], Parameters['path_to_nicaea'])
 
+### Dictionaries for functions
+
+# Simulation model
+simulation = {'model_Cl': model_Cl}
+
+# Distance
+distance = {'linear_dist_data_diag': linear_dist_data_diag,
+            'linear_dist_data':      linear_dist_data}
+
 # set functions
-Parameters['simulation_func'] = model_Cl
-Parameters['distance_func'] = linear_dist_data_diag
+Parameters['simulation_func'] = simulation[Parameters['simulation_func'][0]]
+Parameters['distance_func']   = distance[Parameters['distance_func'][0]]
 
-for par in pars:
-    if par in Parameters:
-        Parameters['prior'][par]['func'] = gaussian_prior
-        
-#Parameters['prior']['Omega_m']['func'] = gaussian_prior
-#Parameters['prior']['sigma_8']['func'] = gaussian_prior
-
+# Priors are set in read_input
 
 # Get 'observation' (fiducial model)
 # Call nicaea
