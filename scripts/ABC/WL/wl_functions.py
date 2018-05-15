@@ -72,43 +72,13 @@ def model_Cl(p):
             cov_est = p['cov']
         else:
             # This script is called from plot_ABC.py or test_ABC_distance.py: Need to get cov from disk
-            print('Reading cov_est.txt from disk')
+            #print('Reading cov_est.txt from disk')
             cov_est = np.loadtxt('cov_est.txt')
 
         # Sample hat Cl from Norm(Cl, hat Sigma)
         C_ell_est = multivariate_normal.rvs(mean=C_ell, cov=cov_est)
 
     return np.array([[ell[i], C_ell_est[i]] for i in range(int(p['nell']))])
-
-
-
-def gaussian_prior(par, func=False):
-    """
-    Gaussian prior.
-  
-    input: par -> dictionary of parameter values
-                  keywords: mean, standard_devitation, 
-                            min and max
-                  values: all scalars 
-           func -> boolean (optional)
-                   if True returns the pdf random variable. 
-                   Default is False.
-    output: scalar (if func=False)
-            gaussian probability distribution function (if func=True)
-    """
-
-    np.random.seed()    
-    dist = norm(loc=par['pmean'], scale=par['pstd'])
-    flag = False  
-    while flag == False:   
-        draw = dist.rvs() 
-        if par['min'] < draw and draw < par['max']:
-            flag = True
-     
-    if func == False:
-        return draw
-    else:
-        return dist
 
 
 
@@ -134,11 +104,10 @@ def linear_dist_data_diag(d2, p):
 
     dC = C_ell_sim - C_ell_obs
 
-
     if 'cov' in p:
         cov = p['cov']
     else:
-        print('Reading cov_est.txt from disk')
+        #print('linear_dist_data_diag: Reading cov_est.txt from disk')
         cov = np.loadtxt('cov_est.txt')
 
     # Least squares distance weighted by inverse diagonal elements of covariance
@@ -175,9 +144,10 @@ def linear_dist_data(d2, p):
 
     # Least squares weighted by covariance
     if 'cov_true_inv' in p:
+        #print('linear_dist_data: Using true inverse covariance matrix')
         cov_inv = p['cov_true_inv']
     else:
-        print('Reading cov_true_inv.txt from disk')
+        #print('linear_dist_data: Reading cov_true_inv.txt from disk')
         cov_inv = np.loadtxt('cov_true_inv.txt')
 
     dist = np.einsum('i,ij,j', dC, cov_inv, dC)
