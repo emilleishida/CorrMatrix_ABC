@@ -182,7 +182,6 @@ def get_n_S_R_from_fit_file(file_base, npar=2):
 
     in_name = '{}.txt'.format(file_base)
     try:
-        #dat = ascii.read(in_name)
         dat = read_ascii(in_name)
     except IOError as exc:
         if exc.errno == errno.ENOENT:
@@ -291,7 +290,6 @@ class Results:
         if format == 'ascii':
             in_name = '{}.txt'.format(self.file_base)
             try:
-                #dat = ascii.read(in_name)
                 dat = read_ascii(in_name)
                 my_n_S, my_n_R = get_n_S_R_from_fit_file(self.file_base, npar=npar)
                 if my_n_R != n_R:
@@ -337,7 +335,6 @@ class Results:
         if format == 'ascii':
             fname = 'F_{}.txt'.format(self.file_base)
             if os.path.isfile(fname):
-                #dat = ascii.read(fname)
                 dat = read_ascii(fname)
                 for run in range(n_R):
                     for i in (0,1):
@@ -360,10 +357,6 @@ class Results:
                         Fij = self.F[:, run, i, j]
                         cols.append(Fij.transpose())
                         names.append('F[{0:d},{1:d}]_run{2:02d}'.format(i, j, run))
-            #t = Table(cols, names=names)
-            #f = open('F_{}.txt'.format(self.file_base), 'w')
-            #ascii.write(t, f, delimiter='\t')
-            #f.close()
             write_ascii(self.file_base, cols, names)
 
 
@@ -433,6 +426,9 @@ class Results:
         -------
         None
         """
+
+        #print('MKDEGBU xlog=True ', boxwidth)
+        #xlog = True
 
         n_R = self.mean[self.par_name[0]].shape[1]
 
@@ -519,7 +515,7 @@ class Results:
         for j, which in enumerate(['mean', 'std']):
             if which in j_panel:
 
-		        # Get main axes
+                # Get main axes
                 ax = plt.subplot(1, n_panel, j_panel[which])
 
                 # Dashed vertical line at n_S = n_D
@@ -534,11 +530,14 @@ class Results:
                 ax.legend(frameon=False)
                 plt.xlim(xmin, xmax)
 
+                #print('MKDEBUG set ylim')
+                #plt.ylim(4, 6)
+
                 # x-ticks
                 ax = plt.gca().xaxis
                 ax.set_major_formatter(ScalarFormatter())
                 plt.ticklabel_format(axis='x', style='sci')
-	            # For MCMC: Remove second tick label due to text overlap if little space
+	        # For MCMC: Remove second tick label due to text overlap if little space
                 x_loc = []
                 x_lab = []
                 for i, n_S in enumerate(n):
@@ -656,7 +655,7 @@ class Results:
 
         # Finalize plot
 
-	    # Get main axes
+        # Get main axes
         ax = plt.subplot(1, 1, 1)
 
         if xlog == True:
@@ -669,18 +668,18 @@ class Results:
         else:
             flinlog = lambda x: x
 
-	    # Main-axes settings
+        # Main-axes settings
         plt.xlabel('$n_{\\rm s}$')
         plt.ylabel('std(var)')
         ax.set_yscale('log')
         ax.legend(loc='best', numpoints=1, frameon=False)
 
-	    # x-ticks
+	# x-ticks
         ax = plt.gca().xaxis
         ax.set_major_formatter(ScalarFormatter())
         plt.ticklabel_format(axis='x', style='sci')
 
-	    # Second x-axis
+	# Second x-axis
         x_loc, x_lab = plt.xticks()
         ax2 = plt.twiny()
         x2_loc = []
@@ -700,6 +699,8 @@ class Results:
         # y-scale
         plt.ylim(8e-9, 1e-2)
 
+        # Dashed vertical line at n_S = n_D
+        plt.plot([n_D, n_D], [8e-9, 1e-2], ':', linewidth=1)
 
         ### Output
         outbase = 'std_2{}'.format(self.file_base)

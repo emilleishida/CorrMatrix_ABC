@@ -1269,7 +1269,7 @@ def main(argv=None):
     fit_norm_deb = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_norm_deb', yscale=['linear', 'log'],
                        fct={'std': no_bias, 'std_var_TJK13': std_fish_deb, 'std_var_TJ14': std_fish_deb_TJ14})
     fit_SH   = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_SH', yscale=['linear', 'log'],
-                       fct={'std': par_fish_SH, 'std_var_TJK13': std_fish_biased_TJK13, 'std_var_TJ14': std_fish_biased_TJ14})
+                       fct={'std': par_fish_SH})
 
     # Data
     x1 = uniform.rvs(loc=-delta/2, scale=delta, size=options.n_D)        # exploratory variable
@@ -1338,9 +1338,9 @@ def main(argv=None):
         if re.search('SH', options.likelihood) is not None:
             fit_SH.plot_std_var(n_S_arr, options.n_D, par=dpar2, sig_var_noise=param.sig_var_noise)
 
-    sigma_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [options.sig2]})
-    sigma_m1_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [1/options.sig2]})
-    sigma_m1_ML_deb.plot_mean_std(n_S_arr, options.n_D, par={'mean': [1/options.sig2]})
+    sigma_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [options.sig2]}, boxwidth=param.boxwidth)
+    sigma_m1_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [1/options.sig2]}, boxwidth=param.boxwidth)
+    sigma_m1_ML_deb.plot_mean_std(n_S_arr, options.n_D, par={'mean': [1/options.sig2]}, boxwidth=param.boxwidth)
 
     #plot_std_fish_biased_ana(par_name, n_S_arr, x1, options.sig2, delta, F=fish_num.F, n_R=options.n_R)
     #plot_det(n_S_arr, x1, options.sig2, delta, fish_num.F, options.n_R)
