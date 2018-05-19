@@ -4,7 +4,7 @@ from cosmoabc.priors import flat_prior
 from cosmoabc.ABC_sampler import ABC
 from cosmoabc.plots import plot_2p
 from cosmoabc.ABC_functions import read_input
-from wl_functions import linear_dist_data, linear_dist_data_diag, model_Cl
+from wl_functions import linear_dist_data, linear_dist_data_diag, linear_dist_data_SVD, model_Cl_norm
 
 import numpy as np
 import os
@@ -129,15 +129,17 @@ Parameters['path_to_nicaea'] = re.sub('(\$\w*)', os.environ['NICAEA'], Parameter
 ### Dictionaries for functions
 
 # Simulation model
-simulation = {'model_Cl': model_Cl}
+simulation = {'model_Cl_norm': model_Cl_norm}
 
 # Distance
 distance = {'linear_dist_data_diag': linear_dist_data_diag,
-            'linear_dist_data':      linear_dist_data}
+            'linear_dist_data':      linear_dist_data,
+            'linear_dist_data_SVD':  linear_dist_data_SVD}
 
 # set functions
 Parameters['simulation_func'] = simulation[Parameters['simulation_func'][0]]
-Parameters['distance_func']   = distance[Parameters['distance_func'][0]]
+distance_str                  = Parameters['distance_func'][0]
+Parameters['distance_func']   = distance[distance_str]
 
 # Priors are set in read_input
 
@@ -179,12 +181,35 @@ else:
 # add covariance to user input parameters, to be used in model
 Parameters['cov'] = cov_est
 Parameters['simulation_input']['cov'] = cov_est
-cov_true_inv = np.linalg.inv(cov)
-Parameters['cov_true_inv'] = cov_true_inv
 
-# For reading in wl_functions.py when called by plot_ABC.py or test_ABC_distance.py
+if distance_str == 'linear_dist_data':
+    cov_true_inv = np.linalg.inv(cov)
+    Parameters['cov_true_inv'] = cov_true_inv
+    np.savetxt('cov_true_inv.txt', cov_true_inv)
+
+elif distance_str == 'linear_dist_data_SVD':
+    # SVD
+    u, s, vh = np.linalg.svd(cov_est, full_matrices=True)
+
+    sm   = 1.0 / s
+    nsim = Parameters['nsim']
+    # Set inverse diagonal of singular elements to zero 
+    sm[nsim:] = 0
+
+    # Pseudo-inverse
+    cov_inv_P = np.dot(vh.conj().T * sm, u.conj().T)
+    Parameters['cov_est_inv_P'] = cov_inv_P
+    np.savetxt('cov_est_inv_P.txt', cov_inv_P)
+
+    # Test: Compare pseudo-inverse to inverse in case of non-singular matrix
+    #print('cov_inv_P', cov_inv_P[0,0], cov_inv_P[0,1])
+    #cov_inv = np.linalg.inv(cov_est)
+    #print('cov_inv', cov_inv[0,0], cov_inv[0,1])
+
+
+# cov_est.txt on disk is read when running plot_ABC.py.
 np.savetxt('cov_est.txt', cov_est)
-np.savetxt('cov_true_inv.txt', cov_true_inv)
+
 #############################################
 
 #initiate ABC sampler

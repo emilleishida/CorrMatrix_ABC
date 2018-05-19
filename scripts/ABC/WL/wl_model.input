@@ -6,7 +6,7 @@ param_to_sim    	= Omega_m sigma_8 lmin lmax nell nsim f_sky sigma_eps nbar path
 prior_func	        = flat_prior flat_prior      # one prior function for each parameter
                                                    # under consideration 
 
-simulation_func = model_Cl                            # simulation function
+simulation_func = model_Cl_norm                       # simulation function
 distance_func	= linear_dist_data_diag               # distance function
 
 dist_dim = 1              #
