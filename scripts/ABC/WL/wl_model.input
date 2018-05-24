@@ -3,20 +3,27 @@ path_to_obs		= None   	           # path to observed data
 param_to_fit 		= Omega_m sigma_8                                      # parameters to fit
 param_to_sim    	= Omega_m sigma_8 lmin lmax nell nsim f_sky sigma_eps nbar path_to_nicaea      # parameters needed for simulation
 
-prior_func	        = gaussian_prior gaussian_prior      # one prior function for each parameter
+prior_func	        = flat_prior flat_prior      # one prior function for each parameter
                                                    # under consideration 
 
-simulation_func = model_Cl                            # simulation function
-#simulation_func = model_cov                            # simulation function
-distance_func	= linear_dist_data                      # distance function
+simulation_func = model_Cl_norm                       # simulation function
+distance_func	= linear_dist_data_diag               # distance function
 
 dist_dim = 1              #
 
-Omega_m_prior_par_name      = pmean pstd               # parameters for prior distribution  
-Omega_m_prior_par_val       = 0.27 4.0                 # values for prior distribution   
+# Gaussian
+#Omega_m_prior_par_name      = pmean pstd               # parameters for prior distribution  
+#Omega_m_prior_par_val       = 0.27 4.0                 # values for prior distribution   
 
-sigma_8_prior_par_name       = pmean  pstd              # parameters for prior distribution
-sigma_8_prior_par_val        =  0.8  5.0                # values for prior distribution
+#sigma_8_prior_par_name       = pmean  pstd              # parameters for prior distribution
+#sigma_8_prior_par_val        =  0.8  5.0                # values for prior distribution
+
+# Flat
+Omega_m_prior_par_name      = pmin pmax               # parameters for prior distribution  
+Omega_m_prior_par_val       = 0.05 1.5                 # values for prior distribution   
+
+sigma_8_prior_par_name       = pmin  pmax              # parameters for prior distribution
+sigma_8_prior_par_val        =  0.0  2.0                # values for prior distribution
 
 	
 Omega_m_lim                  = 0.05  1.5               # extreme limits for parametes

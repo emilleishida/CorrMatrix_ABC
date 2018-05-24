@@ -20,7 +20,7 @@ as long as you respect the input/ouput requirements and
 import numpy as np
 import os
 import re
-from scipy.stats import norm,  multivariate_normal
+from scipy.stats import norm,  multivariate_normal, gamma
 from scipy.stats import uniform
 from scipy import stats
 import statsmodels.formula.api as smf
@@ -31,7 +31,7 @@ import nicaea_ABC
 
 
 def model_Cl(p):
-    """Return model angular power spectrum.
+    """Return model angular power spectrum and read/get covariance.
     """
 
 
@@ -66,7 +66,6 @@ def model_Cl(p):
         os.unlink(C_ell_name)
 
         # Covariance assumed to be constant
-
         if 'cov' in p:
             # This script is called after abc_wl.py (ABC run)
             cov_est = p['cov']
@@ -75,8 +74,44 @@ def model_Cl(p):
             #print('Reading cov_est.txt from disk')
             cov_est = np.loadtxt('cov_est.txt')
 
-        # Sample hat Cl from Norm(Cl, hat Sigma)
-        C_ell_est = multivariate_normal.rvs(mean=C_ell, cov=cov_est)
+    return ell, C_ell, cov_est
+
+
+
+def model_Cl_norm(p):
+    """Return sample of model angular power spectrum from mv Gaussian.
+    """
+
+    ell, C_ell, cov_est = model_Cl(p)
+
+    # Sample hat Cl from Norm(Cl, hat Sigma). Here, cov_est can be singular.
+    C_ell_est = multivariate_normal.rvs(mean=C_ell, cov=cov_est)
+
+    return np.array([[ell[i], C_ell_est[i]] for i in range(int(p['nell']))])
+
+
+
+def model_Cl_gamma(p):
+    """Return sample of model angular power spectrum from mv Gaussian.
+    """
+
+
+    ell, C_ell, cov_est = model_Cl(p)
+
+    C_ell_est = np.zeros(shape = len(ell))
+    for i, l in enumerate(ell):
+
+        # dof
+        nu = 2 * l + 1
+    
+        # shape parameter
+        a  = nu/2
+
+        # scale
+        s = 2 / nu / C_ell[i]
+
+    # Sample hat Cl from Norm(Cl, hat Sigma). Here, cov_est can be singular.
+    C_ell_est = multivariate_normal.rvs(mean=C_ell, cov=cov_est)
 
     return np.array([[ell[i], C_ell_est[i]] for i in range(int(p['nell']))])
 
@@ -154,3 +189,39 @@ def linear_dist_data(d2, p):
     dist = np.sqrt(dist)
 
     return np.atleast_1d(dist)
+
+
+
+def linear_dist_data_SVD(d2, p):
+    """Distance between observed and simulated catalogues using
+       SVD of estimated inverse covariance.
+
+    Parameters
+    ----------
+    d2: array(double, 2)
+        simulated catalogue
+    p: dictionary
+        input parameters
+
+    Returns
+    -------
+    dist: double
+        distance
+    """
+
+    C_ell_sim = d2[:,1]
+    C_ell_obs = p['dataset1'][:,1]
+
+    dC = C_ell_sim - C_ell_obs
+
+    # Pseudo-inverse of estimated covariance (from SVD)
+    if 'cov_est_inv_P' in p:
+        cov_est_inv_P = p['cov_est_inv_P']
+    else:
+        cov_est_inv_P = np.loadtxt('cov_est_inv_P.txt')
+
+    dist = np.einsum('i,ij,j', dC, cov_est_inv_P, dC)
+    dist = np.sqrt(dist)
+
+    return np.atleast_1d(dist)
+

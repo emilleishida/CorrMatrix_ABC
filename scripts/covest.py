@@ -674,12 +674,12 @@ class Results:
         ax.set_yscale('log')
         ax.legend(loc='best', numpoints=1, frameon=False)
 
-	# x-ticks
+	    # x-ticks
         ax = plt.gca().xaxis
         ax.set_major_formatter(ScalarFormatter())
         plt.ticklabel_format(axis='x', style='sci')
 
-	# Second x-axis
+	    # Second x-axis
         x_loc, x_lab = plt.xticks()
         ax2 = plt.twiny()
         x2_loc = []
