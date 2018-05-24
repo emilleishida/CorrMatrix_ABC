@@ -254,7 +254,9 @@ print 'b:    ' + str(b_results.mean) + ' +- ' + str(b_results.std_mean)
 print ''
 
 
-
-#plot results
-plot_2p( sampler_ABC.T, 'results.pdf' , Parameters)
+try:
+    #plot results
+    plot_2p( sampler_ABC.T, 'results.pdf' , Parameters)
+except:
+    print('Plotting ABC to results.pdf failed, maybe display not available.')
 
