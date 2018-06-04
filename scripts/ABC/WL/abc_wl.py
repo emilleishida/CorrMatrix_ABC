@@ -9,6 +9,7 @@ from wl_functions import linear_dist_data, linear_dist_data_diag, linear_dist_da
 import numpy as np
 import os
 import re
+import sys
 
 from scipy.stats import multivariate_normal
 from statsmodels.stats.weightstats import DescrStatsW
@@ -167,10 +168,10 @@ nbar_rad2   = nbar_amin2.to('1/rad**2')
 # We use the same C_ell as the 'observation', from above
 cov         = get_cov_Gauss(ell, C_ell_obs, Parameters['f_sky'], Parameters['sigma_eps'], nbar_rad2)
 
-# Estimate covariance as sample from Wishart distribution
 Parameters['nsim'] = int(Parameters['nsim'][0])
 size = cov.shape[0]
 if Parameters['nsim'] - 1 >= size:
+    # Estimate covariance as sample from Wishart distribution
     cov_est = sample_cov_Wishart(cov, Parameters['nsim'])
 else:
     # Cannot easily sample from Wishart distribution if dof<cov dimension,
@@ -209,6 +210,8 @@ elif distance_str == 'linear_dist_data_SVD':
 
 # cov_est.txt on disk is read when running plot_ABC.py.
 np.savetxt('cov_est.txt', cov_est)
+
+print('Starting ABC sampling...')
 
 #############################################
 

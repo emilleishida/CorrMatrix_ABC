@@ -4,7 +4,7 @@
 
 num=$1
 
-echo "Post-processing ABC iteration #32"
+echo "Post-processing ABC iteration $num"
 
 echo "Creating pmc-compatible simulation file"
 
