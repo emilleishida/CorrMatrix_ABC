@@ -90,6 +90,9 @@ def model_cov(p):
     x.sort()
     ytrue = np.array(p['a']*x + p['b'])
 
+    if isinstance(p['cov'], float):
+        raise ValueError('Covariance is not a matrix!')
+
     y = multivariate_normal.rvs(mean=ytrue, cov=p['cov'])
 
     return np.array([[x[i], y[i]] for i in range(int(p['nobs']))])
