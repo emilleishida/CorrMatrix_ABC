@@ -19,39 +19,8 @@ from astropy import units
 import nicaea_ABC
 import scipy.stats._multivariate as mv
 
-from covest import get_cov_ML
+from covest import get_cov_ML, get_cov_Gauss, weighted_std
 
-
-
-def get_cov_Gauss(ell, C_ell, f_sky, sigma_eps, nbar):
-    """Return Gaussian covariance.
-    
-    Parameters
-    ----------
-    ell: array of double
-         angular Fourier modes
-    C_ell: array of double
-         power spectrum
-    f_sky: double
-        sky coverage fraction
-    sigma_eps: double
-        ellipticity dispersion (per component)
-    nbar: double
-        galaxy number density [rad^{-2}]
-
-    Returns
-    -------
-    Sigma: matrix of double
-        covariance matrix
-    """
-
-    # Total (signal + shot noise) power spectrum
-    C_ell_tot = C_ell + sigma_eps**2 / (2 * nbar)
-
-    D         = 1.0 / (f_sky * (2.0 * ell + 1)) * C_ell_tot**2
-    Sigma = np.diag(D)
-
-    return Sigma
 
 
 def sample_cov_Wishart(cov, n_S):
@@ -79,17 +48,6 @@ def sample_cov_Wishart(cov, n_S):
     return cov_est
 
 
-
-def weighted_std(data, weights): 
-    """Taken from http://www.itl.nist.gov/div898/software/dataplot/refman2/ch2/weightsd.pdf"""
-
-    mean = np.average(data, weights=weights)
-    c = sum([weights[i] > pow(10, -6) for i in range(weights.shape[0])])
-
-    num = sum([weights[i] * pow(data[i] - mean, 2) for i in range(data.shape[0])])
-    denom = (c - 1) * sum(weights)/float(c)
-
-    return np.sqrt(num / denom)
 
 #user input file
 filename = 'wl_model.input'

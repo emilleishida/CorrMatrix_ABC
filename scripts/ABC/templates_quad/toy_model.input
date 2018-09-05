@@ -1,0 +1,44 @@
+path_to_obs		= None   	           # path to observed data 
+
+param_to_fit 		= amp tilt                                      # parameters to fit
+param_to_sim    	= amp tilt sig logellmin logellmax nell nobs    # parameters needed for simulation
+
+prior_func	        = flat_prior flat_prior      # one prior function for each parameter
+                                                   # under consideration 
+
+simulation_func = model_cov                            # simulation function
+distance_func	= linear_dist                     # distance function
+
+dist_dim = 1              #
+
+amp_prior_par_name      = pmin pmax               # parameters for prior distribution  
+amp_prior_par_val       = 0.0  2.0                 # values for prior distribution   
+
+tilt_prior_par_name       = pmin  pmax              # parameters for prior distribution
+tilt_prior_par_val        = 0.0  1.5                # values for prior distribution
+
+	
+amp_lim                  = 0.0  2.0               # extreme limits for parametes
+tilt_lim                  = 0.0 1.5                # 
+
+logellmin = 1.06122434
+logellmax = 4
+nell      = 25
+	          
+sig		= 5.0                              #  fiducial scatter
+amp             = 0.827                            #  angular coefficient
+tilt            = 0.306                            #  linear coefficient
+nsim            = 800                              #  number of simulations for covariance matrix
+
+M 		= 100				   # number of particle in each particle system
+Mini            = 200                              # number of draws for 1st particle system
+#delta 		= 0.0025			   # convergence criteria
+delta 		= 0.025	          		   # convergence criteria
+qthreshold 	= 0.75				   # quantile in distance threshold 
+
+file_root 	= quad_PS                          # root to output files names 
+screen          = 0			           # rather (1) or not (0) to screen outputs
+ncores          = 1 				   # number of cores
+split_output    = 1                                # number of intermediate steps written to file
+
+

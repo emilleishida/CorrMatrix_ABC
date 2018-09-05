@@ -198,6 +198,23 @@ def get_n_S_R_from_fit_file(file_base, npar=2):
 
 
 def get_cov_ML(mean, cov, size):
+    """Return maximum-likelihood estime of covariance matrix, from
+       realisations of a multi-variate Normal
+    
+    Parameters
+    ----------
+    mean: array(double)
+        mean of mv normal
+    cov: array(double)
+        covariance matrix of mv normal
+    size: int
+        dimension of data vector, cov is size x size matrix
+
+    Returns
+    -------
+    cov_est: matrix of double
+        estimated covariance matrix, dimension size x size
+    """
             
     from scipy.stats import multivariate_normal
 
@@ -205,7 +222,6 @@ def get_cov_ML(mean, cov, size):
     # y2[:,j] = realisations for j-th data entry
     # y2[i,:] = data vector for i-th realisation
 
-    
     # Calculate covariance matrix via np
     cov_est = np.cov(y2, rowvar=False)
     
@@ -215,6 +231,52 @@ def get_cov_ML(mean, cov, size):
         cov_est = [[cov_est]]
     
     return cov_est
+
+
+
+def get_cov_Gauss(ell, C_ell, f_sky, sigma_eps, nbar):
+    """Return Gaussian weak-lensing covariance.
+    
+    Parameters
+    ----------
+    ell: array of double
+         angular Fourier modes
+    C_ell: array of double
+         power spectrum
+    f_sky: double
+        sky coverage fraction
+    sigma_eps: double
+        ellipticity dispersion (per component)
+    nbar: double
+        galaxy number density [rad^{-2}]
+
+    Returns
+    -------
+    Sigma: matrix of double
+        covariance matrix
+    """
+
+    # Total (signal + shot noise) power spectrum
+    C_ell_tot = C_ell + sigma_eps**2 / (2 * nbar)
+
+    D         = 1.0 / (f_sky * (2.0 * ell + 1)) * C_ell_tot**2
+    Sigma = np.diag(D)
+
+    return Sigma
+
+
+
+def weighted_std(data, weights):
+    """Taken from http://www.itl.nist.gov/div898/software/dataplot/refman2/ch2/weightsd.pdf"""
+
+    mean = np.average(data, weights=weights)
+    c = sum([weights[i] > pow(10, -6) for i in range(weights.shape[0])])
+
+    num = sum([weights[i] * pow(data[i] - mean, 2) for i in range(data.shape[0])])
+    denom = (c - 1) * sum(weights)/float(c)
+
+    return np.sqrt(num / denom)
+
 
 
 
