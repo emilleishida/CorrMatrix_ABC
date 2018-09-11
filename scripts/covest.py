@@ -7,6 +7,8 @@ import errno
 import subprocess
 import shlex
 
+from astropy import units
+
 
 #import matplotlib
 #matplotlib.use("Agg")
@@ -14,7 +16,8 @@ import shlex
 import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 
-#from astropy.table import Table, Column
+import scipy.stats._multivariate as mv
+
 
 
 def alpha_new(n_S, n_D):
@@ -259,10 +262,93 @@ def get_cov_Gauss(ell, C_ell, f_sky, sigma_eps, nbar):
     # Total (signal + shot noise) power spectrum
     C_ell_tot = C_ell + sigma_eps**2 / (2 * nbar)
 
-    D         = 1.0 / (f_sky * (2.0 * ell + 1)) * C_ell_tot**2
+    # MKDEBUG New 11/09/2018: Added Delta ell
+
+    # For log10-bins: Delta log10 ell = Delta ell / ell / / log 10 
+    # Use mean of ell_i+1 and ell_i good to < 1% compared
+    # to Delta log ell
+    Delta_ell = np.diff(ell) / (ell[:-1]/2 + ell[1:]/2) / np.log(10)
+ 
+    # add last element again to restore length of Delta_ell 
+    Delta_ell = np.append(Delta_ell, Delta_ell[-1])
+
+    D         = 1.0 / (f_sky * (2.0 * ell + 1) * Delta_ell) * C_ell_tot**2
     Sigma = np.diag(D)
 
     return Sigma
+
+
+
+def sample_cov_Wishart(cov, n_S):
+    """Returns estimated coariance as sample from Wishart distribution
+ 
+    Parameters
+    ----------
+    cov: matrix of double
+         'true' covariance matrix (scale matrix)
+    n_S: int
+         number of simulations, dof = nu = n_S - 1
+
+    Returns
+    -------
+    cov_est: matrix of double
+         sampled matrix
+    """
+
+    # Sample covariance from Wishart distribution, with dof nu=n_S - 1
+    W = mv.wishart(df=n_S - 1, scale=cov)
+
+    # Mean of Wishart distribution is cov/dof = cov/(n_S - 1)
+    cov_est = W.rvs() / (n_S - 1)
+
+    return cov_est
+
+
+
+def get_cov_WL(model, ell, C_ell_obs, nbar, f_sky, sigma_eps, nsim):
+    """Compute true and estimated WL covariance.
+
+    Parameters
+    ----------
+    model: string
+        For the moment 'Gauss'
+    ell: array of float
+        ell-values
+    C_ell_obs: array of float
+        observed power spectrum
+    nbar: float
+        galaxy density in arcmin^{-2}
+    f_sky: float
+        Observed sky fraction
+    sigma_eps: float
+        ellipticity dispersion
+    nsim: int
+        number of simulations for covariance estimation
+
+    Returns
+    -------
+    cov: matrix of float
+        'true' underlying covariance matrix
+    cov_est: matrix of float
+        estimated covariance
+    """
+
+    # Construct (true) covariance Sigma
+    nbar_amin2  = units.Unit('{}/arcmin**2'.format(nbar))
+    nbar_rad2   = nbar_amin2.to('1/rad**2')
+    # We use the same C_ell as the 'observation', from above
+    cov         = get_cov_Gauss(ell, C_ell_obs, f_sky, sigma_eps, nbar_rad2)
+
+    size = cov.shape[0]
+    if nsim - 1 >= size:
+        # Estimate covariance as sample from Wishart distribution
+        cov_est = sample_cov_Wishart(cov, nsim)
+    else:
+        # Cannot easily sample from Wishart distribution if dof<cov dimension,
+        # but can always create Gaussian rv and compute cov
+        cov_est = get_cov_ML(C_ell_obs, cov, size)
+
+    return cov, cov_est
 
 
 

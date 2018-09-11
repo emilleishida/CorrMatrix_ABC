@@ -14,38 +14,9 @@ import sys
 from scipy.stats import multivariate_normal
 from statsmodels.stats.weightstats import DescrStatsW
 
-from astropy import units
-
 import nicaea_ABC
-import scipy.stats._multivariate as mv
 
-from covest import get_cov_ML, get_cov_Gauss, weighted_std
-
-
-
-def sample_cov_Wishart(cov, n_S):
-    """Returns estimated coariance as sample from Wishart distribution
- 
-    Parameters
-    ----------
-    cov: matrix of double
-         'true' covariance matrix (scale matrix)
-    n_S: int
-         number of simulations, dof = nu = n_S - 1
-
-    Returns
-    -------
-    cov_est: matrix of double
-         sampled matrix
-    """
-
-    # Sample covariance from Wishart distribution, with dof nu=n_S - 1
-    W = mv.wishart(df=n_S - 1, scale=cov)
-
-    # Mean of Wishart distribution is cov/dof = cov/(n_S - 1)
-    cov_est = W.rvs() / (n_S - 1) 
-
-    return cov_est
+from covest import get_cov_ML, get_cov_Gauss, weighted_std, get_cov_WL
 
 
 
@@ -62,9 +33,6 @@ pars = ['Omega_m', 'sigma_8']
 for par in pars:
     if par in Parameters:
         Parameters[par] = float(Parameters[par][0])
-
-#Parameters['Omega_m'] = float(Parameters['Omega_m'][0])
-#Parameters['sigma_8'] = float(Parameters['sigma_8'][0])
 
 Parameters['f_sky'] = float(Parameters['f_sky'][0])
 Parameters['sigma_eps'] = float(Parameters['sigma_eps'][0])
@@ -120,21 +88,8 @@ Parameters['simulation_input']['dataset1'] = Parameters['dataset1']
 #############################################
 ### Covariance
 
-# Construct (true) covariance Sigma
-nbar_amin2  = units.Unit('{}/arcmin**2'.format(Parameters['nbar']))
-nbar_rad2   = nbar_amin2.to('1/rad**2')
-# We use the same C_ell as the 'observation', from above
-cov         = get_cov_Gauss(ell, C_ell_obs, Parameters['f_sky'], Parameters['sigma_eps'], nbar_rad2)
-
 Parameters['nsim'] = int(Parameters['nsim'][0])
-size = cov.shape[0]
-if Parameters['nsim'] - 1 >= size:
-    # Estimate covariance as sample from Wishart distribution
-    cov_est = sample_cov_Wishart(cov, Parameters['nsim'])
-else:
-    # Cannot easily sample from Wishart distribution if dof<cov dimension,
-    # but can always create Gaussian rv and compute cov
-    cov_est = get_cov_ML(C_ell_obs, cov, size)
+cov, cov_est = get_cov_WL('Gauss', ell, C_ell_obs, Parameters['nbar'], Parameters['f_sky'], Parameters['sigma_eps'], Parameters['nsim'])
 
 
 # add covariance to user input parameters, to be used in model
