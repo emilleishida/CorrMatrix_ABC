@@ -27,7 +27,7 @@ import statsmodels.api as sm
 
 
 
-def add(amp):
+def add(ampl):
     """Return the additive constant of the quadratic function
        from the amplitude fitting parameter
        (mimics power-spectrum normalisation s8)
@@ -36,7 +36,7 @@ def add(amp):
     # This provides a best-fit amp=0.827, but the 10% increased
     # spectrum (0.9097) gives a best-fit of 0.925
     # Changing the prefactor of amp or lg(amp) does not help...
-    c = np.log10(amp)*2 - 6.11568527 + 0.1649
+    c = np.log10(ampl)*2 - 6.11568527 + 0.1649
     
     return c
 
@@ -47,33 +47,46 @@ def shift(tilt):
        from the tilt parameter (mimics matter density)
     """
     
-    x0 = tilt * 1.85132114 / 0.306
+    u0 = tilt * 1.85132114 / 0.306
 
-    return x0
+    return u0
 
 
 
-def quadratic(x, *params):
+def quadratic(u, *params):
     """Used to fit quadratic function varying all three parameters
     """
     
-    (amp, tilt, a) = np.array(params)
-    c  = add(amp)
-    x0 = shift(tilt)
+    (ampl, tilt, a) = np.array(params)
+    c  = add(ampl)
+    u0 = shift(tilt)
     
-    return c + a * (x - x0)**2
+    return c + a * (u - u0)**2
 
 
 
-def quadratic_amp_tilt(x, amp, tilt):
-    """Return quadratic function given coordinate 1 (=x=logell), amplitude,
+def quadratic_ampl_tilt(u, ampl, tilt):
+    """Return quadratic function given coordinate 1 (u=logell), amplitude,
        and tilt.
     """
 
-    param   = (amp, tilt, -0.17586216)
-    q       = quadratic(x, *param)
+    param   = (ampl, tilt, -0.17586216)
+    q       = quadratic(u, *param)
 
-    return 10**q
+    return q
+
+
+
+def model_quad(u, ampl, tilt):
+    """Return model based on quadratic function. This should correspond
+       to the WL power spectrum C(ell) with u = logell.
+    """
+
+    q = quadratic_ampl_tilt(u, ampl, tilt)
+
+    y = 10**(q - u) 
+
+    return y
 
 
 
@@ -81,33 +94,44 @@ def model_cov(p):
     """Linear model.
 
     input: p - dict: keywords 
-                amp, scalar - amplitude coefficient
+                ampl, scalar - amplitude coefficient
                 tilt, scalar - tilt coefficient
                 sig, scalar - scatter
                 xmin, xmax, int - bounderies for explanatory variable
                 cov, matrix - covariance matrix between observations
                 
 
-    output: y, array - draw from normal distribution with mean
-                        a*x + b and scatter sig          
+    output: [x, y], array - draw from normal distribution using cov matrix
     """
 
     try:                
-        logell = p['dataset1'][:,0]
+         # Get abscissa values from dataset in parameter
+         x = p['dataset1'][:,0]
     except KeyError:
         raise ValueError('Observed data not found in model')
 
 
-    Cell_true = quadratic_amp_tilt(logell, p['amp'], p['tilt'])
+
+    # Get q quadratic function in u = logell
+
+    # If x = logell
+    u = x
+
+    # If x = ell
+    # u = np.log10(x)
+
+    # Ordinate
+    y_true = model_quad(u, p['ampl'], p['tilt'])
 
     if isinstance(p['cov'], float):
         raise ValueError('Covariance is not a matrix!')
 
-    Cell = multivariate_normal.rvs(mean=Cell_true, cov=p['cov'])
+    # Model
+    y = multivariate_normal.rvs(mean=y_true, cov=p['cov'])
 
-    nell = len(logell)
+    nx = len(x)
 
-    return np.array([[logell[i], Cell[i]] for i in range(nell)])
+    return np.array([[x[i], y[i]] for i in range(nx)])
 
 
 

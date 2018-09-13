@@ -1,7 +1,7 @@
 path_to_obs		= None   	           # path to observed data 
 
-param_to_fit 		= amp tilt                                      # parameters to fit
-param_to_sim    	= amp tilt logellmin logellmax nell f_sky sigma_eps nbar # parameters needed for simulation
+param_to_fit 		= tilt ampl                 # parameters to fit
+param_to_sim    	= ampl tilt logellmin logellmax nell f_sky sigma_eps nbar # parameters needed for simulation
 
 prior_func	        = flat_prior flat_prior      # one prior function for each parameter
                                                    # under consideration 
@@ -11,17 +11,17 @@ distance_func	= linear_dist_data                     # distance function
 
 dist_dim = 1              #
 
-amp             = 0.827                            #  angular coefficient
+ampl            = 0.827                            #  angular coefficient
 tilt            = 0.306                            #  linear coefficient
 
-amp_prior_par_name      = pmin pmax               # parameters for prior distribution  
-amp_prior_par_val       = 0.0  2.0                 # values for prior distribution   
+ampl_prior_par_name      = pmin pmax               # parameters for prior distribution  
+ampl_prior_par_val       = 0.0  2.0                 # values for prior distribution   
 
 tilt_prior_par_name       = pmin  pmax              # parameters for prior distribution
 tilt_prior_par_val        = 0.0  1.5                # values for prior distribution
 
-amp_lim                  = 0.0  2.0               # extreme limits for parametes
-tilt_lim                  = 0.0 1.5                # 
+ampl_lim                  = 0.0  1.5               # extreme limits for parametes
+tilt_lim                  = 0.0 1.0                # 
 
 logellmin = 1.06122434
 logellmax = 4

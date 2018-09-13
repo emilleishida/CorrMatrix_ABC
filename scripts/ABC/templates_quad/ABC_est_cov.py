@@ -5,7 +5,7 @@ from cosmoabc.priors import flat_prior
 from cosmoabc.ABC_sampler import ABC
 from cosmoabc.plots import plot_2p
 from cosmoabc.ABC_functions import read_input
-from toy_model_functions import linear_dist_data_diag, linear_dist_data, model_cov, quadratic_amp_tilt
+from toy_model_functions import linear_dist_data_diag, linear_dist_data, model_cov, model_quad
 
 import numpy as np
 from scipy.stats import uniform, multivariate_normal
@@ -23,7 +23,7 @@ filename = 'toy_model.input'
 #read  user input
 Parameters = read_input(filename)
 
-Parameters['amp'] = float(Parameters['amp'][0])
+Parameters['ampl'] = float(Parameters['ampl'][0])
 Parameters['tilt'] = float(Parameters['tilt'][0])
 
 
@@ -50,10 +50,11 @@ distance_str                  = Parameters['distance_func'][0]
 Parameters['distance_func']   = distance[distance_str]
 
 # fiducial model
-Cell_true  = quadratic_amp_tilt(logell, Parameters['amp'], Parameters['tilt'])
+u       = logell
+y_true  = model_quad(u, Parameters['ampl'], Parameters['tilt'])
 
 # add to parameter dictionary
-Parameters['dataset1'] = np.array([[logell[i], Cell_true[i]] for i in range(nell)])
+Parameters['dataset1'] = np.array([[logell[i], y_true[i]] for i in range(nell)])
 
 # add observed catalog to simulation parameters
 Parameters['simulation_input']['dataset1'] = Parameters['dataset1']
@@ -62,7 +63,7 @@ Parameters['simulation_input']['dataset1'] = Parameters['dataset1']
 # Covariance
 
 Parameters['nsim'] = int(Parameters['nsim'][0])
-cov, cov_est = get_cov_WL('Gauss', 10**logell, Cell_true, Parameters['nbar'], Parameters['f_sky'], Parameters['sigma_eps'], Parameters['nsim'])
+cov, cov_est = get_cov_WL('Gauss', 10**logell, y_true, Parameters['nbar'], Parameters['f_sky'], Parameters['sigma_eps'], Parameters['nsim'])
 
 
 # add covariance to user input parameters, to be used in model
@@ -114,8 +115,8 @@ op2.write('b_std     ' + str(b_results.std_mean) + '\n')
 op2.close()
 
 print 'Numerical results:'
-print 'a:    ' + str(a_results.mean) + ' +- ' + str(a_results.std_mean)
-print 'b:    ' + str(b_results.mean) + ' +- ' + str(b_results.std_mean)
+print 'tilt:    ' + str(a_results.mean) + ' +- ' + str(a_results.std_mean)
+print 'ampl:    ' + str(b_results.mean) + ' +- ' + str(b_results.std_mean)
 
 
 
