@@ -489,9 +489,6 @@ class Results:
         None
         """
 
-        #print('MKDEGBU xlog=True ', boxwidth)
-        #xlog = True
-
         n_R = self.mean[self.par_name[0]].shape[1]
 
         marker     = ['.', 'D']
@@ -581,7 +578,6 @@ class Results:
                 ax = plt.subplot(1, n_panel, j_panel[which])
 
                 # Dashed vertical line at n_S = n_D
-                #plt.plot([n_D, n_D], [plt.ylim()[0], plt.ylim()[1]], ':', linewidth=1)
                 plt.plot([n_D, n_D], [-1e2, 1e2], ':', linewidth=1)
                 plt.plot([n_D, n_D], [1e-5, 1e2], ':', linewidth=1)
 
@@ -591,9 +587,6 @@ class Results:
                 ax.set_yscale(self.yscale[j])
                 ax.legend(frameon=False)
                 plt.xlim(xmin, xmax)
-
-                #print('MKDEBUG set ylim')
-                #plt.ylim(4, 6)
 
                 # x-ticks
                 ax = plt.gca().xaxis
@@ -612,7 +605,7 @@ class Results:
                 plt.xticks(x_loc, x_lab, rotation=rotation)
                 ax.label.set_size(self.fs)
 
-	            # Second x-axis
+	        # Second x-axis
                 ax2 = plt.twiny()
                 x2_loc = []
                 x2_lab = []
@@ -724,7 +717,6 @@ class Results:
             fac_xlim = 1.6
             xmin = n[0]/fac_xlim
             xmax = n[-1]*fac_xlim
-            #plt.xlim(np.log(xmin), np.log(xmax))
             ax.set_xscale('log')
             flinlog = lambda x: np.log(x)
         else:
@@ -736,12 +728,12 @@ class Results:
         ax.set_yscale('log')
         ax.legend(loc='best', numpoints=1, frameon=False)
 
-	    # x-ticks
+	# x-ticks
         ax = plt.gca().xaxis
         ax.set_major_formatter(ScalarFormatter())
         plt.ticklabel_format(axis='x', style='sci')
 
-	    # Second x-axis
+	# Second x-axis
         x_loc, x_lab = plt.xticks()
         ax2 = plt.twiny()
         x2_loc = []
