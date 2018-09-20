@@ -79,7 +79,9 @@ def quadratic_ampl_tilt(u, ampl, tilt):
 
 def model_quad(u, ampl, tilt):
     """Return model based on quadratic function. This should correspond
-       to the WL power spectrum C(ell) with u = logell.
+       to the WL power spectrum C_ell with u = lg ell.
+       Since q(u) ~ lg[ ell C_ell], the model is
+       y = C_ell = 10^q / ell = 10^q / 10^lg ell = 10^(q - u).
     """
 
     q = quadratic_ampl_tilt(u, ampl, tilt)
@@ -104,12 +106,17 @@ def model_cov(p):
     output: [x, y], array - draw from normal distribution using cov matrix
     """
 
-    try:                
+    if 'dataset1' in p:
          # Get abscissa values from dataset in parameter
          x = p['dataset1'][:,0]
-    except KeyError:
-        raise ValueError('Observed data not found in model')
-
+    else:
+        fname = 'dataset1.txt'
+        if os.path.isfile(fname):
+            dat = np.loadtxt(fname)
+            x   = dat[0]
+        else:
+            print('Observed data not found in model, neither in file')
+            sys.exit(1)
 
 
     # Get q quadratic function in u = logell
@@ -131,7 +138,11 @@ def model_cov(p):
 
     nx = len(x)
 
-    return np.array([[x[i], y[i]] for i in range(nx)])
+    simulation = np.array([[x[i], y[i]] for i in range(nx)])
+    #print('MKDEBUG {} {}'.format(p['ampl'], p['tilt']))
+    #np.savetxt('simulation_{}_{}.txt'.format(p['ampl'], p['tilt']), simulation)
+
+    return simulation
 
 
 
