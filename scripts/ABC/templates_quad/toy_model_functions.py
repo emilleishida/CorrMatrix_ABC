@@ -27,7 +27,7 @@ import statsmodels.api as sm
 
 
 
-def add(amp):
+def add(ampl):
     """Return the additive constant of the quadratic function
        from the amplitude fitting parameter
        (mimics power-spectrum normalisation s8)
@@ -36,7 +36,7 @@ def add(amp):
     # This provides a best-fit amp=0.827, but the 10% increased
     # spectrum (0.9097) gives a best-fit of 0.925
     # Changing the prefactor of amp or lg(amp) does not help...
-    c = np.log10(amp)*2 - 6.11568527 + 0.1649
+    c = np.log10(ampl)*2 - 6.11568527 + 0.1649
     
     return c
 
@@ -47,21 +47,46 @@ def shift(tilt):
        from the tilt parameter (mimics matter density)
     """
     
-    x0 = tilt * 1.85132114 / 0.306
+    u0 = tilt * 1.85132114 / 0.306
 
-    return x0
+    return u0
 
 
 
-def quadratic(x, *params):
+def quadratic(u, *params):
     """Used to fit quadratic function varying all three parameters
     """
     
-    (amp, tilt, a) = np.array(params)
-    c  = add(amp)
-    x0 = shift(tilt)
+    (ampl, tilt, a) = np.array(params)
+    c  = add(ampl)
+    u0 = shift(tilt)
     
-    return c + a * (x - x0)**2
+    return c + a * (u - u0)**2
+
+
+
+def quadratic_ampl_tilt(u, ampl, tilt):
+    """Return quadratic function given coordinate 1 (u=logell), amplitude,
+       and tilt.
+    """
+
+    param   = (ampl, tilt, -0.17586216)
+    q       = quadratic(u, *param)
+
+    return q
+
+
+
+def model_quad(u, ampl, tilt):
+    """Return model based on quadratic function. This should correspond
+       to the WL power spectrum C(ell) with u = logell.
+    """
+
+    q = quadratic_ampl_tilt(u, ampl, tilt)
+
+    y = 10**(q - u) 
+
+    return y
 
 
 
@@ -69,37 +94,44 @@ def model_cov(p):
     """Linear model.
 
     input: p - dict: keywords 
-                amp, scalar - amplitude coefficient
+                ampl, scalar - amplitude coefficient
                 tilt, scalar - tilt coefficient
                 sig, scalar - scatter
                 xmin, xmax, int - bounderies for explanatory variable
-                nobs, int - number of observations in a catalog
                 cov, matrix - covariance matrix between observations
                 
 
-    output: y, array - draw from normal distribution with mean
-                        a*x + b and scatter sig          
+    output: [x, y], array - draw from normal distribution using cov matrix
     """
 
     try:                
-        logell = p['dataset1'][:,0]
+         # Get abscissa values from dataset in parameter
+         x = p['dataset1'][:,0]
     except KeyError:
         raise ValueError('Observed data not found in model')
 
-    logell.sort()
 
-    # Set (amp, tilt, a), with quadratic coefficient a being constant
 
-    param = p['amp'], p['tilt'], -0.19338417)
-    q     = quadratic(logell, *param)
-    ytrue = 10**q
+    # Get q quadratic function in u = logell
+
+    # If x = logell
+    u = x
+
+    # If x = ell
+    # u = np.log10(x)
+
+    # Ordinate
+    y_true = model_quad(u, p['ampl'], p['tilt'])
 
     if isinstance(p['cov'], float):
         raise ValueError('Covariance is not a matrix!')
 
-    y = multivariate_normal.rvs(mean=ytrue, cov=p['cov'])
+    # Model
+    y = multivariate_normal.rvs(mean=y_true, cov=p['cov'])
 
-    return np.array([[logell[i], y[i]] for i in range(int(p['nobs']))])
+    nx = len(x)
+
+    return np.array([[x[i], y[i]] for i in range(nx)])
 
 
 
@@ -135,7 +167,7 @@ def gaussian_prior(par, func=False):
 
 def linear_dist_data(d2, p):
     """Distance between observed and simulated catalogues using
-       least squres between observed and simulated data points y.
+       true inverse covariance.
 
     Parameters
     ----------
@@ -150,21 +182,59 @@ def linear_dist_data(d2, p):
         distance
     """
 
-    if bool(p['xfix']) == False:
-        raise ValueError('Parameter xfix needs to be 1 for linear_dist_data distance')
+    C_ell_sim = d2[:,1]
+    C_ell_obs = p['dataset1'][:,1]
 
-    y_sim = d2[:,1]
-    y_obs = p['dataset1'][:,1]
+    dC = C_ell_sim - C_ell_obs
 
-    y_delta = y_sim - y_obs
-    
     # Unweighted distances
-    #dist    = np.sqrt(sum(y_delta**2))
+    #dist    = np.sqrt(sum(dC**2))
 
     # Least squares weighted by covariance
-    cov_est_inv = p['cov_est_inv']
-    dist = np.einsum('i,ij,j', y_delta, cov_est_inv, y_delta)
+    if 'cov_true_inv' in p:
+        #print('linear_dist_data: Using true inverse covariance matrix')
+        cov_inv = p['cov_true_inv']
+    else:
+        #print('linear_dist_data: Reading cov_true_inv.txt from disk')
+        cov_inv = np.loadtxt('cov_true_inv.txt')
+
+    dist = np.einsum('i,ij,j', dC, cov_inv, dC)
     dist = np.sqrt(dist)
+
+    return np.atleast_1d(dist)
+
+
+
+def linear_dist_data_diag(d2, p):
+    """Distance between observed and simulated catalogues using
+       one over estimated diagonal covariance elements.
+
+    Parameters
+    ----------
+    d2: array(double, 2)
+        simulated catalogue
+    p: dictionary
+        input parameters
+
+    Returns
+    -------
+    dist: double
+        distance
+    """
+
+    C_ell_sim = d2[:,1]
+    C_ell_obs = p['dataset1'][:,1]
+
+    dC = C_ell_sim - C_ell_obs
+
+    if 'cov' in p:
+        cov = p['cov']
+    else:
+        #print('linear_dist_data_diag: Reading cov_est.txt from disk')
+        cov = np.loadtxt('cov_est.txt')
+
+    # Least squares distance weighted by inverse diagonal elements of covariance
+    dist = np.sqrt(sum(dC**2/np.diag(cov)))
 
     return np.atleast_1d(dist)
 

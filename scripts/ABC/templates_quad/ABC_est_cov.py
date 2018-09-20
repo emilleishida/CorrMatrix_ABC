@@ -1,16 +1,19 @@
 import matplotlib
-matplotlib.use("Agg")
+#matplotlib.use("Agg")
 
 from cosmoabc.priors import flat_prior
 from cosmoabc.ABC_sampler import ABC
 from cosmoabc.plots import plot_2p
 from cosmoabc.ABC_functions import read_input
-from toy_model_functions import model, linear_dist, linear_dist_data, model, model_cov, gaussian_prior
+from toy_model_functions import linear_dist_data_diag, linear_dist_data, model_cov, model_quad
 
 import numpy as np
 from scipy.stats import uniform, multivariate_normal
 from statsmodels.stats.weightstats import DescrStatsW
-from covest import weighted_std
+from covest import weighted_std, get_cov_WL
+
+from astropy import units
+
 
 
 #user input file
@@ -20,52 +23,59 @@ filename = 'toy_model.input'
 #read  user input
 Parameters = read_input(filename)
 
-Parameters['xmin'] = float(Parameters['xmin'][0])
-Parameters['xmax'] = float(Parameters['xmax'][0])
-Parameters['a'] = float(Parameters['a'][0])
-Parameters['b'] = float(Parameters['b'][0])
-Parameters['sig'] = float(Parameters['sig'][0])
-Parameters['nobs'] = int(Parameters['nobs'][0])
+Parameters['ampl'] = float(Parameters['ampl'][0])
+Parameters['tilt'] = float(Parameters['tilt'][0])
 
-# set functions
-Parameters['simulation_func'] = model_cov
-Parameters['distance_func'] = linear_dist
-#Parameters['distance_func'] = linear_dist_data
-Parameters['prior']['a']['func'] = gaussian_prior
-Parameters['prior']['b']['func'] = gaussian_prior
+
+# If prior is flat, does not need to be set (?; see abc_wl.py)
+
+Parameters['f_sky']     = float(Parameters['f_sky'][0])
+Parameters['sigma_eps'] = float(Parameters['sigma_eps'][0])
+Parameters['nbar']      = float(Parameters['nbar'][0])
 
 # construnct 1 instance of exploratory variable
-x = uniform.rvs(loc=Parameters['xmin'], scale=Parameters['xmax'] - Parameters['xmin'], size=Parameters['nobs'])
-x.sort()
+logellmin = float(Parameters['logellmin'][0])
+logellmax = float(Parameters['logellmax'][0])
+nell      = int(Parameters['nell'][0])
+logell    = np.linspace(logellmin, logellmax, nell)
+
+
+Parameters['simulation_func'] = model_cov
+
+### Distance function
+distance = {'linear_dist_data_diag': linear_dist_data_diag,
+            'linear_dist_data':      linear_dist_data,
+           }
+distance_str                  = Parameters['distance_func'][0]
+Parameters['distance_func']   = distance[distance_str]
 
 # fiducial model
-ytrue = Parameters['a']*x + Parameters['b']
-
-# real covariance matrix
-cov = np.diag([Parameters['sig'] for i in range(Parameters['nobs'])]) 
-
-# generate catalog
-y = multivariate_normal.rvs(mean=ytrue, cov=cov, size=1)
+u       = logell
+y_true  = model_quad(u, Parameters['ampl'], Parameters['tilt'])
 
 # add to parameter dictionary
-Parameters['dataset1'] = np.array([[x[i], y[i]] for i in range(Parameters['nobs'])])
+Parameters['dataset1'] = np.array([[logell[i], y_true[i]] for i in range(nell)])
 
 # add observed catalog to simulation parameters
-if bool(Parameters['xfix']):
-    Parameters['simulation_input']['dataset1'] = Parameters['dataset1']
+Parameters['simulation_input']['dataset1'] = Parameters['dataset1']
 
-#############################################
+#######################
+# Covariance
+
 Parameters['nsim'] = int(Parameters['nsim'][0])
-cov_est = get_cov_ML(ytrue, cov, Parameters['nsim'])
+cov, cov_est = get_cov_WL('Gauss', 10**logell, y_true, Parameters['nbar'], Parameters['f_sky'], Parameters['sigma_eps'], Parameters['nsim'])
 
-# add covariance to user input parameters
+
+# add covariance to user input parameters, to be used in model
+Parameters['cov'] = cov_est
 Parameters['simulation_input']['cov'] = cov_est
-# this is necessary in data-based distance (?)
-cov_est_inv = np.linalg.inv(cov_est)
-Parameters['cov_est_inv'] = cov_est_inv
 
-# For distance testing script
-np.savetxt('cov_est_inv.txt', cov_est_inv)
+if distance_str == 'linear_dist_data':
+    cov_true_inv = np.linalg.inv(cov)
+    Parameters['cov_true_inv'] = cov_true_inv
+    np.savetxt('cov_true_inv.txt', cov_true_inv)
+
+
 #############################################
 
 #initiate ABC sampler
@@ -105,8 +115,8 @@ op2.write('b_std     ' + str(b_results.std_mean) + '\n')
 op2.close()
 
 print 'Numerical results:'
-print 'a:    ' + str(a_results.mean) + ' +- ' + str(a_results.std_mean)
-print 'b:    ' + str(b_results.mean) + ' +- ' + str(b_results.std_mean)
+print 'tilt:    ' + str(a_results.mean) + ' +- ' + str(a_results.std_mean)
+print 'ampl:    ' + str(b_results.mean) + ' +- ' + str(b_results.std_mean)
 
 
 
