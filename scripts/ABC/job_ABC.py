@@ -47,6 +47,7 @@ def params_default():
         n_S_min = n_D + 5,
         spar = '1.0 0.0',
         sig2 = 5.0,
+        model = 'affine',
         verbose = True,
         templ_dir = './templates',
         mode = 's',
@@ -87,6 +88,11 @@ def parse_options(p_def):
         help='Minimum n_S, default=n_D+5 ({})'.format(p_def.n_S_min))
     parser.add_option('', '--n_S', dest='str_n_S', type='string', default=None,
         help='Array of n_S, default=None. If given, overrides n_S_min, n_n_S and f_n_S_max')
+
+    parser.add_option('-p', '--par', dest='spar', type='string', default=p_def.spar,
+        help='Parameter array, for plotting, default=\'{}\''.format(p_def.spar))
+    parser.add_option('-M', '--model', dest='Model', type='string', default=p_def.model,
+        help='Model, one in \'affine\', \'quadratic\', default=\'{}\''.format(p_def.model))
 
     parser.add_option('-m', '--mode', dest='mode', type='string', default=p_def.mode,
         help='Mode: \'s\'=simulate, \'r\'=read ABC dirs, \'R\'=read master file, default={}'.format(p_def.mode))
@@ -525,8 +531,13 @@ def main(argv=None):
             print('Reading simulation results (mean, std) from disk (master file)')
         fit_ABC.read_mean_std()
 
-    x1 = np.zeros(shape = param.n_D) # Dummy variable
-    dpar_exact, det = Fisher_error_ana(x1, param.sig2, delta, mode=-1)
+    if param.model == 'affine':
+        x1 = np.zeros(shape = param.n_D) # Dummy variable
+        dpar_exact, det = Fisher_error_ana(x1, param.sig2, delta, mode=-1)
+    elif param.model == 'quadratic';
+        pass
+    else:
+        stuff.error()
 
     par = my_string_split(param.spar, num=2, verbose=param.verbose, stop=True)
     param.par = [float(p) for p in par]

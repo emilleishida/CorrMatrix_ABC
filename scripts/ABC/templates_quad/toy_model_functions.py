@@ -112,8 +112,9 @@ def model_cov(p):
     else:
         fname = 'dataset1.txt'
         if os.path.isfile(fname):
+            print('Loading dataset1 from file \'dataset1.txt\'')
             dat = np.loadtxt(fname)
-            x   = dat[0]
+            x   = dat[:,0]
         else:
             print('Observed data not found in model, neither in file')
             sys.exit(1)
@@ -130,11 +131,17 @@ def model_cov(p):
     # Ordinate
     y_true = model_quad(u, p['ampl'], p['tilt'])
 
-    if isinstance(p['cov'], float):
-        raise ValueError('Covariance is not a matrix!')
+    if not 'cov' in p:
+        print('Loading estimated covariance from file \'cov_est.txt\'')
+        cov_est = np.loadtxt('cov_est.txt')
+    else:
+        if isinstance(p['cov'], float):
+            raise ValueError('Covariance is not a matrix!')
+        else:
+            cov_est = p['cov']
 
     # Model
-    y = multivariate_normal.rvs(mean=y_true, cov=p['cov'])
+    y = multivariate_normal.rvs(mean=y_true, cov=cov_est)
 
     nx = len(x)
 
@@ -206,7 +213,7 @@ def linear_dist_data(d2, p):
         #print('linear_dist_data: Using true inverse covariance matrix')
         cov_inv = p['cov_true_inv']
     else:
-        #print('linear_dist_data: Reading cov_true_inv.txt from disk')
+        print('linear_dist_data: Reading cov_true_inv.txt from disk')
         cov_inv = np.loadtxt('cov_true_inv.txt')
 
     dist = np.einsum('i,ij,j', dC, cov_inv, dC)

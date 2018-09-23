@@ -54,6 +54,8 @@ def model_cov(p):
     x.sort()
     ytrue = np.array(p['a']*x + p['b'])
 
+    print(cov)
+    print('MKDEBUG')
     if isinstance(p['cov'], float):
         raise ValueError('Covariance is not a matrix!')
 

@@ -55,8 +55,6 @@ y_true  = model_quad(u, Parameters['ampl'], Parameters['tilt'])
 
 # add to parameter dictionary
 Parameters['dataset1'] = np.array([[logell[i], y_true[i]] for i in range(nell)])
-
-Parameters['dataset1'] = model_quad(logell, Parameters['ampl'], Parameters['tilt'])
 np.savetxt('dataset1.txt', Parameters['dataset1'])
 
 # add observed catalog to simulation parameters
@@ -70,8 +68,9 @@ cov, cov_est = get_cov_WL('Gauss', 10**logell, y_true, Parameters['nbar'], Param
 
 
 # add covariance to user input parameters, to be used in model
-Parameters['cov'] = cov_est
+#Parameters['cov'] = cov_est
 Parameters['simulation_input']['cov'] = cov_est
+np.savetxt('cov_est.txt', cov_est)
 
 if distance_str == 'linear_dist_data':
     cov_true_inv = np.linalg.inv(cov)

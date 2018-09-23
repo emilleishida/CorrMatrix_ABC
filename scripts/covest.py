@@ -1009,7 +1009,7 @@ def Fisher_error_ana(x, sig2, delta, mode=-1):
 
     # The four following ways to compute the Fisher matrix errors are statistically equivalent.
     # Note that mode==-1,0 uses the statistical properties mean and variance of the uniform
-    # distribution, whereas more=1,2 uses the actual sample x.
+    # distribution, whereas mode=1,2 uses the actual sample x.
 
     if mode != -1:
         if mode == 2:
