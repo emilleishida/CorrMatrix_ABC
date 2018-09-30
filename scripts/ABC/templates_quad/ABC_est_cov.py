@@ -55,7 +55,7 @@ y_true  = model_quad(u, Parameters['ampl'], Parameters['tilt'])
 
 # add to parameter dictionary
 Parameters['dataset1'] = np.array([[logell[i], y_true[i]] for i in range(nell)])
-np.savetxt('dataset1.txt', Parameters['dataset1'])
+np.savetxt('dataset1.txt', Parameters['dataset1'], header='# ell C_ell')
 
 # add observed catalog to simulation parameters
 Parameters['simulation_input']['dataset1'] = Parameters['dataset1']

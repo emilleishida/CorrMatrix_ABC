@@ -146,8 +146,8 @@ def model_cov(p):
     nx = len(x)
 
     simulation = np.array([[x[i], y[i]] for i in range(nx)])
-    #print('MKDEBUG {} {}'.format(p['ampl'], p['tilt']))
-    #np.savetxt('simulation_{}_{}.txt'.format(p['ampl'], p['tilt']), simulation)
+    print('MKDEBUG saving model with params={} {}'.format(p['ampl'], p['tilt']))
+    np.savetxt('simulation_{}_{}.txt'.format(p['ampl'], p['tilt']), simulation)
 
     return simulation
 
