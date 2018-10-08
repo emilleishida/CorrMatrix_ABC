@@ -238,7 +238,7 @@ def get_cov_ML(mean, cov, size):
 
 
 def get_cov_Gauss(ell, C_ell, f_sky, sigma_eps, nbar):
-    """Return Gaussian weak-lensing covariance.
+    """Return Gaussian weak-lensing variance.
     
     Parameters
     ----------
@@ -261,6 +261,7 @@ def get_cov_Gauss(ell, C_ell, f_sky, sigma_eps, nbar):
 
     # Total (signal + shot noise) power spectrum
     C_ell_tot = C_ell + sigma_eps**2 / (2 * nbar)
+
 
     # MKDEBUG New 11/09/2018: Added Delta ell
 
@@ -1109,40 +1110,63 @@ def Fisher_error_ana(x, sig2, delta, mode=-1):
 
 
 
-def Fisher_ana_quad(ell, f_sky, sigma_eps, nbar, ampl_fid, tilt_fid):
+def Fisher_ana_quad(ell, f_sky, sigma_eps, nbar_rad2, tilt_fid, ampl_fid):
     """Return Fisher matrix for quadratic model with parameters t (tilt) and A (amplitude).
     """
 
-    Delta_ln_ell = np.diff(ell) / (ell[:-1]/2 + ell[1:]/2)
-    Delta_ln_ell = np.append(Delta_ln_ell, Delta_ln_ell[-1])
-    Delta_ell = Delta_ln_ell * ell
-    Delta_ln_ell_bar = Delta_ln_ell.mean()
+    mode = 1
 
-    # Covariance = diagonal shot-/shape-noise term
-    A = 1.0/ (2.0 * f_sky * Delta_ln_ell_bar)
-    B = sigma_eps**2 / (2.0 * nbar)
-    y = model_quad(np.log10(ell), ampl_fid, tilt_fid)
-    D = A / ell**2 * (y + B)**2
-    
-    u = np.log10(ell)
 
-    c0    = -6.11568527 + 0.1649
-    t0    = 1.0 / (1.85132114 / 0.306)
-    a     = -0.17586216
-    u0    = shift(tilt_fid)
+    # Numerical derivatives for testing
+    if mode == 0:
+        h   = 0.1
+        yp1 = model_quad(np.log10(ell), ampl_fid*(1+h), tilt_fid)
+        ym1 = model_quad(np.log10(ell), ampl_fid*(1-h), tilt_fid)
+        yp2 = model_quad(np.log10(ell), ampl_fid, tilt_fid*(1+h))
+        ym2 = model_quad(np.log10(ell), ampl_fid, tilt_fid*(1-h))
 
-    dy_dA = 2 * ampl_fid * 10**(c0 + a * (u-u0)**2 - u)
-    dy_dt = 1.0 / t0 * (-2.0) * a * (u - u0) * y
+        dy_dt = (yp2 - ym2) / (2*h)
+        dy_dA = (yp1 - ym1) / (2*h)
+        F_11  = sum(1/D * dy_dt * dy_dt)
+        F_22  = sum(1/D * dy_dA * dy_dA)
+        F_12  = sum(1/D * dy_dt * dy_dA)
 
-    # Fisher matrix elements
-    F_11  = sum(1/D * dy_dt * dy_dt)
-    F_22  = sum(1/D * dy_dA * dy_dA)
-    F_12  = sum(1/D * dy_dt * dy_dA)
+        det = F_11 * F_22 - F_12**2
+        da2 = F_22 / det
+        db2 = F_11 / det
 
-    # Cramer-Rao, invert Fisher
-    det = F_11 * F_22 - F_12**2
-    da2 = F_22 / det
-    db2 = F_11 / det
+    else:
+
+        Delta_ln_ell = np.diff(ell) / (ell[:-1]/2 + ell[1:]/2)
+        Delta_ln_ell = np.append(Delta_ln_ell, Delta_ln_ell[-1])
+        Delta_ell = Delta_ln_ell * ell
+        Delta_ln_ell_bar = Delta_ln_ell.mean()
+
+        # Covariance = diagonal shot-/shape-noise term
+        A = 1.0/ (2.0 * f_sky * Delta_ln_ell_bar)
+        B = sigma_eps**2 / (2.0 * nbar_rad2)
+        y = model_quad(np.log10(ell), ampl_fid, tilt_fid)
+        D = A / ell**2 * (y + B)**2
+
+        u = np.log10(ell)
+
+        c0    = -6.11568527 + 0.1649
+        t0    = 1.0 / (1.85132114 / 0.306)
+        a     = -0.17586216
+        u0    = shift(tilt_fid)
+
+        dy_dA = 2 * ampl_fid * 10**(c0 + a * (u-u0)**2 - u)
+        dy_dt = 1.0 / t0 * (-2.0) * a * (u - u0) * y
+
+        # Fisher matrix elements
+        F_11  = sum(1/D * dy_dt * dy_dt)
+        F_22  = sum(1/D * dy_dA * dy_dA)
+        F_12  = sum(1/D * dy_dt * dy_dA)
+
+        # Cramer-Rao, invert Fisher
+        det = F_11 * F_22 - F_12**2
+        da2 = F_22 / det
+        db2 = F_11 / det
 
     return np.sqrt([da2, db2]), det
 

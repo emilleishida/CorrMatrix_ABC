@@ -493,6 +493,8 @@ def Fisher_ana_quad_read_par(templ_dir, par):
     f_sky = float(Parameters['f_sky'][0])
     sigma_eps = float(Parameters['sigma_eps'][0])
     nbar      = float(Parameters['nbar'][0])
+    nbar_amin2 = units.Unit('{}/arcmin**2'.format(nbar))
+    nbar_rad2  = nbar_amin2.to('1/rad**2')
     
     logellmin = float(Parameters['logellmin'][0])
     logellmax = float(Parameters['logellmax'][0])
@@ -501,7 +503,7 @@ def Fisher_ana_quad_read_par(templ_dir, par):
 
     ampl_fid, tilt_fid = par
 
-    return Fisher_ana_quad(10**logell, f_sky, sigma_eps, nbar, ampl_fid, tilt_fid)
+    return Fisher_ana_quad(10**logell, f_sky, sigma_eps, nbar_rad2, ampl_fid, tilt_fid)
     
 
 
@@ -567,6 +569,7 @@ def main(argv=None):
         dpar_exact, det = Fisher_error_ana(x1, param.sig2, delta, mode=-1)
     elif param.model == 'quadratic':
         dpar_exact, det = Fisher_ana_quad_read_par(param.templ_dir, param.par)
+        print('par:        ', param.par)
         print('dpar_exact: ', dpar_exact)
     else:
         stuff.error()

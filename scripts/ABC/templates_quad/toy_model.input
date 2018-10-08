@@ -16,21 +16,23 @@ tilt            = 0.306                            #  linear coefficient
 ampl            = 0.827                            #  angular coefficient
 
 tilt_prior_par_name       = pmin  pmax              # parameters for prior distribution
-tilt_prior_par_val        = 0.0  1.5                # values for prior distribution
+tilt_prior_par_val        = 0.2  0.4                # values for prior distribution
 
 ampl_prior_par_name      = pmin pmax               # parameters for prior distribution  
-ampl_prior_par_val       = 0.0  2.0                 # values for prior distribution   
+ampl_prior_par_val       = 0.7  0.9                 # values for prior distribution   
 
-tilt_lim                  = 0.0 1.0                # 
-ampl_lim                  = 0.0  1.5               # extreme limits for parametes
+tilt_lim                  = 0.2 0.4                # 
+ampl_lim                  = 0.7  0.9               # extreme limits for parametes
 
 logellmin = 1.06122434
 logellmax = 4
 nell      = 25
 
-f_sky           = 0.3636                           # covered sky fraction of survey
-sigma_eps       = 0.22                             # intrinsic ellipticity dispersion per component
-nbar            = 30                               # Number density of galaxies per arcmin^2
+#f_sky           = 0.3636                           # covered sky fraction of survey
+f_sky           = 0.1
+#sigma_eps       = 0.22                             # intrinsic ellipticity dispersion per component
+sigma_eps       = 0.27                             # intrinsic ellipticity dispersion per component
+nbar            = 10                               # Number density of galaxies per arcmin^2
 
 nsim            = 800                              #  number of simulations for covariance matrix
 
