@@ -264,13 +264,19 @@ def get_cov_Gauss(ell, C_ell, f_sky, sigma_eps, nbar):
 
     # MKDEBUG New 11/09/2018: Added Delta ell
 
-    # For log10-bins: Delta log10 ell = Delta ell / ell / / log 10 
+    # The following seems complicated
+    # To just use Delta_ell = diff(ell) would bias the Delta's,
+    # since they would not correspond to the bin center ell's.
+    
+    # For log10-bins: Delta log10 ell = Delta ell / ell / log 10 
     # Use mean of ell_i+1 and ell_i good to < 1% compared
     # to Delta log ell
-    Delta_ell = np.diff(ell) / (ell[:-1]/2 + ell[1:]/2) / np.log(10)
+    Delta_lg_ell = np.diff(ell) / (ell[:-1]/2 + ell[1:]/2) / np.log(10)
  
     # add last element again to restore length of Delta_ell 
-    Delta_ell = np.append(Delta_ell, Delta_ell[-1])
+    Delta_lg_ell = np.append(Delta_lg_ell, Delta_lg_ell[-1])
+
+    Delta_ell = Delta_lg_ell * ell * np.log(10)
 
     D         = 1.0 / (f_sky * (2.0 * ell + 1) * Delta_ell) * C_ell_tot**2
     Sigma = np.diag(D)
@@ -363,6 +369,70 @@ def weighted_std(data, weights):
 
     return np.sqrt(num / denom)
 
+
+
+def add(ampl):
+    """Return the additive constant of the quadratic function
+       from the amplitude fitting parameter
+       (mimics power-spectrum normalisation s8)
+    """
+
+    # This provides a best-fit amp=0.827, but the 10% increased
+    # spectrum (0.9097) gives a best-fit of 0.925
+    # Changing the prefactor of amp or lg(amp) does not help...
+    c = np.log10(ampl)*2 - 6.11568527 + 0.1649
+
+    return c
+
+
+
+def shift(tilt):
+    """Return the shift parameter of the quadratic function
+       from the tilt parameter (mimics matter density)
+    """
+
+    u0 = tilt * 1.85132114 / 0.306
+
+    return u0
+
+
+
+def quadratic(u, *params):
+    """Used to fit quadratic function varying all three parameters
+    """
+
+    (ampl, tilt, a) = np.array(params)
+    c  = add(ampl)
+    u0 = shift(tilt)
+
+    return c + a * (u - u0)**2
+
+
+
+def quadratic_ampl_tilt(u, ampl, tilt):
+    """Return quadratic function given coordinate 1 (u=logell), amplitude,
+       and tilt.
+    """
+
+    param   = (ampl, tilt, -0.17586216)
+    q       = quadratic(u, *param)
+
+    return q
+
+
+
+def model_quad(u, ampl, tilt):
+    """Return model based on quadratic function. This should correspond
+       to the WL power spectrum C_ell with u = lg ell.
+       Since q(u) ~ lg[ ell C_ell], the model is
+       y = C_ell = 10^q / ell = 10^q / 10^lg ell = 10^(q - u).
+    """
+
+    q = quadratic_ampl_tilt(u, ampl, tilt)
+
+    y = 10**(q - u) 
+
+    return y
 
 
 
@@ -1034,6 +1104,45 @@ def Fisher_error_ana(x, sig2, delta, mode=-1):
         det = detF(n_D, sig2, delta)
         da2 = 12 * sig2 / (n_D * delta**2)
         db2 = sig2 / n_D
+
+    return np.sqrt([da2, db2]), det
+
+
+
+def Fisher_ana_quad(ell, f_sky, sigma_eps, nbar, ampl_fid, tilt_fid):
+    """Return Fisher matrix for quadratic model with parameters t (tilt) and A (amplitude).
+    """
+
+    Delta_ln_ell = np.diff(ell) / (ell[:-1]/2 + ell[1:]/2)
+    Delta_ln_ell = np.append(Delta_ln_ell, Delta_ln_ell[-1])
+    Delta_ell = Delta_ln_ell * ell
+    Delta_ln_ell_bar = Delta_ln_ell.mean()
+
+    # Covariance = diagonal shot-/shape-noise term
+    A = 1.0/ (2.0 * f_sky * Delta_ln_ell_bar)
+    B = sigma_eps**2 / (2.0 * nbar)
+    y = model_quad(np.log10(ell), ampl_fid, tilt_fid)
+    D = A / ell**2 * (y + B)**2
+    
+    u = np.log10(ell)
+
+    c0    = -6.11568527 + 0.1649
+    t0    = 1.0 / (1.85132114 / 0.306)
+    a     = -0.17586216
+    u0    = shift(tilt_fid)
+
+    dy_dA = 2 * ampl_fid * 10**(c0 + a * (u-u0)**2 - u)
+    dy_dt = 1.0 / t0 * (-2.0) * a * (u - u0) * y
+
+    # Fisher matrix elements
+    F_11  = sum(1/D * dy_dt * dy_dt)
+    F_22  = sum(1/D * dy_dA * dy_dA)
+    F_12  = sum(1/D * dy_dt * dy_dA)
+
+    # Cramer-Rao, invert Fisher
+    det = F_11 * F_22 - F_12**2
+    da2 = F_22 / det
+    db2 = F_11 / det
 
     return np.sqrt([da2, db2]), det
 

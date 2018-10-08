@@ -24,71 +24,7 @@ from scipy.stats import uniform
 from scipy import stats
 import statsmodels.formula.api as smf
 import statsmodels.api as sm
-
-
-
-def add(ampl):
-    """Return the additive constant of the quadratic function
-       from the amplitude fitting parameter
-       (mimics power-spectrum normalisation s8)
-    """
-    
-    # This provides a best-fit amp=0.827, but the 10% increased
-    # spectrum (0.9097) gives a best-fit of 0.925
-    # Changing the prefactor of amp or lg(amp) does not help...
-    c = np.log10(ampl)*2 - 6.11568527 + 0.1649
-    
-    return c
-
-
-
-def shift(tilt):
-    """Return the shift parameter of the quadratic function
-       from the tilt parameter (mimics matter density)
-    """
-    
-    u0 = tilt * 1.85132114 / 0.306
-
-    return u0
-
-
-
-def quadratic(u, *params):
-    """Used to fit quadratic function varying all three parameters
-    """
-    
-    (ampl, tilt, a) = np.array(params)
-    c  = add(ampl)
-    u0 = shift(tilt)
-    
-    return c + a * (u - u0)**2
-
-
-
-def quadratic_ampl_tilt(u, ampl, tilt):
-    """Return quadratic function given coordinate 1 (u=logell), amplitude,
-       and tilt.
-    """
-
-    param   = (ampl, tilt, -0.17586216)
-    q       = quadratic(u, *param)
-
-    return q
-
-
-
-def model_quad(u, ampl, tilt):
-    """Return model based on quadratic function. This should correspond
-       to the WL power spectrum C_ell with u = lg ell.
-       Since q(u) ~ lg[ ell C_ell], the model is
-       y = C_ell = 10^q / ell = 10^q / 10^lg ell = 10^(q - u).
-    """
-
-    q = quadratic_ampl_tilt(u, ampl, tilt)
-
-    y = 10**(q - u) 
-
-    return y
+from covest import model_quad
 
 
 
@@ -146,8 +82,8 @@ def model_cov(p):
     nx = len(x)
 
     simulation = np.array([[x[i], y[i]] for i in range(nx)])
-    print('MKDEBUG saving model with params={} {}'.format(p['ampl'], p['tilt']))
-    np.savetxt('simulation_{}_{}.txt'.format(p['ampl'], p['tilt']), simulation)
+    #print('MKDEBUG saving model with params={} {}'.format(p['ampl'], p['tilt']))
+    #np.savetxt('simulation_{}_{}.txt'.format(p['ampl'], p['tilt']), simulation)
 
     return simulation
 

@@ -1,5 +1,5 @@
-path_to_obs		= dataset1.txt   	           # path to observed data 
-#path_to_obs		= None
+#path_to_obs		= dataset1.txt   	           # path to observed data 
+path_to_obs		= None
 
 param_to_fit 		= tilt ampl                 # parameters to fit
 param_to_sim    	= tilt ampl logellmin logellmax nell f_sky sigma_eps nbar # parameters needed for simulation
@@ -42,7 +42,7 @@ qthreshold 	= 0.75				   # quantile in distance threshold
 
 file_root 	= quad_PS                          # root to output files names 
 screen          = 0			           # rather (1) or not (0) to screen outputs
-ncores          = 1 				   # number of cores
+ncores          = 0 				   # number of cores
 split_output    = 1                                # number of intermediate steps written to file
 
 

@@ -91,7 +91,7 @@ def parse_options(p_def):
 
     parser.add_option('-p', '--par', dest='spar', type='string', default=p_def.spar,
         help='Parameter array, for plotting, default=\'{}\''.format(p_def.spar))
-    parser.add_option('-M', '--model', dest='Model', type='string', default=p_def.model,
+    parser.add_option('-M', '--model', dest='model', type='string', default=p_def.model,
         help='Model, one in \'affine\', \'quadratic\', default=\'{}\''.format(p_def.model))
 
     parser.add_option('-m', '--mode', dest='mode', type='string', default=p_def.mode,
@@ -474,6 +474,34 @@ def read_from_ABC_dirs(n_S_arr, par_name, fit_ABC, options):
                         y = getattr(fit_ABC, which)
                         y[p][i][r] = val
 
+
+
+def Fisher_ana_quad_read_par(templ_dir, par):
+    """Read parameters from config file and return Fisher matrix errors
+       on parameters of quadratic model.
+    """
+
+    #fin  = open('{}/{}'.format(templ_dir, 'toy_model.input'))
+    #dat = fin.read()
+    #fin.close()
+
+    from cosmoabc.ABC_functions import read_input
+
+    filename = '{}/{}'.format(templ_dir, 'toy_model.input')
+    Parameters = read_input(filename)
+
+    f_sky = float(Parameters['f_sky'][0])
+    sigma_eps = float(Parameters['sigma_eps'][0])
+    nbar      = float(Parameters['nbar'][0])
+    
+    logellmin = float(Parameters['logellmin'][0])
+    logellmax = float(Parameters['logellmax'][0])
+    nell      = int(Parameters['nell'][0])
+    logell    = np.linspace(logellmin, logellmax, nell)
+
+    ampl_fid, tilt_fid = par
+
+    return Fisher_ana_quad(10**logell, f_sky, sigma_eps, nbar, ampl_fid, tilt_fid)
     
 
 
@@ -531,16 +559,18 @@ def main(argv=None):
             print('Reading simulation results (mean, std) from disk (master file)')
         fit_ABC.read_mean_std()
 
+    par = my_string_split(param.spar, num=2, verbose=param.verbose, stop=True)
+    param.par = [float(p) for p in par]
+
     if param.model == 'affine':
         x1 = np.zeros(shape = param.n_D) # Dummy variable
         dpar_exact, det = Fisher_error_ana(x1, param.sig2, delta, mode=-1)
-    elif param.model == 'quadratic';
-        pass
+    elif param.model == 'quadratic':
+        dpar_exact, det = Fisher_ana_quad_read_par(param.templ_dir, param.par)
+        print('dpar_exact: ', dpar_exact)
     else:
         stuff.error()
 
-    par = my_string_split(param.spar, num=2, verbose=param.verbose, stop=True)
-    param.par = [float(p) for p in par]
     try:
         fit_ABC.plot_mean_std(n_S_arr, param.n_D, par={'mean': param.par, 'std': dpar_exact}, boxwidth=param.boxwidth, xlog=param.xlog)
         dpar2 = dpar_exact**2
