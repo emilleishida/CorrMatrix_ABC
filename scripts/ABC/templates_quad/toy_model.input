@@ -8,7 +8,7 @@ prior_func	        = flat_prior flat_prior      # one prior function for each pa
                                                    # under consideration 
 
 simulation_func = model_cov                            # simulation function
-distance_func	= linear_dist_data                     # distance function
+distance_func	= linear_dist_data_diag                     # distance function
 
 dist_dim = 1              #
 

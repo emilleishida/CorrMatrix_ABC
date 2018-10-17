@@ -46,6 +46,7 @@ def params_default():
         f_n_S_max = 10.0,
         n_S_min = n_D + 5,
         spar = '1.0 0.0',
+        spar_name = 'a_b',
         sig2 = 5.0,
         model = 'affine',
         verbose = True,
@@ -91,6 +92,8 @@ def parse_options(p_def):
 
     parser.add_option('-p', '--par', dest='spar', type='string', default=p_def.spar,
         help='Parameter array, for plotting, default=\'{}\''.format(p_def.spar))
+    parser.add_option('-P', '--par_name', dest='spar_name', type='string', default=p_def.spar_name,
+        help='Parameter names, default=\'{}\''.format(p_def.spar_name))
     parser.add_option('-M', '--model', dest='model', type='string', default=p_def.model,
         help='Model, one in \'affine\', \'quadratic\', default=\'{}\''.format(p_def.model))
 
@@ -167,6 +170,8 @@ def update_param(p_def, options):
     else:
         str_n_S_list = my_string_split(options.str_n_S, verbose=False, stop=True)
         param.n_S = [int(str_n_S) for str_n_S in str_n_S_list]
+
+    param.par_name = my_string_split(options.spar_name, verbose=False, stop=True)
 
     return param
 
@@ -454,7 +459,6 @@ def read_from_ABC_dirs(n_S_arr, par_name, fit_ABC, options):
 
             real_dir = '{}/nr_{}'.format(base_dir, run)
 
-            #fname = '{}/num_res_nsim_{}.dat'.format(real_dir, n_S)
             fname = '{}/num_res.dat'.format(real_dir)
             if not os.path.exists(fname):
                 error('File {} not found'.format(fname))
@@ -481,10 +485,6 @@ def Fisher_ana_quad_read_par(templ_dir, par):
        on parameters of quadratic model.
     """
 
-    #fin  = open('{}/{}'.format(templ_dir, 'toy_model.input'))
-    #dat = fin.read()
-    #fin.close()
-
     from cosmoabc.ABC_functions import read_input
 
     filename = '{}/{}'.format(templ_dir, 'toy_model.input')
@@ -503,7 +503,8 @@ def Fisher_ana_quad_read_par(templ_dir, par):
 
     ampl_fid, tilt_fid = par
 
-    return Fisher_ana_quad(10**logell, f_sky, sigma_eps, nbar_rad2, ampl_fid, tilt_fid)
+    dpar, det = Fisher_ana_quad(10**logell, f_sky, sigma_eps, nbar_rad2, ampl_fid, tilt_fid)
+    return dpar, det, nell
     
 
 
@@ -511,9 +512,6 @@ def Fisher_ana_quad_read_par(templ_dir, par):
 def main(argv=None):
     """Main program.
     """
-
-    par_name = ['a', 'b']            # Parameter list
-    delta    = 200
 
     p_def = params_default()
     options, args = parse_options(p_def)
@@ -539,7 +537,7 @@ def main(argv=None):
         return 0
 
     # Initialisation of results
-    fit_ABC = Results(par_name, n_n_S, param.n_R, file_base='mean_std_ABC', yscale=['linear', 'log'], fct={})
+    fit_ABC = Results(param.par_name, n_n_S, param.n_R, file_base='mean_std_ABC', yscale=['linear', 'log'], fct={})
 
 
     # MKDEBUG TODO add check: n_D and nobs in toy_model.input should be consistent, if only for plotting reasons
@@ -552,7 +550,7 @@ def main(argv=None):
     # Read simulations from ABC run directories and write to master file
     if re.search('r', param.mode) is not None:
 
-        read_from_ABC_dirs(n_S_arr, par_name, fit_ABC, param)
+        read_from_ABC_dirs(n_S_arr, param.par_name, fit_ABC, param)
         fit_ABC.write_mean_std(n_S_arr)
 
     if re.search('R', param.mode) is not None:
@@ -566,18 +564,20 @@ def main(argv=None):
 
     if param.model == 'affine':
         x1 = np.zeros(shape = param.n_D) # Dummy variable
+        delta = 200
         dpar_exact, det = Fisher_error_ana(x1, param.sig2, delta, mode=-1)
+        n_D  = param.n_D
     elif param.model == 'quadratic':
-        dpar_exact, det = Fisher_ana_quad_read_par(param.templ_dir, param.par)
+        dpar_exact, det, n_D = Fisher_ana_quad_read_par(param.templ_dir, param.par)
         print('par:        ', param.par)
         print('dpar_exact: ', dpar_exact)
     else:
         stuff.error()
 
     try:
-        fit_ABC.plot_mean_std(n_S_arr, param.n_D, par={'mean': param.par, 'std': dpar_exact}, boxwidth=param.boxwidth, xlog=param.xlog)
+        fit_ABC.plot_mean_std(n_S_arr, n_D, par={'mean': param.par, 'std': dpar_exact}, boxwidth=param.boxwidth, xlog=param.xlog)
         dpar2 = dpar_exact**2
-        fit_ABC.plot_std_var(n_S_arr, param.n_D, par=dpar2, xlog=param.xlog)
+        fit_ABC.plot_std_var(n_S_arr, n_D, par=dpar2, xlog=param.xlog)
     except:
         print('Plotting ABC mean and std failed, maybe display not available.')
 
