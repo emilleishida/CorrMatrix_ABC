@@ -396,8 +396,14 @@ def run_ABC_in_dir(real_dir, n_S, templ_dir):
 
 
     files = ['ABC_est_cov.py', 'toy_model_functions.py']
+    files_opt = ['cov_SSC_rel.txt']
+
     for f in files:
         copy2('{}/{}'.format(templ_dir, f), '{}/{}'.format(real_dir, f))
+    for f in files_opt:
+        source = '{}/{}'.format(templ_dir, f)
+        if os.path.exists(source):
+            copy2(source, '{}/{}'.format(real_dir, f))
 
     fin  = open('{}/{}'.format(templ_dir, 'toy_model.input'))
     fout = open('{}/{}'.format(real_dir, 'toy_model.input'), 'w')

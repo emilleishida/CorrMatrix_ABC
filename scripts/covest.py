@@ -11,8 +11,9 @@ from astropy import units
 from astropy.io import ascii
 
 
-#import matplotlib
-#matplotlib.use("Agg")
+import matplotlib
+matplotlib.use("TkAgg")
+
 #import pylab as plt
 import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter
@@ -406,7 +407,7 @@ def get_cov_WL(model, ell, C_ell_obs, nbar, f_sky, sigma_eps, nsim):
     elif model == 'Gauss+SSC_BKS17':
         cov_SSC_fname = 'cov_SSC_rel.txt'
         func_SSC = 'BKS17'
-        cov_SSC = get_cov_SSC(ell, C_ell_obs, cov_SSC_fname, func_SSC)
+        cov_SSC  = get_cov_SSC(ell, C_ell_obs, cov_SSC_fname, func_SSC)
 
         # Writing covariances to files for testing/plotting
         np.savetxt('cov_G.txt', cov_G)

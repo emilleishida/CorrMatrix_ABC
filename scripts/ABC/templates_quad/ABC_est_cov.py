@@ -59,11 +59,15 @@ Parameters['nsim'] = int(Parameters['nsim'][0])
 cov_model          = Parameters['cov_model'][0]
 cov, cov_est       = get_cov_WL(cov_model, 10**logell, y_true, Parameters['nbar'], Parameters['f_sky'], Parameters['sigma_eps'], Parameters['nsim'])
 
-# input  model = sample from distribution with true covariance
-y_input  = multivariate_normal.rvs(mean=y_true, cov=cov)
+input_is_true = int(Parameters['input_is_true'][0])
+if input_is_true:
+    y_input = y_true
+else:
+    # input model = sample from distribution with true covariance
+    y_input  = multivariate_normal.rvs(mean=y_true, cov=cov)
 
-np.savetxt('y_true.txt', 10**logell, y_true)
-np.savetxt('y_input.txt', 10**logell, y_input)
+np.savetxt('y_true.txt', np.array([10**logell, y_true]).transpose())
+np.savetxt('y_input.txt', np.array([10**logell, y_input]).transpose())
 
 # add to parameter dictionary
 Parameters['dataset1'] = np.array([[logell[i], y_input[i]] for i in range(nell)])
@@ -129,7 +133,7 @@ print 'ampl:    ' + str(b_results.mean) + ' +- ' + str(b_results.std_mean)
 
 # Write best-fit model to file
 y_bestfit   = model_quad(u, b_results.mean, a_results.mean)
-np.savetxt('y_bestfit.txt', 10**logell, y_bestfit)
+np.savetxt('y_bestfit.txt', np.array([10**logell, y_bestfit]).transpose())
 
 #plot results
 plot_2p( sampler_ABC.T, 'results.pdf' , Parameters)

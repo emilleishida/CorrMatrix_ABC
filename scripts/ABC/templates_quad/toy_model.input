@@ -11,10 +11,13 @@ simulation_func = model_cov                        # simulation function
 cov_model	= Gauss+SSC_BKS17		   # Covariance
 distance_func	= linear_dist_data_diag            # distance function
 
-dist_dim = 1              #
+dist_dim = 1
 
-tilt            = 0.306                            #  linear coefficient
-ampl            = 0.827                            #  angular coefficient
+tilt            = 0.306                            # tilt (shift parameter in polynomial)
+ampl            = 0.827                            # amplitude (constant parameter in polynomial)
+
+input_is_true   = 0				   # If 1 (0), input model is fixed (not fixed) at input parameter.
+						   # If 0, input model is sampled using true covariance.
 
 tilt_prior_par_name       = pmin  pmax             # parameters for prior distribution
 tilt_prior_par_val        = 0.2  0.4               # values for prior distribution
