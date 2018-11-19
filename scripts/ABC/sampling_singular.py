@@ -4,7 +4,8 @@ import pylab as plt
 from scipy.stats import kde
 
 # 2x2 covariance matrix
-cov = np.array([[1, -1], [-1, 1]])
+#cov = np.array([[1, -1], [-1, 1]])
+cov = np.array([[1, 0.5], [0.5, 1]])
 
 mean = np.array([0, 0])
 size = 10000

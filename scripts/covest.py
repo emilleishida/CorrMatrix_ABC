@@ -7,14 +7,19 @@ import errno
 import subprocess
 import shlex
 
+from astropy import units
+from astropy.io import ascii
 
-#import matplotlib
-#matplotlib.use("Agg")
+
+import matplotlib
+matplotlib.use("TkAgg")
+
 #import pylab as plt
 import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 
-#from astropy.table import Table, Column
+import scipy.stats._multivariate as mv
+
 
 
 def alpha_new(n_S, n_D):
@@ -198,6 +203,23 @@ def get_n_S_R_from_fit_file(file_base, npar=2):
 
 
 def get_cov_ML(mean, cov, size):
+    """Return maximum-likelihood estime of covariance matrix, from
+       realisations of a multi-variate Normal
+    
+    Parameters
+    ----------
+    mean: array(double)
+        mean of mv normal
+    cov: array(double)
+        covariance matrix of mv normal
+    size: int
+        dimension of data vector, cov is size x size matrix
+
+    Returns
+    -------
+    cov_est: matrix of double
+        estimated covariance matrix, dimension size x size
+    """
             
     from scipy.stats import multivariate_normal
 
@@ -205,7 +227,6 @@ def get_cov_ML(mean, cov, size):
     # y2[:,j] = realisations for j-th data entry
     # y2[i,:] = data vector for i-th realisation
 
-    
     # Calculate covariance matrix via np
     cov_est = np.cov(y2, rowvar=False)
     
@@ -215,6 +236,276 @@ def get_cov_ML(mean, cov, size):
         cov_est = [[cov_est]]
     
     return cov_est
+
+
+def get_cov_SSC(ell, C_ell_obs, cov_SSC_fname, func='BKS17'):
+    """Return SSC weak-lensing covariance, by reading it (or some function of it)
+    from a file.
+
+    Parameters
+    ----------
+    ell: array of double
+         angular Fourier modes
+    C_ell: array of double
+         power spectrum
+    cov_SSC_fname: string
+        file name of relative SSC covariance, in column format
+    func: string, optional, default='BKS17'
+        function of relative covariance, one in 'BKS17', 'id'
+
+    Returns
+    -------
+    cov_SSC: matrix of double
+        covariance matrix
+    """
+
+    print('Reading cov_SSC from file \'{}\' using function \'{}\''.format(cov_SSC_fname, func))
+
+    dat = ascii.read(cov_SSC_fname)
+    n   = int(np.sqrt(len(dat)))
+
+    ell_SSC = dat['col2'][0:n]
+
+    # Check whether ell's match input ell's to this function
+    drel = (ell_SSC - ell) / ell
+    if np.where(drel > 1e-2)[0].any():
+        print(ell)
+        print(ell_SSC)
+        print(drel)
+        error('SSC ell values do not match input ell values')
+
+    cov_SSC = np.zeros((n, n))
+    c = 0
+    for i in range(n):
+        for j in range(n):
+            cov_rel       = dat['col3'][c]
+
+            if func == 'BKS17':
+                # File stored Cov_SSC(l1, l2) / C(l1) / C(l2) * 10^4
+                cov_SSC[i][j] = cov_rel / 1.0e4 * C_ell_obs[i] * C_ell_obs[j]
+            elif func == 'id':
+                cov_SSC[i][j] = cov_rel
+
+            c = c + 1
+
+    return cov_SSC
+
+
+def get_cov_Gauss(ell, C_ell, f_sky, sigma_eps, nbar):
+    """Return Gaussian weak-lensing covariance (which is
+    a diagonal matrix).
+    
+    Parameters
+    ----------
+    ell: array of double
+         angular Fourier modes
+    C_ell: array of double
+         power spectrum
+    f_sky: double
+        sky coverage fraction
+    sigma_eps: double
+        ellipticity dispersion (per component)
+    nbar: double
+        galaxy number density [rad^{-2}]
+
+    Returns
+    -------
+    Sigma: matrix of double
+        covariance matrix
+    """
+
+    # Total (signal + shot noise) power spectrum
+    C_ell_tot = C_ell + sigma_eps**2 / (2 * nbar)
+
+
+    # MKDEBUG New 11/09/2018: Added Delta ell
+
+    # The following seems complicated
+    # To just use Delta_ell = diff(ell) would bias the Delta's,
+    # since they would not correspond to the bin center ell's.
+    
+    # For log10-bins: Delta log10 ell = Delta ell / ell / log 10 
+    # Use mean of ell_i+1 and ell_i good to < 1% compared
+    # to Delta log ell
+    Delta_lg_ell = np.diff(ell) / (ell[:-1]/2 + ell[1:]/2) / np.log(10)
+ 
+    # add last element again to restore length of Delta_ell 
+    Delta_lg_ell = np.append(Delta_lg_ell, Delta_lg_ell[-1])
+
+    Delta_ell = Delta_lg_ell * ell * np.log(10)
+
+    D         = 1.0 / (f_sky * (2.0 * ell + 1) * Delta_ell) * C_ell_tot**2
+    Sigma = np.diag(D)
+
+    return Sigma
+
+
+
+def sample_cov_Wishart(cov, n_S):
+    """Returns estimated coariance as sample from Wishart distribution
+ 
+    Parameters
+    ----------
+    cov: matrix of double
+         'true' covariance matrix (scale matrix)
+    n_S: int
+         number of simulations, dof = nu = n_S - 1
+
+    Returns
+    -------
+    cov_est: matrix of double
+         sampled matrix
+    """
+
+    # Sample covariance from Wishart distribution, with dof nu=n_S - 1
+    W = mv.wishart(df=n_S - 1, scale=cov)
+
+    # Mean of Wishart distribution is cov/dof = cov/(n_S - 1)
+    cov_est = W.rvs() / (n_S - 1)
+
+    return cov_est
+
+
+
+def get_cov_WL(model, ell, C_ell_obs, nbar, f_sky, sigma_eps, nsim):
+    """Compute true and estimated WL covariance.
+
+    Parameters
+    ----------
+    model: string
+        One in 'Gauss', 'Gauss+SSC_BKS17'
+    ell: array of float
+        ell-values
+    C_ell_obs: array of float
+        observed power spectrum
+    nbar: float
+        galaxy density in arcmin^{-2}
+    f_sky: float
+        Observed sky fraction
+    sigma_eps: float
+        ellipticity dispersion
+    nsim: int
+        number of simulations for covariance estimation
+
+    Returns
+    -------
+    cov: matrix of float
+        'true' underlying covariance matrix
+    cov_est: matrix of float
+        estimated covariance
+    """
+
+    # Construct (true) covariance Sigma
+    nbar_amin2  = units.Unit('{}/arcmin**2'.format(nbar))
+    nbar_rad2   = nbar_amin2.to('1/rad**2')
+    # We use the same C_ell as the 'observation', from above
+    cov_G       = get_cov_Gauss(ell, C_ell_obs, f_sky, sigma_eps, nbar_rad2)
+
+    if model == 'Gauss':
+        cov = cov_G
+
+    elif model == 'Gauss+SSC_BKS17':
+        cov_SSC_fname = 'cov_SSC_rel.txt'
+        func_SSC = 'BKS17'
+        cov_SSC  = get_cov_SSC(ell, C_ell_obs, cov_SSC_fname, func_SSC)
+
+        # Writing covariances to files for testing/plotting
+        np.savetxt('cov_G.txt', cov_G)
+        np.savetxt('cov_SSC.txt', cov_SSC)
+        cov = cov_G + cov_SSC
+
+    else:
+
+       error('Invalid covariance mode \'{}\''.format(mode))
+
+    size = cov.shape[0]
+    if nsim - 1 >= size:
+        # Estimate covariance as sample from Wishart distribution
+        cov_est = sample_cov_Wishart(cov, nsim)
+    else:
+        # Cannot easily sample from Wishart distribution if dof<cov dimension,
+        # but can always create Gaussian rv and compute cov
+        cov_est = get_cov_ML(C_ell_obs, cov, size)
+
+    return cov, cov_est
+
+
+
+def weighted_std(data, weights):
+    """Taken from http://www.itl.nist.gov/div898/software/dataplot/refman2/ch2/weightsd.pdf"""
+
+    mean = np.average(data, weights=weights)
+    c = sum([weights[i] > pow(10, -6) for i in range(weights.shape[0])])
+
+    num = sum([weights[i] * pow(data[i] - mean, 2) for i in range(data.shape[0])])
+    denom = (c - 1) * sum(weights)/float(c)
+
+    return np.sqrt(num / denom)
+
+
+
+def add(ampl):
+    """Return the additive constant of the quadratic function
+       from the amplitude fitting parameter
+       (mimics power-spectrum normalisation s8)
+    """
+
+    # This provides a best-fit amp=0.827, but the 10% increased
+    # spectrum (0.9097) gives a best-fit of 0.925
+    # Changing the prefactor of amp or lg(amp) does not help...
+    c = np.log10(ampl)*2 - 6.11568527 + 0.1649
+
+    return c
+
+
+
+def shift(tilt):
+    """Return the shift parameter of the quadratic function
+       from the tilt parameter (mimics matter density)
+    """
+
+    u0 = tilt * 1.85132114 / 0.306
+
+    return u0
+
+
+
+def quadratic(u, *params):
+    """Used to fit quadratic function varying all three parameters
+    """
+
+    (ampl, tilt, a) = np.array(params)
+    c  = add(ampl)
+    u0 = shift(tilt)
+
+    return c + a * (u - u0)**2
+
+
+
+def quadratic_ampl_tilt(u, ampl, tilt):
+    """Return quadratic function given coordinate 1 (u=logell), amplitude,
+       and tilt.
+    """
+
+    param   = (ampl, tilt, -0.17586216)
+    q       = quadratic(u, *param)
+
+    return q
+
+
+
+def model_quad(u, ampl, tilt):
+    """Return model based on quadratic function. This should correspond
+       to the WL power spectrum C_ell with u = lg ell.
+       Since q(u) ~ lg[ ell C_ell], the model is
+       y = C_ell = 10^q / ell = 10^q / 10^lg ell = 10^(q - u).
+    """
+
+    q = quadratic_ampl_tilt(u, ampl, tilt)
+
+    y = 10**(q - u) 
+
+    return y
 
 
 
@@ -427,9 +718,6 @@ class Results:
         None
         """
 
-        #print('MKDEGBU xlog=True ', boxwidth)
-        #xlog = True
-
         n_R = self.mean[self.par_name[0]].shape[1]
 
         marker     = ['.', 'D']
@@ -519,7 +807,6 @@ class Results:
                 ax = plt.subplot(1, n_panel, j_panel[which])
 
                 # Dashed vertical line at n_S = n_D
-                #plt.plot([n_D, n_D], [plt.ylim()[0], plt.ylim()[1]], ':', linewidth=1)
                 plt.plot([n_D, n_D], [-1e2, 1e2], ':', linewidth=1)
                 plt.plot([n_D, n_D], [1e-5, 1e2], ':', linewidth=1)
 
@@ -529,9 +816,6 @@ class Results:
                 ax.set_yscale(self.yscale[j])
                 ax.legend(frameon=False)
                 plt.xlim(xmin, xmax)
-
-                #print('MKDEBUG set ylim')
-                #plt.ylim(4, 6)
 
                 # x-ticks
                 ax = plt.gca().xaxis
@@ -550,7 +834,7 @@ class Results:
                 plt.xticks(x_loc, x_lab, rotation=rotation)
                 ax.label.set_size(self.fs)
 
-	            # Second x-axis
+	        # Second x-axis
                 ax2 = plt.twiny()
                 x2_loc = []
                 x2_lab = []
@@ -662,7 +946,6 @@ class Results:
             fac_xlim = 1.6
             xmin = n[0]/fac_xlim
             xmax = n[-1]*fac_xlim
-            #plt.xlim(np.log(xmin), np.log(xmax))
             ax.set_xscale('log')
             flinlog = lambda x: np.log(x)
         else:
@@ -674,12 +957,12 @@ class Results:
         ax.set_yscale('log')
         ax.legend(loc='best', numpoints=1, frameon=False)
 
-	    # x-ticks
+	# x-ticks
         ax = plt.gca().xaxis
         ax.set_major_formatter(ScalarFormatter())
         plt.ticklabel_format(axis='x', style='sci')
 
-	    # Second x-axis
+	# Second x-axis
         x_loc, x_lab = plt.xticks()
         ax2 = plt.twiny()
         x2_loc = []
@@ -869,7 +1152,7 @@ def Fisher_error_ana(x, sig2, delta, mode=-1):
 
     # The four following ways to compute the Fisher matrix errors are statistically equivalent.
     # Note that mode==-1,0 uses the statistical properties mean and variance of the uniform
-    # distribution, whereas more=1,2 uses the actual sample x.
+    # distribution, whereas mode=1,2 uses the actual sample x.
 
     if mode != -1:
         if mode == 2:
@@ -894,6 +1177,68 @@ def Fisher_error_ana(x, sig2, delta, mode=-1):
         det = detF(n_D, sig2, delta)
         da2 = 12 * sig2 / (n_D * delta**2)
         db2 = sig2 / n_D
+
+    return np.sqrt([da2, db2]), det
+
+
+
+def Fisher_ana_quad(ell, f_sky, sigma_eps, nbar_rad2, tilt_fid, ampl_fid):
+    """Return Fisher matrix for quadratic model with parameters t (tilt) and A (amplitude).
+    """
+
+    mode = 1
+
+
+    # Numerical derivatives for testing
+    if mode == 0:
+        h   = 0.1
+        yp1 = model_quad(np.log10(ell), ampl_fid*(1+h), tilt_fid)
+        ym1 = model_quad(np.log10(ell), ampl_fid*(1-h), tilt_fid)
+        yp2 = model_quad(np.log10(ell), ampl_fid, tilt_fid*(1+h))
+        ym2 = model_quad(np.log10(ell), ampl_fid, tilt_fid*(1-h))
+
+        dy_dt = (yp2 - ym2) / (2*h)
+        dy_dA = (yp1 - ym1) / (2*h)
+        F_11  = sum(1/D * dy_dt * dy_dt)
+        F_22  = sum(1/D * dy_dA * dy_dA)
+        F_12  = sum(1/D * dy_dt * dy_dA)
+
+        det = F_11 * F_22 - F_12**2
+        da2 = F_22 / det
+        db2 = F_11 / det
+
+    else:
+
+        Delta_ln_ell = np.diff(ell) / (ell[:-1]/2 + ell[1:]/2)
+        Delta_ln_ell = np.append(Delta_ln_ell, Delta_ln_ell[-1])
+        Delta_ell = Delta_ln_ell * ell
+        Delta_ln_ell_bar = Delta_ln_ell.mean()
+
+        # Covariance = diagonal shot-/shape-noise term
+        A = 1.0/ (2.0 * f_sky * Delta_ln_ell_bar)
+        B = sigma_eps**2 / (2.0 * nbar_rad2)
+        y = model_quad(np.log10(ell), ampl_fid, tilt_fid)
+        D = A / ell**2 * (y + B)**2
+
+        u = np.log10(ell)
+
+        c0    = -6.11568527 + 0.1649
+        t0    = 1.0 / (1.85132114 / 0.306)
+        a     = -0.17586216
+        u0    = shift(tilt_fid)
+
+        dy_dA = 2 * ampl_fid * 10**(c0 + a * (u-u0)**2 - u)
+        dy_dt = 1.0 / t0 * (-2.0) * a * (u - u0) * y
+
+        # Fisher matrix elements
+        F_11  = sum(1/D * dy_dt * dy_dt)
+        F_22  = sum(1/D * dy_dA * dy_dA)
+        F_12  = sum(1/D * dy_dt * dy_dA)
+
+        # Cramer-Rao, invert Fisher
+        det = F_11 * F_22 - F_12**2
+        da2 = F_22 / det
+        db2 = F_11 / det
 
     return np.sqrt([da2, db2]), det
 

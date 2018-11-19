@@ -26,39 +26,6 @@ import statsmodels.formula.api as smf
 import statsmodels.api as sm
 
 
-def model(p):
-    """Linear model.
-
-    input: p - dict: keywords 
-                a, scalar - angular coefficient
-                b, scalar - linear coefficient
-                sig, scalar - scatter
-                xmin, xmax, int - bounderies for explanatory variable
-                nobs, int - number of observations in a catalog
-                cov, matrix - covariance matrix between observations
-                
-
-    output: y, array - draw from normal distribution with mean
-                        a*x + b and scatter sig          
-    """
-    if bool(p['xfix']):
-        try:                
-            x = p['dataset1'][:,0]
-        except KeyError:
-            raise ValueError('Observed data not defined! \n if you are doing distance tests, set xfix=0')
-            
-                
-    else:
-        x = uniform.rvs(loc=p['xmin'], scale=p['xmax'] - p['xmin'], size=int(p['nobs']))
-
-    x.sort()
-    ytrue = np.array(p['a']*x + p['b'])
- 
-    y = [norm.rvs(loc=ytrue[i], scale=p['sig']) for i in range(len(x))]
-
-    return np.array([[x[i], y[i]] for i in range(int(p['nobs']))])
-
-
 def model_cov(p):
     """Linear model.
 
@@ -87,6 +54,8 @@ def model_cov(p):
     x.sort()
     ytrue = np.array(p['a']*x + p['b'])
 
+    print(cov)
+    print('MKDEBUG')
     if isinstance(p['cov'], float):
         cov_est = np.loadtxt('cov_est.txt')
         #raise ValueError('Covariance is not a matrix!')

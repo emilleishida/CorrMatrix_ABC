@@ -1,0 +1,56 @@
+#path_to_obs		= dataset1.txt   	           # path to observed data 
+path_to_obs		= None
+
+param_to_fit 		= tilt ampl                 # parameters to fit
+param_to_sim    	= tilt ampl logellmin logellmax nell f_sky sigma_eps nbar # parameters needed for simulation
+
+prior_func	        = flat_prior flat_prior    # one prior function for each parameter
+                                                   # under consideration 
+
+simulation_func = model_cov                        # simulation function
+cov_model	= Gauss+SSC_BKS17		   # Covariance
+distance_func	= linear_dist_data_diag            # distance function
+
+dist_dim = 1
+
+tilt            = 0.306                            # tilt (shift parameter in polynomial)
+ampl            = 0.827                            # amplitude (constant parameter in polynomial)
+
+input_is_true   = 0				   # If 1 (0), input model is fixed (not fixed) at input parameter.
+						   # If 0, input model is sampled using true covariance.
+
+tilt_prior_par_name       = pmin  pmax             # parameters for prior distribution
+tilt_prior_par_val        = 0.2  0.4               # values for prior distribution
+
+ampl_prior_par_name      = pmin pmax               # parameters for prior distribution  
+ampl_prior_par_val       = 0.7  0.9                # values for prior distribution   
+
+tilt_lim                  = 0.2 0.4                # 
+ampl_lim                  = 0.7  0.9               # extreme limits for parametes
+
+#logellmin = 1.06122434
+#logellmax = 4
+logellmin = 1.39794
+logellmax = 3.60206
+nell      = 20
+
+#f_sky           = 0.3636                          # covered sky fraction of survey
+f_sky           = 0.1
+#sigma_eps       = 0.22                            # intrinsic ellipticity dispersion per component
+sigma_eps       = 0.27                             # intrinsic ellipticity dispersion per component
+nbar            = 10                               # Number density of galaxies per arcmin^2
+
+nsim            = 800                              #  number of simulations for covariance matrix
+
+M 		= 100				   # number of particle in each particle system
+Mini            = 200                              # number of draws for 1st particle system
+#delta 		= 0.0025			   # convergence criteria
+delta 		= 0.025	          		   # convergence criteria
+qthreshold 	= 0.75				   # quantile in distance threshold 
+
+file_root 	= quad_PS                          # root to output files names 
+screen          = 0			           # rather (1) or not (0) to screen outputs
+ncores          = 0 				   # number of cores
+split_output    = 1                                # number of intermediate steps written to file
+
+

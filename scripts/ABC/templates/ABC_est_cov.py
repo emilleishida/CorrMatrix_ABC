@@ -12,55 +12,8 @@ from toy_model_functions import model, linear_dist, linear_dist_data, model, mod
 import numpy as np
 from scipy.stats import uniform, multivariate_normal
 from statsmodels.stats.weightstats import DescrStatsW
+from covest import weighted_std
 
-
-def get_cov_ML(mean, cov, size):
-    """Return maximum-likelihood estime of covariance matrix, from
-       realisations of a multi-variate Normal
-    
-    Parameters
-    ----------
-    mean: array(double)
-        mean of mv normal
-    cov: array(double)
-        covariance matrix of mv normal
-    size: int
-        dimension of data vector, cov is size x size matrix
-
-    Returns
-    -------
-    cov_est: matrix of double
-        estimated covariance matrix, dimension size x size
-    """
-
-    y2 = multivariate_normal.rvs(mean=mean, cov=cov, size=size)
-    # y2[:,j] = realisations for j-th data entry
-    # y2[i,:] = data vector for i-th realisation
-
-    # Estimate mean (ML)
-    ymean = np.mean(y2, axis=0)
-
-    # calculate covariance matrix
-    cov_est = np.cov(y2, rowvar=False)
-
-    if size > 1:
-        pass
-    else:
-        cov_est = [[cov_est]]
-
-    return cov_est
-
-
-def weighted_std(data, weights): 
-    """Taken from http://www.itl.nist.gov/div898/software/dataplot/refman2/ch2/weightsd.pdf"""
-
-    mean = np.average(data, weights=weights)
-    c = sum([weights[i] > pow(10, -6) for i in range(weights.shape[0])])
-
-    num = sum([weights[i] * pow(data[i] - mean, 2) for i in range(data.shape[0])])
-    denom = (c - 1) * sum(weights)/float(c)
-
-    return np.sqrt(num / denom)
 
 #user input file
 filename = 'toy_model.input'

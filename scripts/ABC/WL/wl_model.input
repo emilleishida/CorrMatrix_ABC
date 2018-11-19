@@ -11,13 +11,6 @@ distance_func	= linear_dist_data_diag               # distance function
 
 dist_dim = 1              #
 
-# Gaussian
-#Omega_m_prior_par_name      = pmean pstd               # parameters for prior distribution  
-#Omega_m_prior_par_val       = 0.27 4.0                 # values for prior distribution   
-
-#sigma_8_prior_par_name       = pmean  pstd              # parameters for prior distribution
-#sigma_8_prior_par_val        =  0.8  5.0                # values for prior distribution
-
 # Flat
 Omega_m_prior_par_name      = pmin pmax               # parameters for prior distribution  
 Omega_m_prior_par_val       = 0.05 1.5                 # values for prior distribution   
