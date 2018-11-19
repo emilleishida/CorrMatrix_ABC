@@ -8,6 +8,7 @@ import subprocess
 import shlex
 
 from astropy import units
+from astropy.io import ascii
 
 
 #import matplotlib
@@ -236,9 +237,62 @@ def get_cov_ML(mean, cov, size):
     return cov_est
 
 
+def get_cov_SSC(ell, C_ell_obs, cov_SSC_fname, func='BKS17'):
+    """Return SSC weak-lensing covariance, by reading it (or some function of it)
+    from a file.
+
+    Parameters
+    ----------
+    ell: array of double
+         angular Fourier modes
+    C_ell: array of double
+         power spectrum
+    cov_SSC_fname: string
+        file name of relative SSC covariance, in column format
+    func: string, optional, default='BKS17'
+        function of relative covariance, one in 'BKS17', 'id'
+
+    Returns
+    -------
+    cov_SSC: matrix of double
+        covariance matrix
+    """
+
+    print('Reading cov_SSC from file \'{}\' using function \'{}\''.format(cov_SSC_fname, func))
+
+    dat = ascii.read(cov_SSC_fname)
+    n   = int(np.sqrt(len(dat)))
+
+    ell_SSC = dat['col2'][0:n]
+
+    # Check whether ell's match input ell's to this function
+    drel = (ell_SSC - ell) / ell
+    if np.where(drel > 1e-2)[0].any():
+        print(ell)
+        print(ell_SSC)
+        print(drel)
+        error('SSC ell values do not match input ell values')
+
+    cov_SSC = np.zeros((n, n))
+    c = 0
+    for i in range(n):
+        for j in range(n):
+            cov_rel       = dat['col3'][c]
+
+            if func == 'BKS17':
+                # File stored Cov_SSC(l1, l2) / C(l1) / C(l2) * 10^4
+                cov_SSC[i][j] = cov_rel / 1.0e4 * C_ell_obs[i] * C_ell_obs[j]
+            elif func == 'id':
+                cov_SSC[i][j] = cov_rel
+
+            c = c + 1
+
+    return cov_SSC
+
 
 def get_cov_Gauss(ell, C_ell, f_sky, sigma_eps, nbar):
-    """Return Gaussian weak-lensing variance.
+    """Return Gaussian weak-lensing covariance (which is
+    a diagonal matrix).
     
     Parameters
     ----------
@@ -318,7 +372,7 @@ def get_cov_WL(model, ell, C_ell_obs, nbar, f_sky, sigma_eps, nsim):
     Parameters
     ----------
     model: string
-        For the moment 'Gauss'
+        One in 'Gauss', 'Gauss+SSC_BKS17'
     ell: array of float
         ell-values
     C_ell_obs: array of float
@@ -344,7 +398,24 @@ def get_cov_WL(model, ell, C_ell_obs, nbar, f_sky, sigma_eps, nsim):
     nbar_amin2  = units.Unit('{}/arcmin**2'.format(nbar))
     nbar_rad2   = nbar_amin2.to('1/rad**2')
     # We use the same C_ell as the 'observation', from above
-    cov         = get_cov_Gauss(ell, C_ell_obs, f_sky, sigma_eps, nbar_rad2)
+    cov_G       = get_cov_Gauss(ell, C_ell_obs, f_sky, sigma_eps, nbar_rad2)
+
+    if model == 'Gauss':
+        cov = cov_G
+
+    elif model == 'Gauss+SSC_BKS17':
+        cov_SSC_fname = 'cov_SSC_rel.txt'
+        func_SSC = 'BKS17'
+        cov_SSC = get_cov_SSC(ell, C_ell_obs, cov_SSC_fname, func_SSC)
+
+        # Writing covariances to files for testing/plotting
+        np.savetxt('cov_G.txt', cov_G)
+        np.savetxt('cov_SSC.txt', cov_SSC)
+        cov = cov_G + cov_SSC
+
+    else:
+
+       error('Invalid covariance mode \'{}\''.format(mode))
 
     size = cov.shape[0]
     if nsim - 1 >= size:

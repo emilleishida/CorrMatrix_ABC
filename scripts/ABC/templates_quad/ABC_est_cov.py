@@ -1,4 +1,7 @@
 import matplotlib
+
+# The following line is required for the non-framework version of OSX python
+matplotlib.use('TkAgg')
 #matplotlib.use("Agg")
 
 from cosmoabc.priors import flat_prior
@@ -33,12 +36,10 @@ Parameters['f_sky']     = float(Parameters['f_sky'][0])
 Parameters['sigma_eps'] = float(Parameters['sigma_eps'][0])
 Parameters['nbar']      = float(Parameters['nbar'][0])
 
-# construnct 1 instance of exploratory variable
 logellmin = float(Parameters['logellmin'][0])
 logellmax = float(Parameters['logellmax'][0])
 nell      = int(Parameters['nell'][0])
 logell    = np.linspace(logellmin, logellmax, nell)
-
 
 Parameters['simulation_func'] = model_cov
 
@@ -49,23 +50,29 @@ distance = {'linear_dist_data_diag': linear_dist_data_diag,
 distance_str                  = Parameters['distance_func'][0]
 Parameters['distance_func']   = distance[distance_str]
 
-# fiducial model
+# true, fiducial model
 u       = logell
-y_true  = model_quad(u, Parameters['ampl'], Parameters['tilt'])
+y_true   = model_quad(u, Parameters['ampl'], Parameters['tilt'])
+
+# Covariance
+Parameters['nsim'] = int(Parameters['nsim'][0])
+cov_model          = Parameters['cov_model'][0]
+cov, cov_est       = get_cov_WL(cov_model, 10**logell, y_true, Parameters['nbar'], Parameters['f_sky'], Parameters['sigma_eps'], Parameters['nsim'])
+
+# input  model = sample from distribution with true covariance
+y_input  = multivariate_normal.rvs(mean=y_true, cov=cov)
+
+np.savetxt('y_true.txt', 10**logell, y_true)
+np.savetxt('y_input.txt', 10**logell, y_input)
 
 # add to parameter dictionary
-Parameters['dataset1'] = np.array([[logell[i], y_true[i]] for i in range(nell)])
+Parameters['dataset1'] = np.array([[logell[i], y_input[i]] for i in range(nell)])
 np.savetxt('dataset1.txt', Parameters['dataset1'], header='# ell C_ell')
 
 # add observed catalog to simulation parameters
 Parameters['simulation_input']['dataset1'] = Parameters['dataset1']
 
 #######################
-# Covariance
-
-Parameters['nsim'] = int(Parameters['nsim'][0])
-cov, cov_est = get_cov_WL('Gauss', 10**logell, y_true, Parameters['nbar'], Parameters['f_sky'], Parameters['sigma_eps'], Parameters['nsim'])
-
 
 # add covariance to user input parameters, to be used in model
 #Parameters['cov'] = cov_est
@@ -120,7 +127,9 @@ print 'Numerical results:'
 print 'tilt:    ' + str(a_results.mean) + ' +- ' + str(a_results.std_mean)
 print 'ampl:    ' + str(b_results.mean) + ' +- ' + str(b_results.std_mean)
 
-
+# Write best-fit model to file
+y_bestfit   = model_quad(u, b_results.mean, a_results.mean)
+np.savetxt('y_bestfit.txt', 10**logell, y_bestfit)
 
 #plot results
 plot_2p( sampler_ABC.T, 'results.pdf' , Parameters)
