@@ -91,6 +91,8 @@ def parse_options(p_def):
 
     parser.add_option('-m', '--mode', dest='mode', type='string', default=p_def.mode,
         help='Mode: \'s\'=simulate, \'r\'=read ABC dirs, \'R\'=read master file, default={}'.format(p_def.mode))
+    parser.add_option('', '--recov_iter', dest='recov_iter', action='store_true',
+        help='Re-estimate covariance at beginning ofevery iteration')
 
     parser.add_option('-b', '--boxwidth', dest='boxwidth', type='float', default=None,
         help='box width for box plot, default=None, determined from n_S array')
@@ -99,7 +101,6 @@ def parse_options(p_def):
 
     parser.add_option('', '--template_dir', dest='templ_dir', type='string', default=p_def.templ_dir,
         help='Template directory, default=\'{}\''.format(p_def.templ_dir))
-
 
     parser.add_option('-v', '--verbose', dest='verbose', action='store_true', help='verbose output')
 
@@ -382,8 +383,26 @@ def substitute(dat, key, val_old, val_new):
 
 
 
-def run_ABC_in_dir(real_dir, n_S, templ_dir):
+def run_ABC_in_dir(real_dir, n_S, templ_dir, nruns=-1, prev_run=-1):
+    """ Runs or continues ABC in given directory.
 
+    Parameters
+    ----------
+    real_dir: string
+        target directory
+    n_S: int
+        number of simulations for covariance estimation
+    templ_dir: string
+        template directory
+    nruns: int, optional, default=-1
+        maximum number of runs (if < 0 run until convergence)
+    prev_run: int, optional, default=-1
+        if > 0, continue ABC from iteration #prev_run instead of running from start
+
+    Returns
+    -------
+    None
+    """
 
     files = ['ABC_est_cov.py', 'toy_model_functions.py']
     for f in files:
@@ -395,13 +414,24 @@ def run_ABC_in_dir(real_dir, n_S, templ_dir):
     fin.close()
 
     dat = substitute(dat, 'nsim', 800, n_S)
+    dat = substitute(dat, 'nruns', -1, nruns)
+
+    if prev_run > 0:
+        # Continue ABC from previous run, need observation from file
+        dat = substitute(dat, 'path_to_obs', 'None', 'observation_xy.txt')
 
     fout.write(dat)
     fout.close()
 
     os.chdir(real_dir)
 
-    run_cmd('python ABC_est_cov.py', run=True, verbose=False)
+    if prev_run < 0:
+        run_cmd('python ABC_est_cov.py', run=True, verbose=False)
+    else:
+        # Re-compute and write estimated coariance
+        run_cmd('python ABC_est_cov.py --only_cov_est', run=True, verbose=False)
+        # Continue ABC for one run
+        run_cmd('continue_ABC.py -i toy_model.input -f toy_model_functions.py -p {}'.format(prev_run), run=True, verbose=False)
 
     os.chdir('../..')
 
@@ -432,7 +462,22 @@ def simulate(n_S_arr, param):
             else:
                 if param.verbose == True:
                     print('Running {}'.format(real_dir))
-                run_ABC_in_dir(real_dir, n_S, param.templ_dir)
+
+                if param.recov_iter == False:
+
+                    run_ABC_in_dir(real_dir, n_S, param.templ_dir)
+
+                else:
+
+                    # First time: Run main script ABC_est_cov.py for one iteration
+                    run_ABC_in_dir(real_dir, n_S, param.templ_dir, nruns=1)
+
+                    # This should be a bit larger than the max iteration expected
+                    nruns_max = 30
+
+                    # Loop over calls of continue_ABC.py, each time running for nruns=1 
+                    for prev_run in range(1, nruns_max):
+                        run_ABC_in_dir(real_dir, n_S, param.templ_dir, nruns=1, prev_run=prev_run)
 
 
 

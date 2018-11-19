@@ -4,7 +4,7 @@ from cosmoabc.priors import flat_prior
 from cosmoabc.ABC_sampler import ABC
 from cosmoabc.plots import plot_2p
 from cosmoabc.ABC_functions import read_input
-from wl_functions import linear_dist_data, linear_dist_data_diag, linear_dist_data_SVD, model_Cl_norm
+from wl_functions import linear_dist_data, linear_dist_data_diag, linear_dist_data_SVD, model_Cl_norm, linear_dist_data_acf, acf
 
 import numpy as np
 import os
@@ -135,7 +135,8 @@ simulation = {'model_Cl_norm': model_Cl_norm}
 # Distance
 distance = {'linear_dist_data_diag': linear_dist_data_diag,
             'linear_dist_data':      linear_dist_data,
-            'linear_dist_data_SVD':  linear_dist_data_SVD}
+            'linear_dist_data_SVD':  linear_dist_data_SVD,
+            'linear_dist_data_acf':  linear_dist_data_acf}
 
 # set functions
 Parameters['simulation_func'] = simulation[Parameters['simulation_func'][0]]
@@ -158,6 +159,16 @@ Parameters['dataset1'] = np.array([[ell[i], C_ell_obs[i]] for i in range(Paramet
 
 # add observed catalog to simulation parameters
 Parameters['simulation_input']['dataset1'] = Parameters['dataset1']
+
+### Test of acf
+xi_u = acf(Parameters['dataset1'][:,1], norm=False, centered=False)
+xi = acf(Parameters['dataset1'][:,1], norm=True, centered=False)
+xi_c = acf(Parameters['dataset1'][:,1], norm=True, centered=True)
+print('# i xi_uu xi_n xi_nc')
+for di in range(Parameters['nell']):
+    print('{} {} {} {}'.format(di, xi_u[di], xi[di], xi_c[di]))
+
+sys.exit(0)
 
 #############################################
 ### Covariance
@@ -208,7 +219,7 @@ elif distance_str == 'linear_dist_data_SVD':
     #print('cov_inv', cov_inv[0,0], cov_inv[0,1])
 
 
-# cov_est.txt on disk is read when running plot_ABC.py.
+# cov_est.txt on disk is read when running plot/continue/test_ABC.py.
 np.savetxt('cov_est.txt', cov_est)
 
 print('Starting ABC sampling...')

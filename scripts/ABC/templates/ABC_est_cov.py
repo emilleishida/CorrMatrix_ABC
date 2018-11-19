@@ -1,3 +1,5 @@
+import sys
+
 import matplotlib
 matplotlib.use("Agg")
 
@@ -91,29 +93,39 @@ ytrue = Parameters['a']*x + Parameters['b']
 # real covariance matrix
 cov = np.diag([Parameters['sig'] for i in range(Parameters['nobs'])]) 
 
-# generate catalog
-y = multivariate_normal.rvs(mean=ytrue, cov=cov, size=1)
-
-# add to parameter dictionary
-Parameters['dataset1'] = np.array([[x[i], y[i]] for i in range(Parameters['nobs'])])
-
-# add observed catalog to simulation parameters
-if bool(Parameters['xfix']):
-    Parameters['simulation_input']['dataset1'] = Parameters['dataset1']
-
 #############################################
 Parameters['nsim'] = int(Parameters['nsim'][0])
 cov_est = get_cov_ML(ytrue, cov, Parameters['nsim'])
 
 # add covariance to user input parameters
 Parameters['simulation_input']['cov'] = cov_est
-# this is necessary in data-based distance (?)
-cov_est_inv = np.linalg.inv(cov_est)
-Parameters['cov_est_inv'] = cov_est_inv
 
-# For distance testing script
-np.savetxt('cov_est_inv.txt', cov_est_inv)
+# cov_est.txt on disk is read when running continue_ABC.py or plot_ABC.py.
+
+np.savetxt('cov_est.txt', cov_est)
+
+if len(sys.argv) > 1 and sys.argv[1] == '--only_cov_est':
+    print('Written estimated covariance matrix, exiting.')
+    sys.exit(0)
 #############################################
+
+
+# generate catalog
+y = multivariate_normal.rvs(mean=ytrue, cov=cov, size=1)
+
+# add to parameter dictionary
+Parameters['dataset1'] = np.array([[x[i], y[i]] for i in range(Parameters['nobs'])])
+# write to disk, in case it is read by continue_ABC.py
+op1 = open('observation_xy.txt', 'w')
+for line in Parameters['dataset1']:
+    for item in line:
+        op1.write(str(item) + '    ')
+    op1.write('\n')
+op1.close()
+
+# add observed catalog to simulation parameters
+if bool(Parameters['xfix']):
+    Parameters['simulation_input']['dataset1'] = Parameters['dataset1']
 
 #initiate ABC sampler
 sampler_ABC = ABC(params=Parameters)
@@ -122,7 +134,8 @@ sampler_ABC = ABC(params=Parameters)
 sys1 = sampler_ABC.BuildFirstPSystem()
 
 #update particle system until convergence
-sampler_ABC.fullABC()
+nruns = int(Parameters['nruns'][0])
+sampler_ABC.fullABC(nruns=nruns)
 
 
 # calculate numerical results

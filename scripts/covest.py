@@ -697,10 +697,10 @@ class Results:
         ax2.set_xlabel('$n_{\\rm d} / n_{\\rm s}$', size=self.fs)
 
         # y-scale
-        plt.ylim(8e-9, 1e-2)
+        plt.ylim(8e-9, 1e-1)
 
         # Dashed vertical line at n_S = n_D
-        plt.plot([n_D, n_D], [8e-9, 1e-2], ':', linewidth=1)
+        plt.plot([n_D, n_D], [8e-9, 1e-1], ':', linewidth=1)
 
         ### Output
         outbase = 'std_2{}'.format(self.file_base)

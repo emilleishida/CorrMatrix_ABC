@@ -36,6 +36,8 @@ Mini            = 200                              # number of draws for 1st par
 #delta 		= 0.0025			   # convergence criteria
 delta 		= 0.025			   # convergence criteria
 qthreshold 	= 0.75				   # quantile in distance threshold 
+nruns           = -1                               #   Number of runs, if <0 run until convergence criterium is met
+
 
 file_root 	= linear_PS                        # root to output files names 
 screen          = 0			           # rather (1) or not (0) to screen outputs

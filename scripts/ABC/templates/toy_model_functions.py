@@ -50,13 +50,10 @@ def model(p):
                 
     else:
         x = uniform.rvs(loc=p['xmin'], scale=p['xmax'] - p['xmin'], size=int(p['nobs']))
-    
+
     x.sort()
     ytrue = np.array(p['a']*x + p['b'])
  
-    #print ytrue[0]
-    #print p['cov']
-
     y = [norm.rvs(loc=ytrue[i], scale=p['sig']) for i in range(len(x))]
 
     return np.array([[x[i], y[i]] for i in range(int(p['nobs']))])
@@ -91,9 +88,12 @@ def model_cov(p):
     ytrue = np.array(p['a']*x + p['b'])
 
     if isinstance(p['cov'], float):
-        raise ValueError('Covariance is not a matrix!')
+        cov_est = np.loadtxt('cov_est.txt')
+        #raise ValueError('Covariance is not a matrix!')
+    else:
+        cov_est = p['cov']
 
-    y = multivariate_normal.rvs(mean=ytrue, cov=p['cov'])
+    y = multivariate_normal.rvs(mean=ytrue, cov=cov_est)
 
     return np.array([[x[i], y[i]] for i in range(int(p['nobs']))])
 
