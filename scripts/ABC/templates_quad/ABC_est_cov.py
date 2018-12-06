@@ -52,7 +52,7 @@ Parameters['distance_func']   = distance[distance_str]
 
 # true, fiducial model
 u       = logell
-y_true   = model_quad(u, Parameters['ampl'], Parameters['tilt'])
+y_true  = model_quad(u, Parameters['ampl'], Parameters['tilt'])
 
 # Covariance
 Parameters['nsim'] = int(Parameters['nsim'][0])
@@ -64,6 +64,9 @@ if input_is_true:
     y_input = y_true
 else:
     # input model = sample from distribution with true covariance
+    path_to_obs = Parameters['path_to_obs'][0]
+    if path_to_obs != 'None':
+        print('Inconsistent parameters: input_is_true = False (sampled input) *and* path_to_obs not \'None\'')
     y_input  = multivariate_normal.rvs(mean=y_true, cov=cov)
 
 np.savetxt('y_true.txt', np.array([10**logell, y_true]).transpose())
