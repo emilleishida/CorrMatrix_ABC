@@ -406,8 +406,8 @@ def get_cov_WL(model, ell, C_ell_obs, nbar, f_sky, sigma_eps, nsim):
 
     elif model == 'Gauss+SSC_BKS17':
         cov_SSC_fname = 'cov_SSC_rel.txt'
-        func_SSC = 'BKS17'
-        cov_SSC  = get_cov_SSC(ell, C_ell_obs, cov_SSC_fname, func_SSC)
+        func_SSC      = 'BKS17'
+        cov_SSC       = get_cov_SSC(ell, C_ell_obs, cov_SSC_fname, func_SSC)
 
         # Writing covariances to files for testing/plotting
         np.savetxt('cov_G.txt', cov_G)
@@ -821,7 +821,7 @@ class Results:
                 ax = plt.gca().xaxis
                 ax.set_major_formatter(ScalarFormatter())
                 plt.ticklabel_format(axis='x', style='sci')
-	        # For MCMC: Remove second tick label due to text overlap if little space
+	            # For MCMC: Remove second tick label due to text overlap if little space
                 x_loc = []
                 x_lab = []
                 for i, n_S in enumerate(n):
@@ -834,7 +834,7 @@ class Results:
                 plt.xticks(x_loc, x_lab, rotation=rotation)
                 ax.label.set_size(self.fs)
 
-	        # Second x-axis
+	            # Second x-axis
                 ax2 = plt.twiny()
                 x2_loc = []
                 x2_lab = []

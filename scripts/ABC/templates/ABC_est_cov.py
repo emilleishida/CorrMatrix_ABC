@@ -1,7 +1,7 @@
 import sys
 
 import matplotlib
-matplotlib.use("Agg")
+matplotlib.use("TkAgg")
 
 from cosmoabc.priors import flat_prior
 from cosmoabc.ABC_sampler import ABC
