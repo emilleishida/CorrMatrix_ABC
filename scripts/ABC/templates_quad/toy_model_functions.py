@@ -52,7 +52,7 @@ def model_cov(p):
             dat = np.loadtxt(fname)
             x   = dat[:,0]
         else:
-            print('Observed data not found in model, neither in file')
+            print('Observed data not found in model, neither in file nor in function arguments')
             sys.exit(1)
 
 

@@ -100,7 +100,7 @@ def gaussian_prior(par, func=False):
 def linear_dist(d2, p):
     """
     Distance between observed and simulated catalogues using
-    least sqares between observed fitted and simulated parameters a, b.
+    least squares between observed fitted and simulated parameters a, b.
 
     input: d2 -> array of simulated catalogue
            p -> dictonary of input parameters
@@ -136,7 +136,7 @@ def linear_dist(d2, p):
     
 def linear_dist_data(d2, p):
     """Distance between observed and simulated catalogues using
-       least squres between observed and simulated data points y.
+       least squares between observed and simulated data points y.
 
     Parameters
     ----------

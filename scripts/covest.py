@@ -21,6 +21,16 @@ from matplotlib.ticker import ScalarFormatter
 import scipy.stats._multivariate as mv
 
 
+class ABCCovError(Exception):
+   """ ABCCovError
+
+   Generic error that is raised by scripts that import this module.
+
+   """
+
+   pass
+
+
 
 def alpha_new(n_S, n_D):
     """Return precision matrix estimate bias prefactor alpha.
@@ -324,15 +334,17 @@ def get_cov_Gauss(ell, C_ell, f_sky, sigma_eps, nbar):
     # To just use Delta_ell = diff(ell) would bias the Delta's,
     # since they would not correspond to the bin center ell's.
     
-    # For log10-bins: Delta log10 ell = Delta ell / ell / log 10 
+    # For log10-bins: Delta log10 ell = Delta ell / ell / log 10,
+    # we ignore constant 1/log10 that would later be multiplied when
+    # doing 10^.
     # Use mean of ell_i+1 and ell_i good to < 1% compared
-    # to Delta log ell
-    Delta_lg_ell = np.diff(ell) / (ell[:-1]/2 + ell[1:]/2) / np.log(10)
+    # to Delta ln ell
+    Delta_ln_ell = np.diff(ell) / (ell[:-1]/2 + ell[1:]/2)
  
     # add last element again to restore length of Delta_ell 
-    Delta_lg_ell = np.append(Delta_lg_ell, Delta_lg_ell[-1])
+    Delta_ln_ell = np.append(Delta_ln_ell, Delta_ln_ell[-1])
 
-    Delta_ell = Delta_lg_ell * ell * np.log(10)
+    Delta_ell = Delta_ln_ell * ell
 
     D         = 1.0 / (f_sky * (2.0 * ell + 1) * Delta_ell) * C_ell_tot**2
     Sigma = np.diag(D)
@@ -573,6 +585,18 @@ class Results:
         return std_var
 
 
+    def get_mean(self, p):
+        """Return mean parameters per simulation, averaged over realisations
+        """
+
+        n_n_S = self.mean[self.par_name[0]].shape[0]
+        mean = np.zeros(shape = n_n_S)
+        for i in range(n_n_S):
+            mean[i] = np.mean(self.mean[p][i])
+
+        return mean
+
+
     def read_mean_std(self, format='ascii', npar=2, verbose=False):
         """Read mean and std from file
         """
@@ -697,7 +721,7 @@ class Results:
         return True
 
 
-    def plot_mean_std(self, n, n_D, par=None, boxwidth=None, xlog=False):
+    def plot_mean_std(self, n, n_D, par=None, boxwidth=None, xlog=False, model='affine'):
         """Plot mean and std versus number of realisations n
 
         Parameters
@@ -712,6 +736,8 @@ class Results:
             box width for box plots, default: None, width is determined from n
         xlog: bool, optional
             logarithmic x-axis, default False
+        model: string
+            model, one in 'affine' or 'quadratic'
 
         Returns
         -------
@@ -861,9 +887,15 @@ class Results:
             # Set y limits by hand to be the same for all sampling plot (which have two panels)
             if n_panel == 2:
                 if which == 'mean':
-                    plt.ylim(-2, 2)
+                    if model == 'affine':
+                        plt.ylim(-2, 2)
+                    else:
+                        plt.ylim(0, 1)
                 if which == 'std':
-                    plt.ylim(1e-4, 3e-1)
+                    if model == 'affine':
+                        plt.ylim(1e-4, 3e-1)
+                    else:
+                        plt.ylim(5e-4, 2e-2)
 
 
         if plot_sth == True:
@@ -1182,31 +1214,29 @@ def Fisher_error_ana(x, sig2, delta, mode=-1):
 
 
 
-def Fisher_ana_quad(ell, f_sky, sigma_eps, nbar_rad2, tilt_fid, ampl_fid):
+def Fisher_ana_quad(ell, f_sky, sigma_eps, nbar_rad2, tilt_fid, ampl_fid, cov_model, mode=1):
     """Return Fisher matrix for quadratic model with parameters t (tilt) and A (amplitude).
     """
 
-    mode = 1
 
-
-    # Numerical derivatives for testing
     if mode == 0:
-        h   = 0.1
-        yp1 = model_quad(np.log10(ell), ampl_fid*(1+h), tilt_fid)
-        ym1 = model_quad(np.log10(ell), ampl_fid*(1-h), tilt_fid)
-        yp2 = model_quad(np.log10(ell), ampl_fid, tilt_fid*(1+h))
-        ym2 = model_quad(np.log10(ell), ampl_fid, tilt_fid*(1-h))
+
+        # Numerical derivatives for testing.
+        # 1/2/2019: Gives the same result as mode=1 to 1%
+
+        h   = 0.01
+        yp1 = model_quad(np.log10(ell), ampl_fid + h, tilt_fid)
+        ym1 = model_quad(np.log10(ell), ampl_fid - h, tilt_fid)
+        yp2 = model_quad(np.log10(ell), ampl_fid, tilt_fid + h)
+        ym2 = model_quad(np.log10(ell), ampl_fid, tilt_fid - h)
 
         dy_dt = (yp2 - ym2) / (2*h)
         dy_dA = (yp1 - ym1) / (2*h)
-        F_11  = sum(1/D * dy_dt * dy_dt)
-        F_22  = sum(1/D * dy_dA * dy_dA)
-        F_12  = sum(1/D * dy_dt * dy_dA)
 
-        det = F_11 * F_22 - F_12**2
-        da2 = F_22 / det
-        db2 = F_11 / det
-
+        y     = model_quad(np.log10(ell), ampl_fid, tilt_fid)
+        D     = get_cov_Gauss(ell, y, f_sky, sigma_eps, nbar_rad2)
+        D     = np.diag(D)
+        
     else:
 
         Delta_ln_ell = np.diff(ell) / (ell[:-1]/2 + ell[1:]/2)
@@ -1215,10 +1245,15 @@ def Fisher_ana_quad(ell, f_sky, sigma_eps, nbar_rad2, tilt_fid, ampl_fid):
         Delta_ln_ell_bar = Delta_ln_ell.mean()
 
         # Covariance = diagonal shot-/shape-noise term
-        A = 1.0/ (2.0 * f_sky * Delta_ln_ell_bar)
-        B = sigma_eps**2 / (2.0 * nbar_rad2)
         y = model_quad(np.log10(ell), ampl_fid, tilt_fid)
-        D = A / ell**2 * (y + B)**2
+        B = sigma_eps**2 / (2.0 * nbar_rad2)
+
+        #N = 1.0 / (f_sky * (2.0 * ell + 1) * Delta_ell)
+        N = 1.0 / (f_sky * (2.0 * ell) * Delta_ell)
+        D = N * (y + B)**2
+
+        #N = 1.0/ (2.0 * f_sky * Delta_ln_ell_bar)
+        #D = N / ell**2 * (y + B)**2
 
         u = np.log10(ell)
 
@@ -1227,18 +1262,33 @@ def Fisher_ana_quad(ell, f_sky, sigma_eps, nbar_rad2, tilt_fid, ampl_fid):
         a     = -0.17586216
         u0    = shift(tilt_fid)
 
+        # The following two lines are equivalent
         dy_dA = 2 * ampl_fid * 10**(c0 + a * (u-u0)**2 - u)
-        dy_dt = 1.0 / t0 * (-2.0) * a * (u - u0) * y
+        #dy_dA = 2.0 * y / ampl_fid
 
-        # Fisher matrix elements
-        F_11  = sum(1/D * dy_dt * dy_dt)
-        F_22  = sum(1/D * dy_dA * dy_dA)
-        F_12  = sum(1/D * dy_dt * dy_dA)
+        dy_dt = 1.0 / t0 * (-2.0) * a * (u - u0) * y * np.log(10)
 
-        # Cramer-Rao, invert Fisher
-        det = F_11 * F_22 - F_12**2
-        da2 = F_22 / det
-        db2 = F_11 / det
+    if cov_model == 'Gauss':
+        Psi = np.diag([1.0 / d for d in D])
+    elif cov_model == 'Gauss+SSC_BKS17':
+        cov_SSC_fname = 'cov_SSC_rel.txt'
+        func_SSC      = 'BKS17'
+        cov_SSC       = get_cov_SSC(ell, y, 'cov_SSC_rel.txt', 'BKS17')
+        cov           = np.diag(D) + cov_SSC
+        Psi           = np.linalg.inv(cov)
+
+    # Fisher matrix elements
+    F_11   = np.einsum('i,ij,j', dy_dt, Psi, dy_dt)
+    F_22   = np.einsum('i,ij,j', dy_dA, Psi, dy_dA)
+    F_12   = np.einsum('i,ij,j', dy_dt, Psi, dy_dA)
+    #F_11  = sum(1/D * dy_dt * dy_dt)
+    #F_22  = sum(1/D * dy_dA * dy_dA)
+    #F_12  = sum(1/D * dy_dt * dy_dA)
+
+    # Cramer-Rao, invert Fisher
+    det = F_11 * F_22 - F_12**2
+    da2 = F_22 / det
+    db2 = F_11 / det
 
     return np.sqrt([da2, db2]), det
 
