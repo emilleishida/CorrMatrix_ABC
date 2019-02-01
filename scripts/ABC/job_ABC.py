@@ -479,7 +479,7 @@ def simulate(n_S_arr, param):
                 if param.verbose == True:
                     print('Running {}'.format(real_dir))
 
-                if param.recov_iter == False:
+                if not param.recov_iter:
 
                     run_ABC_in_dir(real_dir, n_S, param.templ_dir)
 

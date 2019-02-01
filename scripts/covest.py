@@ -847,7 +847,7 @@ class Results:
                 ax = plt.gca().xaxis
                 ax.set_major_formatter(ScalarFormatter())
                 plt.ticklabel_format(axis='x', style='sci')
-	        # For MCMC: Remove second tick label due to text overlap if little space
+	            # For MCMC: Remove second tick label due to text overlap if little space
                 x_loc = []
                 x_lab = []
                 for i, n_S in enumerate(n):
@@ -860,7 +860,7 @@ class Results:
                 plt.xticks(x_loc, x_lab, rotation=rotation)
                 ax.label.set_size(self.fs)
 
-	        # Second x-axis
+	            # Second x-axis
                 ax2 = plt.twiny()
                 x2_loc = []
                 x2_lab = []

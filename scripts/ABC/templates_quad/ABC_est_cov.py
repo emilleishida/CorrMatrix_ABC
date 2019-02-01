@@ -11,6 +11,8 @@ from cosmoabc.ABC_functions import read_input
 from toy_model_functions import linear_dist_data_diag, linear_dist_data, model_cov, model_quad
 
 import numpy as np
+import sys
+
 from scipy.stats import uniform, multivariate_normal
 from statsmodels.stats.weightstats import DescrStatsW
 from covest import weighted_std, get_cov_WL
@@ -64,9 +66,14 @@ if input_is_true:
     y_input = y_true
 else:
     # input model = sample from distribution with true covariance
-    path_to_obs = Parameters['path_to_obs'][0]
+
+    # Consistency check of input parameters
+    path_to_obs = Parameters['path_to_obs']
+    print('MKDEBUG ', path_to_obs)
     if path_to_obs != 'None':
         print('Inconsistent parameters: input_is_true = False (sampled input) *and* path_to_obs not \'None\'')
+        sys.exit(5)
+
     y_input  = multivariate_normal.rvs(mean=y_true, cov=cov)
 
 np.savetxt('y_true.txt', np.array([10**logell, y_true]).transpose())
