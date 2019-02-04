@@ -1,1 +1,0 @@
-/Users/mkilbing/astro/Runs/ABC/ABC/quad/linear_dist_data/nsim_1622/nr_0/cov_true_inv_diag.txt
