@@ -622,15 +622,18 @@ def main(argv=None):
         dpar_exact, det = Fisher_error_ana(x1, param.sig2, delta, mode=-1)
         n_D  = param.n_D
     elif param.model == 'quadratic':
-        for mode in ([0, 1]):
+        for mode in ([1]):
             dpar_exact, det, n_D = Fisher_ana_quad_read_par(param.templ_dir, param.par, mode=mode)
-            print('par:           ', param.par)
-            print('estim mean par: ', end='')
-            for p in param.par_name:
-                mean = fit_ABC.get_mean(p)
-                print('{:.5g}'.format(np.mean(mean)), end=' ')
+            print('input par and exact std: ', end='')
+            for i, p in enumerate(param.par):
+                print('{:.4f}  +- {:.5f}   '.format(p, dpar_exact[i]), end='')
             print('')
-            print('dpar_exact:    ', dpar_exact)
+
+        print('estimated par and std:   ', end='')
+        for p in param.par_name:
+            mean, std = fit_ABC.get_mean_std_all(p)
+            print('{:.5f} +- {:.5f}'.format(mean, std), end='   ')
+        print('')
     else:
         raise ABCCovError('Unknown model \'{}\''.format(param.model))
 
