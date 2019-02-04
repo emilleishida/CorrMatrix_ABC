@@ -69,7 +69,6 @@ else:
 
     # Consistency check of input parameters
     path_to_obs = Parameters['path_to_obs']
-    print('MKDEBUG ', path_to_obs)
     if path_to_obs != 'None':
         print('Inconsistent parameters: input_is_true = False (sampled input) *and* path_to_obs not \'None\'')
         sys.exit(5)
