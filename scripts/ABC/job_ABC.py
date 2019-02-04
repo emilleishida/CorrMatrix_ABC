@@ -531,7 +531,7 @@ def read_from_ABC_dirs(n_S_arr, par_name, fit_ABC, options):
 
 
 
-def Fisher_ana_quad_read_par(templ_dir, par):
+def Fisher_ana_quad_read_par(templ_dir, par, mode=1):
     """Read parameters from config file and return Fisher matrix errors
        on parameters of quadratic model.
     """
@@ -552,9 +552,12 @@ def Fisher_ana_quad_read_par(templ_dir, par):
     nell      = int(Parameters['nell'][0])
     logell    = np.linspace(logellmin, logellmax, nell)
 
+    cov_model = Parameters['cov_model'][0]
+    print('Covariance used in Fisher matrix = {}'.format(cov_model))
+
     ampl_fid, tilt_fid = par
 
-    dpar, det = Fisher_ana_quad(10**logell, f_sky, sigma_eps, nbar_rad2, ampl_fid, tilt_fid)
+    dpar, det = Fisher_ana_quad(10**logell, f_sky, sigma_eps, nbar_rad2, ampl_fid, tilt_fid, cov_model, mode=mode)
     return dpar, det, nell
     
 
@@ -619,18 +622,28 @@ def main(argv=None):
         dpar_exact, det = Fisher_error_ana(x1, param.sig2, delta, mode=-1)
         n_D  = param.n_D
     elif param.model == 'quadratic':
-        dpar_exact, det, n_D = Fisher_ana_quad_read_par(param.templ_dir, param.par)
-        print('par:        ', param.par)
-        print('dpar_exact: ', dpar_exact)
+        for mode in ([0, 1]):
+            dpar_exact, det, n_D = Fisher_ana_quad_read_par(param.templ_dir, param.par, mode=mode)
+            print('par:           ', param.par)
+            print('estim mean par: ', end='')
+            for p in param.par_name:
+                mean = fit_ABC.get_mean(p)
+                print('{:.5g}'.format(np.mean(mean)), end=' ')
+            print('')
+            print('dpar_exact:    ', dpar_exact)
     else:
-        stuff.error()
+        raise ABCCovError('Unknown model \'{}\''.format(param.model))
 
     try:
-        fit_ABC.plot_mean_std(n_S_arr, n_D, par={'mean': param.par, 'std': dpar_exact}, boxwidth=param.boxwidth, xlog=param.xlog)
+        fit_ABC.plot_mean_std(n_S_arr, n_D, par={'mean': param.par, 'std': dpar_exact}, boxwidth=param.boxwidth, xlog=param.xlog, model=param.model)
         dpar2 = dpar_exact**2
         fit_ABC.plot_std_var(n_S_arr, n_D, par=dpar2, xlog=param.xlog)
+    except _tkinter.TclError:
+        print('No plots created, could not open display')
+        pass
     except:
-        print('Plotting ABC mean and std failed, maybe display not available.')
+        print('Error occured while plotting ABC mean and std')
+        raise
 
 
     return 0

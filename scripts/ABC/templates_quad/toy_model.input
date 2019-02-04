@@ -29,6 +29,7 @@ ampl_prior_par_val       = 0.7  0.9                # values for prior distributi
 tilt_lim                  = 0.2 0.4                # 
 ampl_lim                  = 0.7  0.9               # extreme limits for parametes
 
+# log10 of ell
 #logellmin = 1.06122434
 #logellmax = 4
 logellmin = 1.39794
