@@ -598,11 +598,11 @@ class Results:
 
         
     def get_mean_std_all(self, p):
-        """Return mean parameter averaged over simulations and 
+        """Return mean, error of mean, and std, all averaged over simulations and runs
         """
 
         mean = self.get_mean(p)
-        m = np.mean(mean)
+        m    = np.mean(mean)
 
         # The above mean *m* is equal to mean over all sims and runs
         mean2 = []
@@ -613,13 +613,14 @@ class Results:
         #m2 = np.mean(mean2)
         s = np.std(mean2)
 
-        # The above std *s* is equal to mean of std
-        #std = []
-        #for i in range(n_n_S):
-            #std.append(self.std[p][i])
-        #s2 = np.mean(s)
+        std = []
+        for i in range(n_n_S):
+            for run in range(n_R):
+                this_s = self.std[p][i][run]
+                std.append(this_s)
+        s2 = np.mean(std)
 
-        return m, s
+        return m, s, s2
 
 
     def read_mean_std(self, format='ascii', npar=2, verbose=False):

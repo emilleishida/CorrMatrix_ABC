@@ -624,26 +624,29 @@ def main(argv=None):
     elif param.model == 'quadratic':
         for mode in ([1]):
             dpar_exact, det, n_D = Fisher_ana_quad_read_par(param.templ_dir, param.par, mode=mode)
-            print('input par and exact std: ', end='')
+            print('input par and exact std:          ', end='')
             for i, p in enumerate(param.par):
-                print('{:.4f}  +- {:.5f}   '.format(p, dpar_exact[i]), end='')
+                print('{:.4f}  +- {:.5f}             '.format(p, dpar_exact[i]), end='')
             print('')
 
-        print('estimated par and std:   ', end='')
+            print('estim mean std(mean) [mean(std)]: ', end='')
+        std_estim = []
         for p in param.par_name:
-            mean, std = fit_ABC.get_mean_std_all(p)
-            print('{:.5f} +- {:.5f}'.format(mean, std), end='   ')
+            mean, std, std2 = fit_ABC.get_mean_std_all(p)
+            std_estim.append(std)
+            print('{:.5f} +- {:.5f} [{:.5f}]'.format(mean, std, std2), end='   ')
         print('')
     else:
         raise ABCCovError('Unknown model \'{}\''.format(param.model))
 
     try:
         fit_ABC.plot_mean_std(n_S_arr, n_D, par={'mean': param.par, 'std': dpar_exact}, boxwidth=param.boxwidth, xlog=param.xlog, model=param.model)
+        #fit_ABC.plot_mean_std(n_S_arr, n_D, par={'mean': param.par, 'std': std_estim}, boxwidth=param.boxwidth, xlog=param.xlog, model=param.model)
         dpar2 = dpar_exact**2
         fit_ABC.plot_std_var(n_S_arr, n_D, par=dpar2, xlog=param.xlog)
-    except _tkinter.TclError:
-        print('No plots created, could not open display')
-        pass
+    #except TclError:
+        #print('No plots created, could not open display')
+        #pass
     except:
         print('Error occured while plotting ABC mean and std')
         raise
