@@ -192,3 +192,117 @@ def linear_dist_data_diag(d2, p):
 
     return np.atleast_1d(dist)
 
+
+
+# See WL/w_functions.py
+
+
+def acf_one(C, di, mean):
+    """Return one value of the auto-correlation function xi(x) of C at argument x=di
+
+    Parameters
+    ----------
+    C: array(float)
+        observed power spectrum
+    di: int
+        difference of ell-mode indices
+    mean: float
+        mean value of C (can be 0 if un-centered acf is desired)
+
+    Returns
+    -------
+    xi: float
+        auto-correlation function value
+    """
+
+    n  = len(C)
+    # Shift signal and keep to same length (loose entries at high-ell end)
+    C1 = C[:n-di]
+    C2 = C[di:]
+
+    # Estimate ACF
+    xi = sum((C1 - mean) * (C2 - mean)) / float(n)
+
+    return xi
+
+
+
+def acf(C, norm=False, centered=False):
+    """Return auto-correlation function of C.
+
+    Parameters
+    ----------
+    C: array(float)
+        observed power spectrum
+    di: int
+        difference of ell-mode indices
+    norm: bool, optional, default=False
+        if True, acf is normalised by the variance
+    centered: bool, optional, default=False
+        if True, center acf by subtracting the mean
+
+    Returns
+    -------
+    xi: array of float
+        auto-correlation function value
+    """
+
+    if centered:
+        mean = 0
+    else:
+        mean = C.mean()
+
+    xi = []
+    for di in range(len(C)):
+        xi.append(acf_one(C, di, mean))
+
+    if norm:
+        # Var = < C_ell C_ell> = xi(0)
+        xi = xi / xi[0]
+
+    return xi
+
+
+
+def linear_dist_data_acf(d2, p):
+    """Distance between observed and simulated catalogues using
+       the auto-correlation function of the observation
+
+    Parameters
+    ----------
+    d2: array(double, 2)
+        simulated catalogue
+    p: dictionary
+        input parameters
+
+    Returns
+    -------
+    dist: double
+        distance
+    """
+
+    C_ell_sim = d2[:,1]
+    C_ell_obs = p['dataset1'][:,1]
+
+    if 'cov' in p:
+        cov = p['cov']
+    else:
+        #print('linear_dist_data_diag: Reading cov_est.txt from disk')
+        cov = np.loadtxt('cov_est.txt')
+
+    # Weighted data points
+    C_ell_sim_w = C_ell_sim / np.sqrt(np.diag(cov))
+    C_ell_obs_w = C_ell_obs / np.sqrt(np.diag(cov))
+
+    xi = acf(C_ell_obs, norm=True, centered=False)
+
+    d = 0
+    n = len(C_ell_obs)
+    for i in range(n):
+        for j in range(n):
+            term = (C_ell_sim_w[i] - C_ell_obs_w[j])**2 * xi[np.abs(i-j)]**2
+            d = d + term
+
+    return d
+
+
