@@ -1307,9 +1307,6 @@ def Fisher_ana_quad(ell, f_sky, sigma_eps, nbar_rad2, tilt_fid, ampl_fid, cov_mo
     F_11   = np.einsum('i,ij,j', dy_dt, Psi, dy_dt)
     F_22   = np.einsum('i,ij,j', dy_dA, Psi, dy_dA)
     F_12   = np.einsum('i,ij,j', dy_dt, Psi, dy_dA)
-    #F_11  = sum(1/D * dy_dt * dy_dt)
-    #F_22  = sum(1/D * dy_dA * dy_dA)
-    #F_12  = sum(1/D * dy_dt * dy_dA)
 
     # Cramer-Rao, invert Fisher
     det = F_11 * F_22 - F_12**2
