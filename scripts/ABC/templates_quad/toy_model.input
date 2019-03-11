@@ -10,7 +10,7 @@ prior_func	        = flat_prior flat_prior    # one prior function for each para
 simulation_func = model_cov                        # simulation function
 #cov_model	= Gauss+SSC_BKS17		   # Covariance
 cov_model	= Gauss
-distance_func	= linear_dist_data_diag            # distance function
+distance_func	= linear_dist_data            # distance function
 
 dist_dim = 1
 
@@ -46,8 +46,8 @@ nsim            = 800                              #  number of simulations for 
 
 M 		= 100				   # number of particle in each particle system
 Mini            = 200                              # number of draws for 1st particle system
-#delta 		= 0.0025			   # convergence criteria
-delta 		= 0.025	          		   # convergence criteria
+delta 		= 0.0025			   # convergence criteria
+#delta 		= 0.025	          		   # convergence criteria
 qthreshold 	= 0.75				   # quantile in distance threshold 
 nruns           = -1                               #   Number of runs, if <0 run until convergence criterium is met
 
