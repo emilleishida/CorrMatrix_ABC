@@ -8,8 +8,8 @@ prior_func	        = flat_prior flat_prior    # one prior function for each para
                                                    # under consideration 
 
 simulation_func = model_cov                        # simulation function
-#cov_model	= Gauss+SSC_BKS17		   # Covariance
-cov_model	= Gauss
+cov_model	= Gauss+SSC_BKS17		   # Covariance
+#cov_model	= Gauss
 distance_func	= linear_dist_data            # distance function
 #distance_func   = linear_dist_data_acf
 
