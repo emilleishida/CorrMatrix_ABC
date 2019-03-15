@@ -146,4 +146,8 @@ y_bestfit   = model_quad(u, b_results.mean, a_results.mean)
 np.savetxt('y_bestfit.txt', np.array([10**logell, y_bestfit]).transpose())
 
 #plot results
-plot_2p( sampler_ABC.T, 'results.pdf' , Parameters)
+out_path = 'results.pdf'
+try:
+    plot_2p(sampler_ABC.T, out_path, Parameters)
+except:
+    print('Error occured while creating \'{}\'. Maybe just the display could not be accessed. Continuing anyway...'.format(out_path))

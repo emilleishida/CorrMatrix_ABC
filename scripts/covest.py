@@ -1240,7 +1240,8 @@ def Fisher_error_ana(x, sig2, delta, mode=-1):
 
 
 
-def Fisher_ana_quad(ell, f_sky, sigma_eps, nbar_rad2, tilt_fid, ampl_fid, cov_model, mode=1):
+def Fisher_ana_quad(ell, f_sky, sigma_eps, nbar_rad2, tilt_fid, ampl_fid, cov_model, mode=1,
+                    templ_dir='.'):
     """Return Fisher matrix for quadratic model with parameters t (tilt) and A (amplitude).
     """
 
@@ -1297,9 +1298,9 @@ def Fisher_ana_quad(ell, f_sky, sigma_eps, nbar_rad2, tilt_fid, ampl_fid, cov_mo
     if cov_model == 'Gauss':
         Psi = np.diag([1.0 / d for d in D])
     elif cov_model == 'Gauss+SSC_BKS17':
-        cov_SSC_fname = 'cov_SSC_rel.txt'
+        cov_SSC_path = '{}/cov_SSC_rel.txt'.format(templ_dir)
         func_SSC      = 'BKS17'
-        cov_SSC       = get_cov_SSC(ell, y, 'cov_SSC_rel.txt', 'BKS17')
+        cov_SSC       = get_cov_SSC(ell, y, cov_SSC_path, 'BKS17')
         cov           = np.diag(D) + cov_SSC
         Psi           = np.linalg.inv(cov)
 

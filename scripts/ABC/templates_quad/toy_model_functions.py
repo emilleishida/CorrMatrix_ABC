@@ -281,14 +281,12 @@ def linear_dist_data_acf(d2, p):
         distance
     """
 
-
     C_ell_sim = d2[:,1]
     C_ell_obs = p['dataset1'][:,1]
 
     if 'cov' in p:
         cov = p['cov']
     else:
-        #print('linear_dist_data_diag: Reading cov_est.txt from disk')
         cov = np.loadtxt('cov_est.txt')
 
     # Weighted data points
@@ -304,12 +302,6 @@ def linear_dist_data_acf(d2, p):
             term = (C_ell_sim_w[i] - C_ell_obs_w[j])**2 * xi[np.abs(i-j)]**2
             d = d + term
 
-    x = linear_dist_data_diag(d2, p)
-
     d = np.atleast_1d(d)
-
-    print('MKDEBUG', x, d)
-
-    return x
-
+    return d
 

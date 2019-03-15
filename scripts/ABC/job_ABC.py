@@ -557,7 +557,8 @@ def Fisher_ana_quad_read_par(templ_dir, par, mode=1):
 
     ampl_fid, tilt_fid = par
 
-    dpar, det = Fisher_ana_quad(10**logell, f_sky, sigma_eps, nbar_rad2, ampl_fid, tilt_fid, cov_model, mode=mode)
+    dpar, det = Fisher_ana_quad(10**logell, f_sky, sigma_eps, nbar_rad2, ampl_fid, tilt_fid, cov_model,
+                                mode=mode, templ_dir=templ_dir)
     return dpar, det, nell
     
 
@@ -644,12 +645,9 @@ def main(argv=None):
         #fit_ABC.plot_mean_std(n_S_arr, n_D, par={'mean': param.par, 'std': std_estim}, boxwidth=param.boxwidth, xlog=param.xlog, model=param.model)
         dpar2 = dpar_exact**2
         fit_ABC.plot_std_var(n_S_arr, n_D, par=dpar2, xlog=param.xlog)
-    #except TclError:
-        #print('No plots created, could not open display')
-        #pass
     except:
-        print('Error occured while plotting ABC mean and std')
-        raise
+        print('Error occured while plotting ABC mean and std. Maybe just the display could not be accessed. Continuing anyway...')
+        pass
 
 
     return 0
