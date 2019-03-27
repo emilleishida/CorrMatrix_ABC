@@ -215,13 +215,13 @@ def acf_one(C, di, mean):
         auto-correlation function value
     """
 
-    n  = len(C)
+    n_D  = len(C)
     # Shift signal and keep to same length (loose entries at high-ell end)
-    C1 = C[:n-di]
+    C1 = C[:n_D - di]
     C2 = C[di:]
 
     # Estimate ACF
-    xi = sum((C1 - mean) * (C2 - mean)) / float(n)
+    xi = sum((C1 - mean) * (C2 - mean)) / float(n_D)
 
     return xi
 
@@ -296,9 +296,9 @@ def linear_dist_data_acf(d2, p):
     xi = acf(C_ell_obs, norm=True, centered=False)
 
     d = 0
-    n = len(C_ell_obs)
-    for i in range(n):
-        for j in range(n):
+    n_D = len(C_ell_obs)
+    for i in range(n_D):
+        for j in range(n_D):
             term = (C_ell_sim_w[i] - C_ell_obs_w[j])**2 * xi[np.abs(i-j)]**2
             d = d + term
 
