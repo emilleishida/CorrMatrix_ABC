@@ -38,10 +38,19 @@ Parameters['f_sky']     = float(Parameters['f_sky'][0])
 Parameters['sigma_eps'] = float(Parameters['sigma_eps'][0])
 Parameters['nbar']      = float(Parameters['nbar'][0])
 
+nell      = int(Parameters['nell'][0])
 logellmin = float(Parameters['logellmin'][0])
 logellmax = float(Parameters['logellmax'][0])
-nell      = int(Parameters['nell'][0])
-logell    = np.linspace(logellmin, logellmax, nell)
+ellmode = Parameters['ellmode'][0]
+if ellmode == 'log':
+    # Equidistant in log ell
+    logell = np.linspace(logellmin, logellmax, nell)
+else:
+    # Equidistant in ell
+    ellmin = 10**logellmin
+    ellmax = 10**logellmax
+    ell = np.linspace(ellmin, ellmax, nell)
+    logell = np.log10(ell)
 
 Parameters['simulation_func'] = model_cov
 

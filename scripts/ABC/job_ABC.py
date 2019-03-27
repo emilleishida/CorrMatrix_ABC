@@ -547,10 +547,20 @@ def Fisher_ana_quad_read_par(templ_dir, par, mode=1):
     nbar_amin2 = units.Unit('{}/arcmin**2'.format(nbar))
     nbar_rad2  = nbar_amin2.to('1/rad**2')
     
+    nell      = int(Parameters['nell'][0])
     logellmin = float(Parameters['logellmin'][0])
     logellmax = float(Parameters['logellmax'][0])
-    nell      = int(Parameters['nell'][0])
-    logell    = np.linspace(logellmin, logellmax, nell)
+    ellmode = Parameters['ellmode'][0]
+    if ellmode == 'log':
+        # Equidistant in log ell
+        logell = np.linspace(logellmin, logellmax, nell)
+    else:
+        print('Warning: Linear ell bins, Fisher ana not tested')
+        # Equidistant in ell
+        ellmin = 10**logellmin
+        ellmax = 10**logellmax
+        ell = np.linspace(ellmin, ellmax, nell)
+        logell = np.log10(ell)
 
     cov_model = Parameters['cov_model'][0]
     print('Covariance used in Fisher matrix = {}'.format(cov_model))
