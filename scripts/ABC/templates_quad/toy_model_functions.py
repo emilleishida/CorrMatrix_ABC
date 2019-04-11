@@ -197,7 +197,7 @@ def linear_dist_data_diag(d2, p):
 # See WL/w_functions.py
 
 
-def acf_one(C, di, mean):
+def acf_one(C, di, mean, reverse=False):
     """Return one value of the auto-correlation function xi(x) of C at argument x=di
 
     Parameters
@@ -208,6 +208,8 @@ def acf_one(C, di, mean):
         difference of ell-mode indices
     mean: float
         mean value of C (can be 0 if un-centered acf is desired)
+    reverse: bool, optional, default=False
+        if True, reverse one of the vectors
 
     Returns
     -------
@@ -215,19 +217,22 @@ def acf_one(C, di, mean):
         auto-correlation function value
     """
 
-    n  = len(C)
+    n_D  = len(C)
     # Shift signal and keep to same length (loose entries at high-ell end)
-    C1 = C[:n-di]
+    C1 = C[:n_D - di]
     C2 = C[di:]
 
+    if reverse:
+        C2 = C2[::-1]
+
     # Estimate ACF
-    xi = sum((C1 - mean) * (C2 - mean)) / float(n)
+    xi = sum((C1 - mean) * (C2 - mean)) / float(n_D)
 
     return xi
 
 
 
-def acf(C, norm=False, centered=False):
+def acf(C, norm=False, centered=False, reverse=False):
     """Return auto-correlation function of C.
 
     Parameters
@@ -254,7 +259,7 @@ def acf(C, norm=False, centered=False):
 
     xi = []
     for di in range(len(C)):
-        xi.append(acf_one(C, di, mean))
+        xi.append(acf_one(C, di, mean, reverse=reverse))
 
     if norm:
         # Var = < C_ell C_ell> = xi(0)
@@ -281,35 +286,27 @@ def linear_dist_data_acf(d2, p):
         distance
     """
 
-
     C_ell_sim = d2[:,1]
     C_ell_obs = p['dataset1'][:,1]
 
     if 'cov' in p:
         cov = p['cov']
     else:
-        #print('linear_dist_data_diag: Reading cov_est.txt from disk')
         cov = np.loadtxt('cov_est.txt')
 
     # Weighted data points
     C_ell_sim_w = C_ell_sim / np.sqrt(np.diag(cov))
     C_ell_obs_w = C_ell_obs / np.sqrt(np.diag(cov))
 
-    xi = acf(C_ell_obs, norm=True, centered=False)
+    xi = acf(C_ell_obs, norm=True, centered=False, reverse=False)
 
     d = 0
-    n = len(C_ell_obs)
-    for i in range(n):
-        for j in range(n):
+    n_D = len(C_ell_obs)
+    for i in range(n_D):
+        for j in range(n_D):
             term = (C_ell_sim_w[i] - C_ell_obs_w[j])**2 * xi[np.abs(i-j)]**2
             d = d + term
 
-    x = linear_dist_data_diag(d2, p)
-
     d = np.atleast_1d(d)
-
-    print('MKDEBUG', x, d)
-
-    return x
-
+    return d
 
