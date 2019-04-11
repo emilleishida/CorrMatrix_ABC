@@ -810,8 +810,7 @@ def fit_corr_SH(x1, cov_true, cov_est_inv, n_jobs=3):
 
         chi2 = (y - mu)' * cov_est_inv * (y - mu);
 
-        #target += pow(1.0 + chi2/(1.0 + nobs), -nobs/2.0);
-        # Bug fix (12/2017): target += log-likelihood, not likelihood, see fit_corr_true_inv_cov
+        # target += log-likelihood
         target += log(1.0 + chi2/(1.0 + nobs)) * -nobs/2.0;
     }
     """
