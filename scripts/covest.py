@@ -339,12 +339,18 @@ def get_cov_Gauss(ell, C_ell, f_sky, sigma_eps, nbar):
     # doing 10^.
     # Use mean of ell_i+1 and ell_i good to < 1% compared
     # to Delta ln ell
-    Delta_ln_ell = np.diff(ell) / (ell[:-1]/2 + ell[1:]/2)
+    ell_mode = get_ell_mode(ell)
+    if ell_mode == 'log':
+        Delta_ln_ell = np.diff(ell) / (ell[:-1]/2 + ell[1:]/2)
  
-    # add last element again to restore length of Delta_ell 
-    Delta_ln_ell = np.append(Delta_ln_ell, Delta_ln_ell[-1])
+        # add last element again to restore length of Delta_ell 
+        Delta_ln_ell = np.append(Delta_ln_ell, Delta_ln_ell[-1])
 
-    Delta_ell = Delta_ln_ell * ell
+        Delta_ell = Delta_ln_ell * ell
+
+    else:
+        Delta_ell = np.diff(ell)
+        Delta_ell = np.append(Delta_ell, Delta_ell[-1])
 
     D         = 1.0 / (f_sky * (2.0 * ell + 1) * Delta_ell) * C_ell_tot**2
     Sigma = np.diag(D)
@@ -377,6 +383,31 @@ def sample_cov_Wishart(cov, n_S):
 
     return cov_est
 
+
+def get_ell_mode(ell):
+    """Return binning type, linear or logarithmic
+
+    Parameters
+    ----------
+    ell: array of double
+        ell-bins
+
+    Returns
+    -------
+    mode: string
+        'log' or 'lin'
+    """
+
+    eps = 0.001
+    if np.fabs(ell[2]/ell[1] - ell[1]/ell[0]) < eps:
+        return 'log'
+    elif np.fabs((ell[2]-ell[1]) - (ell[1]-ell[0])) < eps:
+        return 'lin'
+    else:
+        print(ell)
+        print(ell[2]/ell[1] - ell[1]/ell[1])
+        print((ell[2]-ell[1]) - (ell[1]-ell[0]))
+        raise ValueError('Bins neither logarithmic nor linear')
 
 
 def get_cov_WL(model, ell, C_ell_obs, nbar, f_sky, sigma_eps, nsim):
@@ -417,9 +448,15 @@ def get_cov_WL(model, ell, C_ell_obs, nbar, f_sky, sigma_eps, nsim):
         cov = cov_G
 
     elif model == 'Gauss+SSC_BKS17':
-        cov_SSC_fname = 'cov_SSC_rel.txt'
+        ell_mode = get_ell_mode(ell)
+        if ell_mode == 'log':
+            cov_SSC_base = 'cov_SSC_rel_log'
+        elif ell_mode == 'lin':
+            cov_SSC_base = 'cov_SSC_rel_lin'
+        cov_SSC_path = '{}/{}.txt'.format('.', cov_SSC_base)
         func_SSC      = 'BKS17'
-        cov_SSC       = get_cov_SSC(ell, C_ell_obs, cov_SSC_fname, func_SSC)
+        print('get_cov_WL: Reading {}'.format(cov_SSC_path))
+        cov_SSC       = get_cov_SSC(ell, C_ell_obs, cov_SSC_path, func_SSC)
 
         # Writing covariances to files for testing/plotting
         np.savetxt('cov_G.txt', cov_G)
@@ -1298,11 +1335,16 @@ def Fisher_ana_quad(ell, f_sky, sigma_eps, nbar_rad2, tilt_fid, ampl_fid, cov_mo
     if cov_model == 'Gauss':
         Psi = np.diag([1.0 / d for d in D])
     elif cov_model == 'Gauss+SSC_BKS17':
-        cov_SSC_path = '{}/cov_SSC_rel.txt'.format(templ_dir)
-        func_SSC      = 'BKS17'
-        cov_SSC       = get_cov_SSC(ell, y, cov_SSC_path, 'BKS17')
-        cov           = np.diag(D) + cov_SSC
-        Psi           = np.linalg.inv(cov)
+        ell_mode = get_ell_mode(ell)
+        if ell_mode == 'log':
+            cov_SSC_base = 'cov_SSC_rel_log'
+        elif ell_mode == 'lin':
+            cov_SSC_base = 'cov_SSC_rel_lin'
+        cov_SSC_path = '{}/{}.txt'.format(templ_dir, cov_SSC_base)
+        func_SSC = 'BKS17'
+        cov_SSC = get_cov_SSC(ell, y, cov_SSC_path, 'BKS17')
+        cov = np.diag(D) + cov_SSC
+        Psi = np.linalg.inv(cov)
 
     # Fisher matrix elements
     F_11   = np.einsum('i,ij,j', dy_dt, Psi, dy_dt)

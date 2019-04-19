@@ -415,7 +415,7 @@ def run_ABC_in_dir(real_dir, n_S, templ_dir, nruns=-1, prev_run=-1):
     """
 
     files = ['ABC_est_cov.py', 'toy_model_functions.py']
-    files_opt = ['cov_SSC_rel.txt']
+    files_opt = ['cov_SSC_rel_log.txt', 'cov_SSC_rel_lin.txt']
 
     for f in files:
         copy2('{}/{}'.format(templ_dir, f), '{}/{}'.format(real_dir, f))
