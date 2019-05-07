@@ -314,7 +314,7 @@ def get_cov_Gauss(ell, C_ell, f_sky, sigma_eps, nbar):
     f_sky: double
         sky coverage fraction
     sigma_eps: double
-        ellipticity dispersion (per component)
+        complex ellipticity dispersion
     nbar: double
         galaxy number density [rad^{-2}]
 
@@ -324,7 +324,9 @@ def get_cov_Gauss(ell, C_ell, f_sky, sigma_eps, nbar):
         covariance matrix
     """
 
-    # Total (signal + shot noise) power spectrum
+    # Total (signal + shot noise) E-mode power spectrum.
+    # (The factor of 2 in the shot noise indicates one of two
+    # components for the power spectrum, see Joachimi et al. (2008).
     C_ell_tot = C_ell + sigma_eps**2 / (2 * nbar)
 
 
@@ -999,7 +1001,7 @@ class Results:
         for i, p in enumerate(self.par_name):
             y = self.get_std_var(p)
             if y.any():
-                plt.plot(n, y, marker='o', color=color[i], label='$\sigma(\sigma^2_{})$'.format(p), linestyle='None')
+                plt.plot(n, y, marker='o', color=color[i], label='$\sigma(\sigma^2_{{{}}})$'.format(p), linestyle='None')
                 cols.append(y)
                 names.append('sigma(sigma^2_{})'.format(p))
 
@@ -1277,8 +1279,8 @@ def Fisher_error_ana(x, sig2, delta, mode=-1):
 
 
 
-def Fisher_ana_quad(ell, f_sky, sigma_eps, nbar_rad2, tilt_fid, ampl_fid, cov_model, mode=1,
-                    templ_dir='.'):
+def Fisher_ana_quad(ell, f_sky, sigma_eps, nbar_rad2, tilt_fid, ampl_fid, cov_model,
+                    ellmode='log', mode=1, templ_dir='.'):
     """Return Fisher matrix for quadratic model with parameters t (tilt) and A (amplitude).
     """
 
@@ -1303,10 +1305,18 @@ def Fisher_ana_quad(ell, f_sky, sigma_eps, nbar_rad2, tilt_fid, ampl_fid, cov_mo
         
     else:
 
-        Delta_ln_ell = np.diff(ell) / (ell[:-1]/2 + ell[1:]/2)
-        Delta_ln_ell = np.append(Delta_ln_ell, Delta_ln_ell[-1])
-        Delta_ell = Delta_ln_ell * ell
-        Delta_ln_ell_bar = Delta_ln_ell.mean()
+        if ellmode == 'log':
+            # Delta_ln_ell = const
+
+            Delta_ln_ell = np.diff(ell) / (ell[:-1]/2 + ell[1:]/2)
+            Delta_ln_ell = np.append(Delta_ln_ell, Delta_ln_ell[-1])
+            #Delta_ln_ell_bar = Delta_ln_ell.mean()
+            Delta_ell = Delta_ln_ell * ell
+        else:
+            # Delta_ell = const
+
+            Delta_ell = np.diff(ell)
+            Delta_ell = np.append(Delta_ell, Delta_ell[-1])
 
         # Covariance = diagonal shot-/shape-noise term
         y = model_quad(np.log10(ell), ampl_fid, tilt_fid)
