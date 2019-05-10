@@ -45,12 +45,14 @@ ellmode = Parameters['ellmode'][0]
 if ellmode == 'log':
     # Equidistant in log ell
     logell = np.linspace(logellmin, logellmax, nell)
-else:
+elif ellmode == 'lin':
     # Equidistant in ell
     ellmin = 10**logellmin
     ellmax = 10**logellmax
     ell = np.linspace(ellmin, ellmax, nell)
     logell = np.log10(ell)
+else:
+    raise ValueError('Invalid ellmode {}'.format(ellmode))
 
 Parameters['simulation_func'] = model_cov
 

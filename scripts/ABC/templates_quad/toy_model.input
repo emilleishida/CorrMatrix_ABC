@@ -37,8 +37,8 @@ nell      = 20
 
 #f_sky           = 0.3636                          # covered sky fraction of survey
 f_sky           = 0.1
-#sigma_eps       = 0.22                            # intrinsic ellipticity dispersion per component
-sigma_eps       = 0.27                             # intrinsic ellipticity dispersion per component
+#sigma_eps       = 0.22                            # intrinsic complex ellipticity dispersion
+sigma_eps       = 0.27                             # intrinsic complex ellipticity dispersion
 nbar            = 10                               # Number density of galaxies per arcmin^2
 
 nsim            = 800                              #  number of simulations for covariance matrix

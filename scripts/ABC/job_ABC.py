@@ -415,7 +415,7 @@ def run_ABC_in_dir(real_dir, n_S, templ_dir, nruns=-1, prev_run=-1):
     """
 
     files = ['ABC_est_cov.py', 'toy_model_functions.py']
-    files_opt = ['cov_SSC_rel.txt']
+    files_opt = ['cov_SSC_rel_log.txt', 'cov_SSC_rel_lin.txt']
 
     for f in files:
         copy2('{}/{}'.format(templ_dir, f), '{}/{}'.format(real_dir, f))
@@ -555,7 +555,6 @@ def Fisher_ana_quad_read_par(templ_dir, par, mode=1):
         # Equidistant in log ell
         logell = np.linspace(logellmin, logellmax, nell)
     else:
-        print('Warning: Linear ell bins, Fisher ana not tested')
         # Equidistant in ell
         ellmin = 10**logellmin
         ellmax = 10**logellmax
@@ -568,7 +567,7 @@ def Fisher_ana_quad_read_par(templ_dir, par, mode=1):
     ampl_fid, tilt_fid = par
 
     dpar, det = Fisher_ana_quad(10**logell, f_sky, sigma_eps, nbar_rad2, ampl_fid, tilt_fid, cov_model,
-                                mode=mode, templ_dir=templ_dir)
+                                ellmode=ellmode, mode=mode, templ_dir=templ_dir)
     return dpar, det, nell
     
 
@@ -633,7 +632,7 @@ def main(argv=None):
         dpar_exact, det = Fisher_error_ana(x1, param.sig2, delta, mode=-1)
         n_D  = param.n_D
     elif param.model == 'quadratic':
-        for mode in ([1]):
+        for mode in ([0, 1]):
             dpar_exact, det, n_D = Fisher_ana_quad_read_par(param.templ_dir, param.par, mode=mode)
             print('input par and exact std:          ', end='')
             for i, p in enumerate(param.par):
