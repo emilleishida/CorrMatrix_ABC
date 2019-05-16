@@ -1,1 +1,1 @@
-../WL/Cov_SSC/cov_SSC_rel.txt
+../WL/Cov_SSC/cov_SSC_rel_log.txt

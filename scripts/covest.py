@@ -327,7 +327,10 @@ def get_cov_Gauss(ell, C_ell, f_sky, sigma_eps, nbar):
     # Total (signal + shot noise) E-mode power spectrum.
     # (The factor of 2 in the shot noise indicates one of two
     # components for the power spectrum, see Joachimi et al. (2008).
-    C_ell_tot = C_ell + sigma_eps**2 / (2 * nbar)
+    # MKDEDEBUG 10/05: removed factor 2
+
+    #C_ell_tot = C_ell + sigma_eps**2 / (2 * nbar)
+    C_ell_tot = C_ell + sigma_eps**2 / nbar
 
 
     # MKDEBUG New 11/09/2018: Added Delta ell
@@ -354,7 +357,7 @@ def get_cov_Gauss(ell, C_ell, f_sky, sigma_eps, nbar):
         Delta_ell = np.diff(ell)
         Delta_ell = np.append(Delta_ell, Delta_ell[-1])
 
-    D         = 1.0 / (f_sky * (2.0 * ell + 1) * Delta_ell) * C_ell_tot**2
+    D = 1.0 / (f_sky * (2.0 * ell + 1) * Delta_ell) * C_ell_tot**2
     Sigma = np.diag(D)
 
     return Sigma
@@ -459,11 +462,31 @@ def get_cov_WL(model, ell, C_ell_obs, nbar, f_sky, sigma_eps, nsim):
         func_SSC      = 'BKS17'
         print('get_cov_WL: Reading {}'.format(cov_SSC_path))
         cov_SSC       = get_cov_SSC(ell, C_ell_obs, cov_SSC_path, func_SSC)
+        print('cov_SSC: ', cov_SSC.shape)
+        print('ell: ', ell.shape)
 
         # Writing covariances to files for testing/plotting
         np.savetxt('cov_G.txt', cov_G)
         np.savetxt('cov_SSC.txt', cov_SSC)
+
+        #f_SSC = 1.00
+        #print('MKDEBUG factor f_SSC = {}'.format(f_SSC))
+        d_SSC = 3.0
+        print('MKDEBUG diag factor d_SSC = {}'.format(d_SSC))
+        d = np.diag(cov_SSC) * d_SSC
+        dG = np.diag(cov_G)
+        ratio = d / dG
+        print(ratio, np.mean(ratio))
+        cov_SSC = cov_SSC + np.diag(d)
+        #sig_SSC = 0
+        #if sig_SSC > 0:
+            #print('MKDEBUG random sigma sig_SSC = {}'.format(sig_SSC))
+            ##cov_SSC = cov_SSC * (1 + np.random.randn(cov_SSC.shape[0], cov_SSC.shape[1]) / sig_SSC)
+        ##cov = cov_G + f_SSC * cov_SSC
+
         cov = cov_G + cov_SSC
+        print(cov[0][0], cov[3][4])
+        #np.savetxt('cov_G+{}xSSC.txt'.format(f_SSC), cov_SSC)
 
     else:
 

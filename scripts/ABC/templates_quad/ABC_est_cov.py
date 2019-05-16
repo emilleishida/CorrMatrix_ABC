@@ -73,6 +73,8 @@ Parameters['nsim'] = int(Parameters['nsim'][0])
 cov_model          = Parameters['cov_model'][0]
 cov, cov_est       = get_cov_WL(cov_model, 10**logell, y_true, Parameters['nbar'], Parameters['f_sky'], Parameters['sigma_eps'], Parameters['nsim'])
 
+L = np.linalg.cholesky(cov)
+
 input_is_true = int(Parameters['input_is_true'][0])
 if input_is_true:
     y_input = y_true

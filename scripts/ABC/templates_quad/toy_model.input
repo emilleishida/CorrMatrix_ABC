@@ -2,7 +2,7 @@
 path_to_obs		= None
 
 param_to_fit 		= tilt ampl                 # parameters to fit
-param_to_sim    	= tilt ampl logellmin logellmax nell f_sky sigma_eps nbar # parameters needed for simulation
+param_to_sim    	= tilt ampl logellmin logellmax ellmode nell f_sky sigma_eps nbar # parameters needed for simulation
 
 prior_func	        = flat_prior flat_prior    # one prior function for each parameter
                                                    # under consideration 
@@ -21,18 +21,19 @@ ampl            = 0.827                            # amplitude (constant paramet
 input_is_true   = 0				   # If 1 (0), input model is fixed (not fixed) at input parameter.
 						   # If 0, input model is sampled using true covariance.
 
-tilt_prior_par_name       = pmin  pmax             # parameters for prior distribution
+tilt_prior_par_name       = pmin pmax              # parameters for prior distribution
 tilt_prior_par_val        = 0.2  0.4               # values for prior distribution
 
-ampl_prior_par_name      = pmin pmax               # parameters for prior distribution  
-ampl_prior_par_val       = 0.7  0.9                # values for prior distribution   
+ampl_prior_par_name       = pmin pmax              # parameters for prior distribution  
+ampl_prior_par_val        = 0.7  0.9               # values for prior distribution   
 
 tilt_lim                  = 0.2 0.4                # 
-ampl_lim                  = 0.7  0.9               # extreme limits for parametes
+ampl_lim                  = 0.7 0.9                # extreme limits for parametes
 
 # log10 of ell
 logellmin = 1.39794
 logellmax = 3.60206
+ellmode   = log
 nell      = 20
 
 #f_sky           = 0.3636                          # covered sky fraction of survey
