@@ -462,8 +462,6 @@ def get_cov_WL(model, ell, C_ell_obs, nbar, f_sky, sigma_eps, nsim):
         func_SSC      = 'BKS17'
         print('get_cov_WL: Reading {}'.format(cov_SSC_path))
         cov_SSC       = get_cov_SSC(ell, C_ell_obs, cov_SSC_path, func_SSC)
-        print('cov_SSC: ', cov_SSC.shape)
-        print('ell: ', ell.shape)
 
         # Writing covariances to files for testing/plotting
         np.savetxt('cov_G.txt', cov_G)
@@ -474,9 +472,6 @@ def get_cov_WL(model, ell, C_ell_obs, nbar, f_sky, sigma_eps, nsim):
         d_SSC = 3.0
         print('MKDEBUG diag factor d_SSC = {}'.format(d_SSC))
         d = np.diag(cov_SSC) * d_SSC
-        dG = np.diag(cov_G)
-        ratio = d / dG
-        print(ratio, np.mean(ratio))
         cov_SSC = cov_SSC + np.diag(d)
         #sig_SSC = 0
         #if sig_SSC > 0:
@@ -485,7 +480,9 @@ def get_cov_WL(model, ell, C_ell_obs, nbar, f_sky, sigma_eps, nsim):
         ##cov = cov_G + f_SSC * cov_SSC
 
         cov = cov_G + cov_SSC
-        print(cov[0][0], cov[3][4])
+        dG = np.diag(cov_G)
+        print(d/dG, np.mean(d/dG))
+        print('Mean increase of diagonal wrt G, tot = {}, {}'.format(np.mean(d/np.diag(cov_G)), np.mean(d/np.diag(cov))))
         #np.savetxt('cov_G+{}xSSC.txt'.format(f_SSC), cov_SSC)
 
     else:
