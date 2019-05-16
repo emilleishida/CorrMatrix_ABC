@@ -467,23 +467,15 @@ def get_cov_WL(model, ell, C_ell_obs, nbar, f_sky, sigma_eps, nsim):
         np.savetxt('cov_G.txt', cov_G)
         np.savetxt('cov_SSC.txt', cov_SSC)
 
-        #f_SSC = 1.00
-        #print('MKDEBUG factor f_SSC = {}'.format(f_SSC))
-        d_SSC = 5.0
-        print('MKDEBUG diag factor d_SSC = {}'.format(d_SSC))
-        d = np.diag(cov_SSC) * d_SSC
-        cov_SSC = cov_SSC + np.diag(d)
-        #sig_SSC = 0
-        #if sig_SSC > 0:
-            #print('MKDEBUG random sigma sig_SSC = {}'.format(sig_SSC))
-            ##cov_SSC = cov_SSC * (1 + np.random.randn(cov_SSC.shape[0], cov_SSC.shape[1]) / sig_SSC)
-        ##cov = cov_G + f_SSC * cov_SSC
+        d_SSC = 0.75
+        if d_SSC > 0:
+            d = np.diag(cov_SSC) * d_SSC
+            cov_SSC = cov_SSC + np.diag(d)
+
+            print('MKDEBUG diag factor d_SSC = {}'.format(d_SSC))
+            print('Mean increase of diagonal wrt tot = {}'.format(np.mean(d/np.diag(cov_G+cov_SSC))))
 
         cov = cov_G + cov_SSC
-        dG = np.diag(cov_G)
-        print(d/dG, np.mean(d/dG))
-        print('Mean increase of diagonal wrt G, tot = {}, {}'.format(np.mean(d/np.diag(cov_G)), np.mean(d/np.diag(cov))))
-        #np.savetxt('cov_G+{}xSSC.txt'.format(f_SSC), cov_SSC)
 
     else:
 
