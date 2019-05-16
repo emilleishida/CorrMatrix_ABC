@@ -469,7 +469,7 @@ def get_cov_WL(model, ell, C_ell_obs, nbar, f_sky, sigma_eps, nsim):
 
         #f_SSC = 1.00
         #print('MKDEBUG factor f_SSC = {}'.format(f_SSC))
-        d_SSC = 3.0
+        d_SSC = 5.0
         print('MKDEBUG diag factor d_SSC = {}'.format(d_SSC))
         d = np.diag(cov_SSC) * d_SSC
         cov_SSC = cov_SSC + np.diag(d)
