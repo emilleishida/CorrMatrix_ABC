@@ -7,12 +7,12 @@ from cosmoabc.priors import flat_prior
 from cosmoabc.ABC_sampler import ABC
 from cosmoabc.plots import plot_2p
 from cosmoabc.ABC_functions import read_input
-from toy_model_functions import model, linear_dist, linear_dist_data, model, model_cov, gaussian_prior
+from toy_model_functions import linear_dist, linear_dist_data, model_cov, gaussian_prior
 
 import numpy as np
 from scipy.stats import uniform, multivariate_normal
 from statsmodels.stats.weightstats import DescrStatsW
-from covest import weighted_std
+from covest import weighted_std, get_cov_ML
 
 
 #user input file
@@ -47,12 +47,15 @@ ytrue = Parameters['a']*x + Parameters['b']
 # true covariance matrix: *sig* on diagonal, *xcorr* on off-diagonal
 sig2 = Parameters['sig']
 xcorr = Parameters['xcorr']
-cov = np.diag([sig - xcorr for i in range(Parameters['nobs'])]) + xcorr
+cov = np.diag([sig2 - xcorr for i in range(Parameters['nobs'])]) + xcorr
 
 # check whether cov is positive definite
 if xcorr != 0:
-    L = np.linalg.cholesky(cov)
-sys.exit(0)
+    try:
+        L = np.linalg.cholesky(cov)
+    except LinAlgError:
+        print('Cholesky decomposition of covariance matrix failed, exiting.')
+    print('Cholesky: covariance matrix is positive')
 
 #############################################
 Parameters['nsim'] = int(Parameters['nsim'][0])
@@ -95,8 +98,10 @@ sampler_ABC = ABC(params=Parameters)
 sys1 = sampler_ABC.BuildFirstPSystem()
 
 #update particle system until convergence
+# nruns keyword only in modified cosmoabc version available
 nruns = int(Parameters['nruns'][0])
-sampler_ABC.fullABC(nruns=nruns)
+#sampler_ABC.fullABC(nruns=nruns)
+sampler_ABC.fullABC()
 
 
 # calculate numerical results

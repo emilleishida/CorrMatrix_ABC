@@ -1253,7 +1253,7 @@ def detF(n_D, sig2, delta):
 
 
 
-def Fisher_error_ana(x, sig2, xcorr, delta, mode=-1):
+def Fisher_error_ana(x, templ_dir, delta, mode=-1):
     """Return Fisher matrix parameter errors (std), and Fisher matrix detminant, for affine function parameters (a, b)
     """
 
@@ -1263,6 +1263,12 @@ def Fisher_error_ana(x, sig2, xcorr, delta, mode=-1):
     # for a digonal input covariance matrix cov = diag(sigma^2).
     # Note that mode==-1,0 uses the statistical properties mean and variance of the uniform
     # distribution, whereas mode=1,2 uses the actual sample x.
+
+    from cosmoabc.ABC_functions import read_input
+    filename = '{}/{}'.format(templ_dir, 'toy_model.input')
+    Parameters = read_input(filename)
+    sig2 = float(Parameters['sig'][0])
+    xcorr = float(Parameters['xcorr'][0])
 
     if xcorr != 0 and mode != 2:
         raise ABCCovError('For xcorr!=0, Fisher matrix can only be computed with mode=2')
