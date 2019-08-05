@@ -27,6 +27,7 @@ Parameters['xmax'] = float(Parameters['xmax'][0])
 Parameters['a'] = float(Parameters['a'][0])
 Parameters['b'] = float(Parameters['b'][0])
 Parameters['sig'] = float(Parameters['sig'][0])
+Parameters['xcorr'] = float(Parameters['xcorr'][0])
 Parameters['nobs'] = int(Parameters['nobs'][0])
 
 # set functions
@@ -43,8 +44,15 @@ x.sort()
 # fiducial model
 ytrue = Parameters['a']*x + Parameters['b']
 
-# real covariance matrix
-cov = np.diag([Parameters['sig'] for i in range(Parameters['nobs'])]) 
+# true covariance matrix: *sig* on diagonal, *xcorr* on off-diagonal
+sig2 = Parameters['sig']
+xcorr = Parameters['xcorr']
+cov = np.diag([sig - xcorr for i in range(Parameters['nobs'])]) + xcorr
+
+# check whether cov is positive definite
+if xcorr != 0:
+    L = np.linalg.cholesky(cov)
+sys.exit(0)
 
 #############################################
 Parameters['nsim'] = int(Parameters['nsim'][0])
@@ -53,8 +61,8 @@ cov_est = get_cov_ML(ytrue, cov, Parameters['nsim'])
 # add covariance to user input parameters
 Parameters['simulation_input']['cov'] = cov_est
 
-# cov_est.txt on disk is read when running continue_ABC.py or plot_ABC.py.
-
+# save cov_est.txt to disk
+# this file is read when running continue_ABC.py or plot_ABC.py
 np.savetxt('cov_est.txt', cov_est)
 
 if len(sys.argv) > 1 and sys.argv[1] == '--only_cov_est':

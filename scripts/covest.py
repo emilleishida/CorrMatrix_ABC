@@ -1253,19 +1253,27 @@ def detF(n_D, sig2, delta):
 
 
 
-def Fisher_error_ana(x, sig2, delta, mode=-1):
+def Fisher_error_ana(x, sig2, xcorr, delta, mode=-1):
     """Return Fisher matrix parameter errors (std), and Fisher matrix detminant, for affine function parameters (a, b)
     """
 
     n_D = len(x)
 
-    # The four following ways to compute the Fisher matrix errors are statistically equivalent.
+    # The four following ways to compute the Fisher matrix errors are statistically equivalent,
+    # for a digonal input covariance matrix cov = diag(sigma^2).
     # Note that mode==-1,0 uses the statistical properties mean and variance of the uniform
     # distribution, whereas mode=1,2 uses the actual sample x.
 
+    if xcorr != 0 and mode != 2:
+        raise ABCCovError('For xcorr!=0, Fisher matrix can only be computed with mode=2')
+
     if mode != -1:
         if mode == 2:
-            Psi = np.diag([1.0 / sig2 for i in range(n_D)])
+            if xcorr == 0:
+                Psi = np.diag([1.0 / sig2 for i in range(n_D)])
+            else:
+                cov = np.diag([sig2 - xcorr for i in range(n_D)]) + xcorr
+                Psi = np.linalg.inv(cov)
             F_11 = np.einsum('i,ij,j', x, Psi, x)
             F_22 = np.einsum('i,ij,j', np.ones(shape=n_D), Psi, np.ones(shape=n_D))
             F_12 = np.einsum('i,ij,j', x, Psi, np.ones(shape=n_D))
