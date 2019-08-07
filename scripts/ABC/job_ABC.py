@@ -47,8 +47,6 @@ def params_default():
         n_S_min = n_D + 5,
         spar = '1.0 0.0',
         spar_name = 'a_b',
-        sig2 = 5.0,
-        xcorr = 0.0,
         model = 'affine',
         verbose = True,
         templ_dir = './templates',
@@ -630,7 +628,7 @@ def main(argv=None):
     if param.model == 'affine':
         x1 = np.zeros(shape = param.n_D) # Dummy variable
         delta = 200
-        dpar_exact, det = Fisher_error_ana(x1, param.sig2, param.xcorr, delta, mode=-1)
+        dpar_exact, det = Fisher_error_ana(x1, param.templ_dir, delta, mode=-1)
         n_D  = param.n_D
     elif param.model == 'quadratic':
         for mode in ([0, 1]):
