@@ -170,9 +170,7 @@ def std_fish_biased_TJK13(n, n_D, par):
        Square root of IK17 (22).
     """
 
-    return [np.sqrt(2 * A(n_S, n_D) / alpha(n_S, n_D)**4 * (n_S - n_D - 1)) * par for n_S in n] # checked
-
-    #return std_fish_deb(n, n_D, par) * alpha_new(n, n_D)
+    return [np.sqrt(2 * A(n_S, n_D) / alpha(n_S, n_D)**4 * (n_S - n_D - 1)) * par for n_S in n]
 
 
 
