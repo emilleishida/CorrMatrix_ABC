@@ -7,12 +7,12 @@ from cosmoabc.priors import flat_prior
 from cosmoabc.ABC_sampler import ABC
 from cosmoabc.plots import plot_2p
 from cosmoabc.ABC_functions import read_input
-from toy_model_functions import model, linear_dist, linear_dist_data, model, model_cov, gaussian_prior
+from toy_model_functions import linear_dist, linear_dist_data, model_cov, gaussian_prior
 
 import numpy as np
 from scipy.stats import uniform, multivariate_normal
 from statsmodels.stats.weightstats import DescrStatsW
-from covest import weighted_std
+from covest import weighted_std, get_cov_ML
 
 
 #user input file
@@ -27,6 +27,7 @@ Parameters['xmax'] = float(Parameters['xmax'][0])
 Parameters['a'] = float(Parameters['a'][0])
 Parameters['b'] = float(Parameters['b'][0])
 Parameters['sig'] = float(Parameters['sig'][0])
+Parameters['xcorr'] = float(Parameters['xcorr'][0])
 Parameters['nobs'] = int(Parameters['nobs'][0])
 
 # set functions
@@ -43,8 +44,18 @@ x.sort()
 # fiducial model
 ytrue = Parameters['a']*x + Parameters['b']
 
-# real covariance matrix
-cov = np.diag([Parameters['sig'] for i in range(Parameters['nobs'])]) 
+# true covariance matrix: *sig* on diagonal, *xcorr* on off-diagonal
+sig2 = Parameters['sig']
+xcorr = Parameters['xcorr']
+cov = np.diag([sig2 - xcorr for i in range(Parameters['nobs'])]) + xcorr
+
+# check whether cov is positive definite
+if xcorr != 0:
+    try:
+        L = np.linalg.cholesky(cov)
+    except LinAlgError:
+        print('Cholesky decomposition of covariance matrix failed, exiting.')
+    print('Cholesky: covariance matrix is positive')
 
 #############################################
 Parameters['nsim'] = int(Parameters['nsim'][0])
@@ -53,8 +64,8 @@ cov_est = get_cov_ML(ytrue, cov, Parameters['nsim'])
 # add covariance to user input parameters
 Parameters['simulation_input']['cov'] = cov_est
 
-# cov_est.txt on disk is read when running continue_ABC.py or plot_ABC.py.
-
+# save cov_est.txt to disk
+# this file is read when running continue_ABC.py or plot_ABC.py
 np.savetxt('cov_est.txt', cov_est)
 
 if len(sys.argv) > 1 and sys.argv[1] == '--only_cov_est':
@@ -87,8 +98,10 @@ sampler_ABC = ABC(params=Parameters)
 sys1 = sampler_ABC.BuildFirstPSystem()
 
 #update particle system until convergence
+# nruns keyword only in modified cosmoabc version available
 nruns = int(Parameters['nruns'][0])
-sampler_ABC.fullABC(nruns=nruns)
+#sampler_ABC.fullABC(nruns=nruns)
+sampler_ABC.fullABC()
 
 
 # calculate numerical results

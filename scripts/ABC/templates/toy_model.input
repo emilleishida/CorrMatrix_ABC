@@ -21,7 +21,8 @@ b_prior_par_val        =  1.0  5.0                # values for prior distributio
 a_lim                  = -2.0  4.0               # extreme limits for parametes
 b_lim                  = -3.0  5.0                # 
 	          
-sig		= 5.0                              #  fiducial scatter
+sig		= 5.0                              #  fiducial scatter (variance; diagonal cov elements)
+xcorr           = 0.0                              #  fiducial off-diagonal cov elements
 a               = 1.0                              #  angular coefficient
 b               = 0.0                              #  linear coefficient
 nsim            = 800                              #  number of simulations for covariance matrix
