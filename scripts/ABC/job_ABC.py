@@ -628,7 +628,14 @@ def main(argv=None):
     if param.model == 'affine':
         x1 = np.zeros(shape = param.n_D) # Dummy variable
         delta = 200
-        dpar_exact, det = Fisher_error_ana(x1, param.templ_dir, delta, mode=-1)
+
+        from cosmoabc.ABC_functions import read_input
+        filename = '{}/{}'.format(templ_dir, 'toy_model.input')
+        Parameters = read_input(filename)
+        sig2 = float(Parameters['sig'][0])
+        xcorr = float(Parameters['xcorr'][0])
+        dpar_exact, det = Fisher_error_ana(x1, sig2, xcorr, delta, mode=-1)
+
         n_D  = param.n_D
     elif param.model == 'quadratic':
         for mode in ([0, 1]):

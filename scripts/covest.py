@@ -681,6 +681,8 @@ class Results:
         n_n_S, n_R = self.mean[self.par_name[0]].shape
         if format == 'ascii':
             in_name = '{}.txt'.format(self.file_base)
+            if verbose:
+                print('Reading file {}'.format(in_name))
             try:
                 dat = read_ascii(in_name)
                 my_n_S, my_n_R = get_n_S_R_from_fit_file(self.file_base, npar=npar)
@@ -857,6 +859,10 @@ class Results:
             rotation = 'vertical'
 
         # Set the number of required subplots (1 or 2)
+
+        # MK 09/08, from test_ML need default
+        n_panel = 1
+
         j_panel = {}
         for j, which in enumerate(['mean', 'std']):
             for i, p in enumerate(self.par_name):
@@ -924,7 +930,8 @@ class Results:
                 ax = plt.gca().xaxis
                 ax.set_major_formatter(ScalarFormatter())
                 plt.ticklabel_format(axis='x', style='sci')
-	        # For MCMC: Remove second tick label due to text overlap if little space
+
+	            # For MCMC: Remove second tick label due to text overlap if little space
                 x_loc = []
                 x_lab = []
                 for i, n_S in enumerate(n):
@@ -937,7 +944,7 @@ class Results:
                 plt.xticks(x_loc, x_lab, rotation=rotation)
                 ax.label.set_size(self.fs)
 
-	        # Second x-axis
+	            # Second x-axis
                 ax2 = plt.twiny()
                 x2_loc = []
                 x2_lab = []
@@ -1066,12 +1073,12 @@ class Results:
         ax.set_yscale('log')
         ax.legend(loc='best', numpoints=1, frameon=False)
 
-	# x-ticks
+	    # x-ticks
         ax = plt.gca().xaxis
         ax.set_major_formatter(ScalarFormatter())
         plt.ticklabel_format(axis='x', style='sci')
 
-	# Second x-axis
+	    # Second x-axis
         x_loc, x_lab = plt.xticks()
         ax2 = plt.twiny()
         x2_loc = []
@@ -1085,8 +1092,10 @@ class Results:
                 else:
                     lab = '{:.2g}'.format(frac)
                 x2_lab.append(lab)
-        plt.xticks(x2_loc, x2_lab)
-        ax2.set_xlabel('$n_{\\rm d} / n_{\\rm s}$', size=self.fs)
+        #plt.xticks(x2_loc, x2_lab)
+        ax2.set_xticks(x2_loc)
+        ax2.set_xticklabels(x2_lab)
+        #ax2.set_xlabel('$n_{\\rm d} / n_{\\rm s}$', size=self.fs)
 
         # y-scale
         plt.ylim(8e-9, 1e-1)
@@ -1253,7 +1262,7 @@ def detF(n_D, sig2, delta):
 
 
 
-def Fisher_error_ana(x, templ_dir, delta, mode=-1):
+def Fisher_error_ana(x, sig2, xcorr, delta, mode=-1):
     """Return Fisher matrix parameter errors (std), and Fisher matrix detminant, for affine function parameters (a, b)
     """
 
@@ -1263,12 +1272,6 @@ def Fisher_error_ana(x, templ_dir, delta, mode=-1):
     # for a digonal input covariance matrix cov = diag(sigma^2).
     # Note that mode==-1,0 uses the statistical properties mean and variance of the uniform
     # distribution, whereas mode=1,2 uses the actual sample x.
-
-    from cosmoabc.ABC_functions import read_input
-    filename = '{}/{}'.format(templ_dir, 'toy_model.input')
-    Parameters = read_input(filename)
-    sig2 = float(Parameters['sig'][0])
-    xcorr = float(Parameters['xcorr'][0])
 
     if xcorr != 0 and mode != 2:
         raise ABCCovError('For xcorr!=0, Fisher matrix can only be computed with mode=2')

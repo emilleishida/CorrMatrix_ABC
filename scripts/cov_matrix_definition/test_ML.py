@@ -43,7 +43,6 @@ test_ML.py   -D 750   -p   1_0   -s   5   -v   -m r  -r   -n   4   --n_n_S   10 
 def A_corr(n_S, n_D):
     """Return TJK13 (28), this is A/alpha^2.
     """
-
     
     A_c =  1.0 / ((n_S - n_D - 1.0) * (n_S - n_D - 4.0))
 
@@ -89,7 +88,6 @@ def std_fish_deb(n, n_D, par):
     return [np.sqrt(2.0 / (n_S - n_D - 4.0)) * par for n_S in n]
 
 
-
 def std_fish_biased(n, n_D, par):
     """Error on variance from Fisher matrix with biased inverse covariance estimate,
        with correction, IK17 (26).
@@ -98,15 +96,12 @@ def std_fish_biased(n, n_D, par):
     return [np.sqrt(2 * A(n_S, n_D) * ((n_S - n_D - 1))) / (2 * A(n_S, n_D) + alpha(n_S, n_D)**2) * par for n_S in n]
 
 
-
 def std_fish_biased2(n, n_D, par):
     """Error on variance from Fisher matrix with biased inverse covariance estimate,
        with correction, IK17 (26), ignoring 2A in denominator.
     """
 
     return [np.sqrt(2 * A(n_S, n_D) * ((n_S - n_D - 1))) / (alpha(n_S, n_D)**2) * par for n_S in n]
-
-
 
 
 def std_fish_deb_TJ14(n, n_D, par):
@@ -118,7 +113,6 @@ def std_fish_deb_TJ14(n, n_D, par):
     return [np.sqrt(2 * (n_S - n_D + n_P - 1) / (n_S - n_D -2)**2) * par for n_S in n]
 
 
-
 def std_fish_biased_TJ14(n, n_D, par):
     """Improved error on variance from the Fisher matrix.
        From TJ14 (12), with division by the de-biasing factor alpha.
@@ -128,7 +122,6 @@ def std_fish_biased_TJ14(n, n_D, par):
     return [np.sqrt(2 * (n_S - n_D + n_P - 1) / (n_S - n_D -2)**2) / alpha(n_S, n_D) * par for n_S in n]
 
 
-
 def hatdetF(n_S, n_D, sig2, delta):
     """Return expectation value of estimated determinant.
     """
@@ -136,7 +129,6 @@ def hatdetF(n_S, n_D, sig2, delta):
     det = detF(n_D, sig2, delta)
     det = det * (2 * A(n_S, n_D) + alpha(n_S, n_D)**2)
     return det 
-
 
 
 def deltaG2(a, n_S, n_D, sig2, delta):
@@ -1091,7 +1083,6 @@ def main(argv=None):
 
     fish_ana = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_ana', yscale='log', fct={'std': par_fish})
 
-    # Removed: 'std_var': std_fish_biased, IK17 calculation
     fish_num = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_num', yscale='log', \
                        fct={'std': par_fish, 'std_var_TJK13': std_fish_biased_TJK13, 'std_var_TJ14': std_fish_biased_TJ14})
     fish_deb = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_deb', yscale='log', \
@@ -1099,7 +1090,8 @@ def main(argv=None):
     fit_norm_num = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_norm', yscale=['linear', 'log'],
                        fct={'std': par_fish, 'std_var_TJK13': std_fish_biased_TJK13, 'std_var_TJ14': std_fish_biased_TJ14})
     fit_norm_deb = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_norm_deb', yscale=['linear', 'log'],
-                       fct={'std': no_bias, 'std_var_TJK13': std_fish_deb, 'std_var_TJ14': std_fish_deb_TJ14})
+                       #fct={'std': no_bias, 'std_var_TJK13': std_fish_deb, 'std_var_TJ14': std_fish_deb_TJ14})
+                       fct={'std': no_bias, 'std_var_TJ14': std_fish_deb_TJ14})
     fit_SH   = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_SH', yscale=['linear', 'log'],
                        fct={'std': par_fish_SH})
 
@@ -1133,7 +1125,7 @@ def main(argv=None):
                        fit_norm_num, fit_norm_deb, fit_SH, param)
 
 
-    dpar_exact, det = Fisher_error_ana(x1, options.sig2, delta, mode=-1)
+    dpar_exact, det = Fisher_error_ana(x1, options.sig2, 0.0, delta, mode=-1)
 
     # Exact inverse covariance
     #cov_inv    = np.diag([1.0 / options.sig2 for i in range(options.n_D)])
