@@ -19,6 +19,8 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 
 import scipy.stats._multivariate as mv
+from scipy.stats import norm, uniform
+
 
 
 class ABCCovError(Exception):
@@ -175,6 +177,30 @@ def std_fish_biased_TJK13(n, n_D, par):
     #return std_fish_deb(n, n_D, par) * alpha_new(n, n_D)
 
 
+def std_affine_off_diag(n, n_D, par):
+    """Return RMS for affine model with non-zero off-diagonal covariance matrix.
+    """
+
+    delta = 200
+    x = uniform.rvs(loc=-delta/2, scale=delta, size=n_D)        # exploratory variable
+    x.sort()
+
+    sig2 = 5.0
+
+    std = []
+    for xcorr in n:
+        (da, db), det = Fisher_error_ana(x, sig2, xcorr, delta, mode=2)
+
+        if abs(par/0.0014 - 1) < 0.1:   # a
+            d = da
+        elif abs(par/0.0817 - 1) < 0.1:  # b
+            d = db
+        else:
+            raise ValueError('Invalid parameter par={}'.format(par))
+        std.append(d)
+
+    print(std, len(std))
+    return std
 
 
 def get_n_S_R_from_fit_file(file_base, npar=2):
@@ -816,7 +842,7 @@ class Results:
         xlog: bool, optional
             logarithmic x-axis, default False
         model: string
-            model, one in 'affine' or 'quadratic'
+            model, one in 'affine', 'affine_off_diag', or 'quadratic'
 
         Returns
         -------
@@ -830,7 +856,7 @@ class Results:
         color      = ['b', 'g']
 
         plot_sth = False
-        plot_init(n_D, n_R, raise_title=True, fs=self.fs)
+        plot_init(n_D, n_R, fs=self.fs)
 
         if boxwidth == None:
             if xlog == False:
@@ -854,7 +880,12 @@ class Results:
             rotation = 'vertical'
         else:
             fac_xlim   = 1.05
-            xmin = (n[0]-5)/fac_xlim**5
+            #xmin = (n[0]-5)/fac_xlim**5
+            # MKDEBUG NEW 3/9/2019 for xcorr plot trials
+            if n[0] > 10:
+                xmin = (n[0]-5)/fac_xlim**5
+            else:
+                xmin = (n[0]-0.5)/fac_xlim**5
             xmax = n[-1]*fac_xlim
             rotation = 'vertical'
 
@@ -899,14 +930,21 @@ class Results:
                     if xlog == True:
                         ax.set_xscale('log')
 
-                    n_fine = np.arange(n[0], n[-1], len(n)/10.0)
+                    if len(n) > 1:
+                        #n_fine = np.arange(n[0], n[-1], len(n)/10.0)
+                        # MKDEBUG NEW 3/9/2019 for xcorr plot trials
+                        n_fine = np.arange(n[0], n[-1]+len(n)/20.0, len(n)/20.0)
+                    else:
+                        x0 = n[0] / 4
+                        x1 = n[0] * 4
+                        n_fine = np.arange(x0, x1, 10)
                     my_par = par[which]
                     if self.fct is not None and which in self.fct:
                         # Define high-resolution array for smoother lines
                         plt.plot(n_fine, self.fct[which](n_fine, n_D, my_par[i]), '{}-.'.format(color[i]), linewidth=2)
 
                     plt.plot(n_fine, no_bias(n_fine, n_D, my_par[i]), '{}-'.format(color[i]), \
-			     label='{}$({})$'.format(which, p), linewidth=2)
+			                 label='{}$({})$'.format(which, p), linewidth=2)
 
         # Finalize plot
         for j, which in enumerate(['mean', 'std']):
@@ -920,7 +958,10 @@ class Results:
                 plt.plot([n_D, n_D], [1e-5, 1e2], ':', linewidth=1)
 
                 # Main-axes settings
-                plt.xlabel('$n_{\\rm s}$')
+                if model != 'affine_off_diag':
+                    plt.xlabel('$n_{{\\rm s}}$')
+                else:
+                    plt.xlabel('$r$')
                 plt.ylabel('<{}>'.format(which))
                 ax.set_yscale(self.yscale[j])
                 ax.legend(frameon=False)
@@ -945,26 +986,27 @@ class Results:
                 ax.label.set_size(self.fs)
 
 	            # Second x-axis
-                ax2 = plt.twiny()
-                x2_loc = []
-                x2_lab = []
-                for i, n_S in enumerate(n):
-                    if n_S > 0:
-                        if n_panel == 1 or i != 1 or len(n)<10 or n_S<n_D:
-                            frac = float(n_D) / float(n_S)
-                            if frac > 100:
-                                lab = '{:.3g}'.format(frac)
+                if model != 'affine_off_diag':
+                    ax2 = plt.twiny()
+                    x2_loc = []
+                    x2_lab = []
+                    for i, n_S in enumerate(n):
+                        if n_S > 0:
+                            if n_panel == 1 or i != 1 or len(n)<10 or n_S<n_D:
+                                frac = float(n_D) / float(n_S)
+                                if frac > 100:
+                                    lab = '{:.3g}'.format(frac)
+                                else:
+                                    lab = '{:.2g}'.format(frac)
                             else:
-                                lab = '{:.2g}'.format(frac)
-                        else:
-                            lab = ''
-                        x2_loc.append(flinlog(n_S))
-                        x2_lab.append(lab)
-                plt.xticks(x2_loc, x2_lab)
-                ax2.set_xlabel('$n_{\\rm d} / n_{\\rm s}$', size=self.fs)
-                for tick in ax2.get_xticklabels():
-                    tick.set_rotation(90)
-                plt.xlim(flinlog(xmin), flinlog(xmax))
+                                lab = ''
+                            x2_loc.append(flinlog(n_S))
+                            x2_lab.append(lab)
+                    plt.xticks(x2_loc, x2_lab)
+                    ax2.set_xlabel('$p / n_{\\rm s}$', size=self.fs)
+                    for tick in ax2.get_xticklabels():
+                        tick.set_rotation(90)
+                    plt.xlim(flinlog(xmin), flinlog(xmax))
 
                 plot_sth = True
 
@@ -973,11 +1015,15 @@ class Results:
                 if which == 'mean':
                     if model == 'affine':
                         plt.ylim(-2, 2)
+                    elif model == 'affine_off_diag':
+                        plt.ylim(-0.75, 1.25)
                     else:
                         plt.ylim(0, 1)
                 if which == 'std':
                     if model == 'affine':
                         plt.ylim(1e-4, 3e-1)
+                    elif model == 'affine_off_diag':
+                        plt.ylim(3e-4, 5)
                     else:
                         plt.ylim(5e-4, 2e-2)
 
@@ -988,7 +1034,7 @@ class Results:
 
 
 
-    def plot_std_var(self, n, n_D, par=None, sig_var_noise=None, xlog=False):
+    def plot_std_var(self, n, n_D, par=None, sig_var_noise=None, xlog=False, title=False):
         """Plot standard deviation of parameter variance
 
         Parameters 
@@ -1001,6 +1047,8 @@ class Results:
             input parameter values and errors, default=None
         xlog: bool, optional
             logarithmic x-axis, default False
+        title: bool, optional, default=False
+            if True, print title with n_d, n_r
             
         Returns 
         -------     
@@ -1008,10 +1056,10 @@ class Results:
         """         
 
         n_R = self.mean[self.par_name[0]].shape[1]
-        color = ['g', 'm']
+        color = ['b', 'g']
 
         plot_sth = False
-        plot_init(n_D, n_R, fs=self.fs)
+        plot_init(n_D, n_R, fs=self.fs, title=title)
 
         # For output ascii file
         cols  = [n]
@@ -1078,6 +1126,10 @@ class Results:
         ax.set_major_formatter(ScalarFormatter())
         plt.ticklabel_format(axis='x', style='sci')
 
+        # Dashed vertical line at n_S = n_D
+        if xlog:
+            plt.plot([n_D, n_D], [8e-9, 1e-1], ':', linewidth=1)
+
 	    # Second x-axis
         x_loc, x_lab = plt.xticks()
         ax2 = plt.twiny()
@@ -1092,16 +1144,17 @@ class Results:
                 else:
                     lab = '{:.2g}'.format(frac)
                 x2_lab.append(lab)
-        #plt.xticks(x2_loc, x2_lab)
-        ax2.set_xticks(x2_loc)
-        ax2.set_xticklabels(x2_lab)
-        #ax2.set_xlabel('$n_{\\rm d} / n_{\\rm s}$', size=self.fs)
+        plt.xticks(x2_loc, x2_lab)
+        ax2.set_xlabel('$p / n_{\\rm s}$', size=self.fs)
+        #plt.ticklabel_format(axis='x', style='plain')
+        #ax2.ticklabel_format(useOffset=False)
+        if xlog:
+            ax2.set_xscale('log')
+            plt.xlim(n_D/xmin, n_D/xmax)
 
         # y-scale
-        plt.ylim(8e-9, 1e-1)
+        plt.ylim(2e-8, 1.5e-2)
 
-        # Dashed vertical line at n_S = n_D
-        plt.plot([n_D, n_D], [8e-9, 1e-1], ':', linewidth=1)
 
         ### Output
         outbase = 'std_2{}'.format(self.file_base)
@@ -1113,7 +1166,7 @@ class Results:
 
 
 
-def plot_init(n_D, n_R, raise_title=False, fs=16):
+def plot_init(n_D, n_R, title=False, fs=16):
 
     fig = plt.figure()
     fig.subplots_adjust(bottom=0.16)
@@ -1126,8 +1179,8 @@ def plot_init(n_D, n_R, raise_title=False, fs=16):
 
     plt.rcParams.update({'figure.autolayout': True})
 
-    if n_R>0:
-        add_title(n_D, n_R, fs, raise_title=raise_title)
+    if n_R>0 and title:
+        add_title(n_D, n_R, fs, raise_title=True)
 
 
 
@@ -1139,7 +1192,7 @@ def add_title(n_D, n_R, fs, raise_title=False):
     else:
         y = 1
 
-    plt.suptitle('$n_{{\\rm d}}={}$ data points, $n_{{\\rm r}}={}$ runs'.format(n_D, n_R), fontsize=fs, y=y)
+    plt.suptitle('$p$ data points, $n_{{\\rm r}}={}$ runs'.format(n_D, n_R), fontsize=fs, y=y)
 
 
 
@@ -1273,31 +1326,66 @@ def Fisher_error_ana(x, sig2, xcorr, delta, mode=-1):
     # Note that mode==-1,0 uses the statistical properties mean and variance of the uniform
     # distribution, whereas mode=1,2 uses the actual sample x.
 
-    if xcorr != 0 and mode != 2:
-        raise ABCCovError('For xcorr!=0, Fisher matrix can only be computed with mode=2')
+    if xcorr != 0 and mode not in (0, 1, 2):
+        raise ABCCovError('For xcorr!=0, Fisher matrix can only be computed with mode=0,1,2')
 
     if mode != -1:
+
         if mode == 2:
+            # numerically using uniform vector x
+
             if xcorr == 0:
                 Psi = np.diag([1.0 / sig2 for i in range(n_D)])
             else:
-                cov = np.diag([sig2 - xcorr for i in range(n_D)]) + xcorr
-                Psi = np.linalg.inv(cov)
+                # Numerical inverse
+                #cov = np.diag([sig2 - xcorr for i in range(n_D)]) + xcorr
+                #try:
+                    #Psi = np.linalg.inv(cov)
+                #except LinAlgError:
+                    #print('Inverting true cov matrix failed')
+                    #raise
+
+                # Analytical inverse, see
+                # https://math.stackexchange.com/questions/1766089/inverse-of-a-matrix-with-uniform-off-diagonals
+                c = 1.0/xcorr + n_D/(sig2 - xcorr)
+                Psi = np.full((n_D, n_D), -1.0/c/(sig2 - xcorr)**2) \
+                        + np.diag([1.0/(sig2 - xcorr) for i in range(n_D)])
+
+            # Seems not to work well for a
             F_11 = np.einsum('i,ij,j', x, Psi, x)
             F_22 = np.einsum('i,ij,j', np.ones(shape=n_D), Psi, np.ones(shape=n_D))
             F_12 = np.einsum('i,ij,j', x, Psi, np.ones(shape=n_D))
+
         elif mode == 1:
-            F_11 = sum(x*x) / sig2
-            F_12 = sum(x) / sig2
-            F_22 = n_D / sig2
+            if xcorr == 0:
+                F_11 = sum(x*x) / sig2
+                F_12 = sum(x) / sig2
+                F_22 = n_D / sig2
+            else:
+                t1 = 1.0 / (sig2 - xcorr)
+                c = 1.0/xcorr + n_D/(sig2 - xcorr)
+                t2 = 1.0 / c / (sig2 - xcorr)**2
+                F_11 = sum(x*x) * (t1 - t2) # sum i!=j -> 0
+                F_12 = 0
+                F_22 = n_D * (t1 - n_D * t2)
+
         elif mode == 0:
-            F_11 = n_D * delta**2 / 12.0 / sig2
-            F_12 = 0
-            F_22 = n_D / sig2
+            if xcorr == 0:
+                F_11 = n_D * delta**2 / 12.0 / sig2
+                F_12 = 0
+                F_22 = n_D / sig2
+            else:
+                t1 = 1.0 / (sig2 - xcorr)
+                c = 1.0/xcorr + n_D/(sig2 - xcorr)
+                t2 = 1.0 / c / (sig2 - xcorr)**2
+                F_11 = n_D * delta**2 / 12.0 * (t1 - t2) # sum i!=j -> 0
+                F_12 = 0
+                F_22 = n_D * (t1 - n_D * t2)
 
         det = F_11 * F_22 - F_12**2
         da2 = F_22 / det
         db2 = F_11 / det
+
     else:
         # mode=-1
         det = detF(n_D, sig2, delta)
@@ -1328,9 +1416,9 @@ def Fisher_ana_quad(ell, f_sky, sigma_eps, nbar_rad2, tilt_fid, ampl_fid, cov_mo
         dy_dt = (yp2 - ym2) / (2*h)
         dy_dA = (yp1 - ym1) / (2*h)
 
-        y     = model_quad(np.log10(ell), ampl_fid, tilt_fid)
-        D     = get_cov_Gauss(ell, y, f_sky, sigma_eps, nbar_rad2)
-        D     = np.diag(D)
+        y = model_quad(np.log10(ell), ampl_fid, tilt_fid)
+        D = get_cov_Gauss(ell, y, f_sky, sigma_eps, nbar_rad2)
+        D = np.diag(D)
         
     else:
 

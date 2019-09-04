@@ -194,6 +194,7 @@ def params_default():
         likelihood  = 'norm_deb',
         n_jobs = 1,
         random_seed = False,
+        plot_style = 'talk'
     )
 
     return p_def
@@ -257,6 +258,8 @@ def parse_options(p_def):
 
     parser.add_option('-b', '--boxwidth', dest='boxwidth', type='float', default=None,
         help='box width for box plot, default=None, determined from n_S array')
+    parser.add_option('', '--plot_style', dest='plot_style', type='string', default=p_def.plot_style,
+        help='plot style, one in \'paper\'|\'talk\' (default)')
 
     parser.add_option('-v', '--verbose', dest='verbose', action='store_true', help='verbose output')
 
@@ -1151,16 +1154,21 @@ def main(argv=None):
 
     dpar2 = dpar_exact**2
 
-    fish_num.plot_std_var(n_S_arr, options.n_D, par=dpar2)
+    if options.plot_style == 'talk':
+        title = True
+    else:
+        title = False
 
-    fish_deb.plot_std_var(n_S_arr, options.n_D, par=dpar2)
+    fish_num.plot_std_var(n_S_arr, options.n_D, par=dpar2, title=title)
+
+    fish_deb.plot_std_var(n_S_arr, options.n_D, par=dpar2, title=title)
     if options.do_fit_stan == True:
         if re.search('norm_biased', options.likelihood) is not None:
-            fit_norm_num.plot_std_var(n_S_arr, options.n_D, par=dpar2, sig_var_noise=param.sig_var_noise)
+            fit_norm_num.plot_std_var(n_S_arr, options.n_D, par=dpar2, sig_var_noise=param.sig_var_noise, title=title)
         if re.search('norm_deb', options.likelihood) is not None:
-            fit_norm_deb.plot_std_var(n_S_arr, options.n_D, par=dpar2, sig_var_noise=param.sig_var_noise)
+            fit_norm_deb.plot_std_var(n_S_arr, options.n_D, par=dpar2, sig_var_noise=param.sig_var_noise, title=title)
         if re.search('SH', options.likelihood) is not None:
-            fit_SH.plot_std_var(n_S_arr, options.n_D, par=dpar2, sig_var_noise=param.sig_var_noise)
+            fit_SH.plot_std_var(n_S_arr, options.n_D, par=dpar2, sig_var_noise=param.sig_var_noise, title=title)
 
     sigma_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [options.sig2]}, boxwidth=param.boxwidth)
     sigma_m1_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [1/options.sig2]}, boxwidth=param.boxwidth)
