@@ -188,6 +188,7 @@ def params_default():
         n_S_min = n_D + 5,
         spar = '1.0 0.0',
         sig2 = 5.0,
+        xcross = 0.0,
         mode   = 's',
         do_fit_stan = False,
         do_fish_ana = False,
@@ -238,6 +239,8 @@ def parse_options(p_def):
         help='list of parameter values, default=\'{}\''.format(p_def.spar))
     parser.add_option('-s', '--sig2', dest='sig2', type='float', default=p_def.sig2,
         help='variance of Gaussian, default=\'{}\''.format(p_def.sig2))
+    parser.add_option('-x', '--xcross', dest='xcross', type='float', default=p_def.xcross,
+        help='cross-correlation on off-diagonal covariance, default=\'{}\''.format(p_def.xcross))
 
     parser.add_option('', '--fit_stan', dest='do_fit_stan', action='store_true',
         help='Run stan for MCMC fitting, default={}'.format(p_def.do_fit_stan))
@@ -367,25 +370,6 @@ def numbers_from_file(file_base, npar):
 
 
 
-# Gaussian likelihood function
-# chi^2 = -2 log L = (y - mu)^t Psi (y - mu).
-# y: n_D dimensional data vector, simulated as y(x) ~ N(mu(x), C)
-#    with mu(x) = b + a * x
-# x: x ~ Uniform(-100, 100)
-# mu: mean, mu(x) = b + a * x, with parameters b, a
-# Psi: estimated inverse covariance, Phi^-1 times correction factor
-# Phi: estimate of true covariance C, ML estimate from n_S realisations of y.
-# C = diag(sig^2, ..., sig^2)
-# Fisher matrix
-# F_rs = 1/2 ( dmu^t/dr Psi dmu/ds + dmu^t/ds Psi dmu/dr)
-#      = 1/2 |2 x^t Psi x               x^t Psi 1 + 1^t Psi x| 
-#            |1^t Psi x + x^t Psi 1     2 1^t Psi 1|
-#      =     |x^t Psi x   x^t Psi 1|
-#            |x^t Psi 1   1^1 Psi 1|
-#      =     |sum_ij x_i Psi_ij x_j   sum_ij x_i Psi_ij|
-#            |sum_ij x_i Psi_ij       sum_ij Psi_ij|
-# e.g. F_11 = F_aa = x Psi x^t
-
 def Fisher_ana_ele(r, s, x, Psi):
     """Return analytical Fisher matrix element (r, s).
 
@@ -417,14 +401,7 @@ def Fisher_ana_ele(r, s, x, Psi):
 
     f_rs = np.einsum('i,ij,j', v[r], Psi, v[s])
 
-    # Check result by hand
-    #f_rs = 0
-    #for i in range(n_D):
-        #for j in range(n_D):
-            #f_rs += v[r,i] * Psi[i, j] * v[s, j]
-
     return f_rs
-
 
 
 def Fisher_num_ele(r, s, x, a, b, Psi):
@@ -542,7 +519,11 @@ def Fisher_num(x, a, b, Psi):
 
 
 def get_cov_ML_by_hand(y2, ymean, cov, n_S, n_D):
-    """ Double check that get_cov_ML is the same as calculating 'by hand'"""
+    """ Element-by-element compuation of covariance, for checking. Use:
+        ymean = np.mean(y2, axis=0)
+        cov_est = get_cov_ML_by_hand(y2, ymean, cov, size, n_D)
+        to get same result as `get_cov_ML`.
+    """
 
     cov_est = np.zeros(shape=(n_D, n_D))
     if n_D > 1:
@@ -571,20 +552,6 @@ def get_cov_ML(mean, cov, size):
     y2 = multivariate_normal.rvs(mean=mean, cov=cov, size=size)
     # y2[:,j] = realisations for j-th data entry
     # y2[i,:] = data vector for i-th realisation
-
-
-    # Calculate covariance matrix via np
-    cov_est = np.cov(y2, rowvar=False)
-
-    # Or by hand
-    # 01/11 checked that this gives same results, with
-    # test_ML.py -D 50 -p 1_0 --n_n_S 10 --f_n_S_max 10 -s 0.2 -m s -R 50 -v
-    #n_D = len(mean)
-    # Estimate mean (ML)
-    #ymean = np.mean(y2, axis=0)
-    #cov_est = get_cov_ML_by_hand(y2, ymean, cov, size, n_D)
-    #print(cov_est)
-
 
     if size > 1:
         pass
@@ -862,6 +829,10 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_an
         print('Creating {} simulations with {} runs each'.format(len(n_S_arr), options.n_R))
 
     cov = np.diag([options.sig2 for i in range(options.n_D)])            # *** cov of the data in the same catalog! ***
+    if options.xcorr != 0:
+        cov = cov + np.full(options.xcorr) - np.diag([options.xcorr for i in range(options.n_D)])
+    print(cov)
+    sys.exit(1)
 
     # Go through number of simulations
     for i, n_S in enumerate(n_S_arr):
@@ -1080,7 +1051,7 @@ def main(argv=None):
 
 
     # Initialisation of results
-    sigma_ML    = Results(tr_name, n_n_S, options.n_R, file_base='sigma_ML')
+    sigma_ML = Results(tr_name, n_n_S, options.n_R, file_base='sigma_ML')
     sigma_m1_ML = Results(tr_name, n_n_S, options.n_R, file_base='sigma_m1_ML', yscale='log', fct={'mean': tr_N_m1_ML})
     sigma_m1_ML_deb = Results(tr_name, n_n_S, options.n_R, file_base='sigma_m1_ML_deb', fct={'mean': no_bias})
 
@@ -1095,7 +1066,7 @@ def main(argv=None):
     fit_norm_deb = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_norm_deb', yscale=['linear', 'log'],
                        #fct={'std': no_bias, 'std_var_TJK13': std_fish_deb, 'std_var_TJ14': std_fish_deb_TJ14})
                        fct={'std': no_bias, 'std_var_TJ14': std_fish_deb_TJ14})
-    fit_SH   = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_SH', yscale=['linear', 'log'],
+    fit_SH = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_SH', yscale=['linear', 'log'],
                        fct={'std': par_fish_SH})
 
     # Data
@@ -1112,8 +1083,6 @@ def main(argv=None):
             fit_norm = fit_norm_deb
         else:
             fit_norm = fit_norm_num  # Dummy variable, could be changed to make more error-proof
-        # Can add true_cov, true_inv_cov
-        # TODO: also assign fit_SH with this scheme
  
         simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, fish_deb, fit_norm, fit_SH, options) 
 
@@ -1129,13 +1098,6 @@ def main(argv=None):
 
 
     dpar_exact, det = Fisher_error_ana(x1, options.sig2, 0.0, delta, mode=-1)
-
-    # Exact inverse covariance
-    #cov_inv    = np.diag([1.0 / options.sig2 for i in range(options.n_D)])
-    # Numerical Fisher matrix using data
-    #F_exact    = Fisher_ana(x1, cov_inv)    # Bug fixed 05/10
-    #dpar_exact = Fisher_error(F_exact)
-    #print('Parameter error (from exact Fisher_ana)', dpar_exact)
 
     if options.verbose == True:
         print('Creating plots')

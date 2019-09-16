@@ -10,17 +10,14 @@ import shlex
 from astropy import units
 from astropy.io import ascii
 
-
 import matplotlib
 matplotlib.use("TkAgg")
 
-#import pylab as plt
 import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 
 import scipy.stats._multivariate as mv
 from scipy.stats import norm, uniform
-
 
 
 class ABCCovError(Exception):
@@ -33,14 +30,12 @@ class ABCCovError(Exception):
    pass
 
 
-
 def alpha_new(n_S, n_D):
     """Return precision matrix estimate bias prefactor alpha.
        IK17 (5).
     """
 
     return (n_S - n_D - 2.0)/(n_S - 1.0)
-
 
 
 def read_ascii(in_name):
@@ -57,13 +52,9 @@ def read_ascii(in_name):
         file content
     """
     
-    #from astropy.io import ascii
-    #dat = ascii.read(in_name)
-
     dat = np.genfromtxt(in_name, names=True, deletechars=['[]'])
 
     return dat
-
 
 
 def write_ascii(file_base, cols, names):
@@ -83,16 +74,9 @@ def write_ascii(file_base, cols, names):
     None
     """
 
-    #from astopy.table import Table, Columns
-    #t = Table(cols, names=names)
-    #f = open('{}.txt'.format(self.file_base), 'w')
-    #ascii.write(t, f, delimiter='\t')
-    #f.close()
-
     header = ' '.join(names)[2:]
     data   = np.array(cols).transpose()
     np.savetxt('{}.txt'.format(file_base), data, header=header, fmt='%.10g')
-
 
 
 def get_n_S_arr(n_S_min, n_D, f_n_S_max, n_n_S, n_S=None):
@@ -125,7 +109,6 @@ def get_n_S_arr(n_S_min, n_D, f_n_S_max, n_n_S, n_S=None):
     else:
         start   = n_S_min
         stop    = n_D * f_n_S_max
-        # python3
         if sys.version_info.major == 3:
             n_S_arr = np.logspace(np.log10(start), np.log10(stop), n_n_S, dtype='int')
         elif sys.version_info.major == 2:
@@ -134,7 +117,6 @@ def get_n_S_arr(n_S_min, n_D, f_n_S_max, n_n_S, n_S=None):
             error('Invalid python version', sys.version_info)
 
     return n_S_arr, n_n_S
-
 
 
 def no_bias(n, n_D, par):
@@ -147,13 +129,11 @@ def no_bias(n, n_D, par):
     return np.asarray([par] * len(n))
 
 
-
 def alpha(n_S, n_D):
     """Return precision matrix estimate bias prefactor alpha.
     """
 
     return (n_S - 1.0)/(n_S - n_D - 2.0)
-
 
 
 def A(n_S, n_D):
@@ -165,24 +145,25 @@ def A(n_S, n_D):
     return A
 
 
-
 def std_fish_biased_TJK13(n, n_D, par):
     """0th-order error on variance from Fisher matrix with biased inverse covariance estimate.
        From TJK13 (49) with A (27) instead of A_corr (28) in (49).
        Square root of IK17 (22).
     """
 
-    return [np.sqrt(2 * A(n_S, n_D) / alpha(n_S, n_D)**4 * (n_S - n_D - 1)) * par for n_S in n] # checked
-
     #return std_fish_deb(n, n_D, par) * alpha_new(n, n_D)
+
+    return [np.sqrt(2 * A(n_S, n_D) / alpha(n_S, n_D)**4 * (n_S - n_D - 1)) * par for n_S in n]
+
 
 
 def std_affine_off_diag(n, n_D, par):
     """Return RMS for affine model with non-zero off-diagonal covariance matrix.
+       For this toy model, n is identified with r, the off-diagonal constant element.
     """
 
     delta = 200
-    x = uniform.rvs(loc=-delta/2, scale=delta, size=n_D)        # exploratory variable
+    x = uniform.rvs(loc=-delta/2, scale=delta, size=n_D)
     x.sort()
 
     sig2 = 5.0
@@ -191,6 +172,7 @@ def std_affine_off_diag(n, n_D, par):
     for xcorr in n:
         (da, db), det = Fisher_error_ana(x, sig2, xcorr, delta, mode=2)
 
+        # This is a really bad hack
         if abs(par/0.0014 - 1) < 0.1:   # a
             d = da
         elif abs(par/0.0817 - 1) < 0.1:  # b
@@ -881,7 +863,7 @@ class Results:
         else:
             fac_xlim   = 1.05
             #xmin = (n[0]-5)/fac_xlim**5
-            # MKDEBUG NEW 3/9/2019 for xcorr plot trials
+            # MKDEBUG NEW 3/9/2019 for xcorr plots, n_S is actually r
             if n[0] > 10:
                 xmin = (n[0]-5)/fac_xlim**5
             else:
@@ -932,7 +914,7 @@ class Results:
 
                     if len(n) > 1:
                         #n_fine = np.arange(n[0], n[-1], len(n)/10.0)
-                        # MKDEBUG NEW 3/9/2019 for xcorr plot trials
+                        # MKDEBUG NEW 3/9/2019 for xcorr plots
                         n_fine = np.arange(n[0], n[-1]+len(n)/20.0, len(n)/20.0)
                     else:
                         x0 = n[0] / 4

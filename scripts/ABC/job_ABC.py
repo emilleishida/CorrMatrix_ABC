@@ -171,7 +171,7 @@ def update_param(p_def, options):
     else:
         str_n_S_list = my_string_split(options.str_n_S, verbose=False, stop=True)
         if param.model == 'affine_off_diag':
-            # MKDEBUG NEW 3/9/2019 xcorr plot trials
+            # Added 3/9/2019 for xcorr plots with non-int n_S (= r)
             param.n_S = [float(str_n_S) for str_n_S in str_n_S_list]
         else:
             param.n_S = [int(str_n_S) for str_n_S in str_n_S_list]
@@ -634,7 +634,6 @@ def main(argv=None):
     param.par = [float(p) for p in par]
 
     if param.model in ['affine', 'affine_off_diag']:
-        #x1 = np.zeros(shape = param.n_D) # Dummy variable
         delta = 200
         x1 = uniform.rvs(loc=-delta/2, scale=delta, size=param.n_D)        # exploratory variable
         x1.sort()
