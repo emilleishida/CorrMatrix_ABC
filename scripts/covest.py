@@ -1308,8 +1308,8 @@ def Fisher_error_ana(x, sig2, xcorr, delta, mode=-1):
     # Note that mode==-1,0 uses the statistical properties mean and variance of the uniform
     # distribution, whereas mode=1,2 uses the actual sample x.
 
-    if xcorr != 0 and mode not in (0, 1, 2):
-        raise ABCCovError('For xcorr!=0, Fisher matrix can only be computed with mode=0,1,2')
+    if xcorr != 0 and mode not in (0, 2):
+        raise ABCCovError('For xcorr!=0, Fisher matrix can only be computed with mode=0,2')
 
     if mode != -1:
 
@@ -1344,12 +1344,8 @@ def Fisher_error_ana(x, sig2, xcorr, delta, mode=-1):
                 F_12 = sum(x) / sig2
                 F_22 = n_D / sig2
             else:
-                t1 = 1.0 / (sig2 - xcorr)
-                c = 1.0/xcorr + n_D/(sig2 - xcorr)
-                t2 = 1.0 / c / (sig2 - xcorr)**2
-                F_11 = sum(x*x) * (t1 - t2) # sum i!=j -> 0
-                F_12 = 0
-                F_22 = n_D * (t1 - n_D * t2)
+                pass
+                # Here we would need sum{i!=j} x_i x_j
 
         elif mode == 0:
             if xcorr == 0:
