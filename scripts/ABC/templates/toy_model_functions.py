@@ -157,11 +157,11 @@ def linear_dist_data(d2, p):
     y_delta = y_sim - y_obs
     
     # Unweighted distances
-    #dist    = np.sqrt(sum(y_delta**2))
+    dist    = np.sqrt(sum(y_delta**2))
 
     # Least squares weighted by covariance
-    cov_est_inv = p['cov_est_inv']
-    dist = np.einsum('i,ij,j', y_delta, cov_est_inv, y_delta)
-    dist = np.sqrt(dist)
+    #cov_est_inv = p['cov_est_inv']
+    #dist = np.einsum('i,ij,j', y_delta, cov_est_inv, y_delta)
+    #dist = np.sqrt(dist)
 
     return np.atleast_1d(dist)
