@@ -169,12 +169,9 @@ def A(n_S, n_D):
 def std_fish_biased_TJK13(n, n_D, par):
     """0th-order error on variance from Fisher matrix with biased inverse covariance estimate.
        From TJK13 (49) with A (27) instead of A_corr (28) in (49).
-       Square root of IK17 (22).
     """
 
-    return [np.sqrt(2 * A(n_S, n_D) / alpha(n_S, n_D)**4 * (n_S - n_D - 1)) * par for n_S in n] # checked
-
-    #return std_fish_deb(n, n_D, par) * alpha_new(n, n_D)
+    return [np.sqrt(2 * A(n_S, n_D) / alpha(n_S, n_D)**4 * (n_S - n_D - 1)) * par for n_S in n]
 
 
 def std_affine_off_diag(n, n_D, par):
@@ -230,9 +227,7 @@ def get_n_S_R_from_fit_file(file_base, npar=2):
         else:
             raise
 
-    #n_S = np.array(dat['n_S'].data)
     n_S = dat['n_S']
-    #n_R   = (len(dat.keys()) - 1) / 2 / npar
     n_R   = (len(dat.dtype) - 1) / 2 / npar
 
     return n_S, n_R
