@@ -10,6 +10,7 @@ from cosmoabc.ABC_functions import read_input
 from toy_model_functions import linear_dist, linear_dist_data, model_cov, gaussian_prior
 
 import numpy as np
+from numpy.linalg import LinAlgError
 from scipy.stats import uniform, multivariate_normal
 from statsmodels.stats.weightstats import DescrStatsW
 from covest import weighted_std, get_cov_ML
@@ -55,6 +56,7 @@ if xcorr != 0:
         L = np.linalg.cholesky(cov)
     except LinAlgError:
         print('Cholesky decomposition of covariance matrix failed, exiting.')
+        sys.exit(1)
     print('Cholesky: covariance matrix is positive')
 
 #############################################
