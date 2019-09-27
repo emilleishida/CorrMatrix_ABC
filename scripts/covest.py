@@ -181,7 +181,6 @@ def std_affine_off_diag(n, n_D, par):
             raise ValueError('Invalid parameter par={}'.format(par))
         std.append(d)
 
-    print(std, len(std))
     return std
 
 
@@ -808,7 +807,7 @@ class Results:
         return True
 
 
-    def plot_mean_std(self, n, n_D, par=None, boxwidth=None, xlog=False, model='affine'):
+    def plot_mean_std(self, n, n_D, par=None, boxwidth=None, xlog=False, ylim=None, model='affine'):
         """Plot mean and std versus number of realisations n
 
         Parameters
@@ -823,6 +822,8 @@ class Results:
             box width for box plots, default: None, width is determined from n
         xlog: bool, optional
             logarithmic x-axis, default False
+        ylim: array of two floats, optional, default None
+            y-limits
         model: string
             model, one in 'affine', 'affine_off_diag', or 'quadratic'
 
@@ -1008,6 +1009,9 @@ class Results:
                         plt.ylim(3e-4, 5)
                     else:
                         plt.ylim(5e-4, 2e-2)
+
+            if ylim is not None:
+                plt.ylim(ylim)
 
 
         if plot_sth == True:
