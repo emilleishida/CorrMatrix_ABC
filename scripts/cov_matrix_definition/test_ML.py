@@ -104,22 +104,31 @@ def std_fish_biased2(n, n_D, par):
     return [np.sqrt(2 * A(n_S, n_D) * ((n_S - n_D - 1))) / (alpha(n_S, n_D)**2) * par for n_S in n]
 
 
+def coeff_TJ14(n_S, n_D, n_P):
+    """Square root of the prefactor for the variance of the parameter variance, TJ14 (12).
+    """
+
+    return np.sqrt(2 * (n_S - n_D + n_P - 1) / (n_S - n_D - 2)**2)
+
+
 def std_fish_deb_TJ14(n, n_D, par):
-    """Improved error on variance from the Fisher matrix.
-       From TJ14 (12). This seems to be the case of the debiased precision matrix.
+    """Error on variance from the Fisher matrix. From TJ14 (12).
     """
 
     n_P = 2  # Number of parameters
-    return [np.sqrt(2 * (n_S - n_D + n_P - 1) / (n_S - n_D -2)**2) * par for n_S in n]
+
+    #return [np.sqrt(2 * (n_S - n_D + n_P - 1) / (n_S - n_D - 2)**2) * par for n_S in n]
+    return [coeff_TJ14(n_S, n_D, n_P) * par for n_S in n]
 
 
 def std_fish_biased_TJ14(n, n_D, par):
-    """Improved error on variance from the Fisher matrix.
-       From TJ14 (12), with division by the de-biasing factor alpha.
+    """Error on variance from the Fisher matrix. From TJ14 (12), with division by the de-biasing factor alpha.
     """
 
     n_P = 2  # Number of parameters
-    return [np.sqrt(2 * (n_S - n_D + n_P - 1) / (n_S - n_D -2)**2) / alpha(n_S, n_D) * par for n_S in n]
+
+    #return [np.sqrt(2 * (n_S - n_D + n_P - 1) / (n_S - n_D - 2)**2) / alpha(n_S, n_D) * par for n_S in n]
+    return [coeff_TJ14(n_S, n_D, n_P) alpha(n_S, n_D) * par for n_S in n]
 
 
 def hatdetF(n_S, n_D, sig2, delta):
