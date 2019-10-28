@@ -79,29 +79,12 @@ def par_fish_SH(n, n_D, par):
     return [np.sqrt(alpha_new(n_S, n_D) * 2.0 * n / (n - 1.0)) * par for n_S in n]
 
 
-
 def std_fish_deb(n, n_D, par):
     """Error on variance from Fisher matrix with debiased inverse covariance estimate.
-       Ssquare root of TJK13 (49, 50), IK17 (18).
+       Square root of TJK13 (49, 50).
     """
 
     return [np.sqrt(2.0 / (n_S - n_D - 4.0)) * par for n_S in n]
-
-
-def std_fish_biased(n, n_D, par):
-    """Error on variance from Fisher matrix with biased inverse covariance estimate,
-       with correction, IK17 (26).
-    """
-
-    return [np.sqrt(2 * A(n_S, n_D) * ((n_S - n_D - 1))) / (2 * A(n_S, n_D) + alpha(n_S, n_D)**2) * par for n_S in n]
-
-
-def std_fish_biased2(n, n_D, par):
-    """Error on variance from Fisher matrix with biased inverse covariance estimate,
-       with correction, IK17 (26), ignoring 2A in denominator.
-    """
-
-    return [np.sqrt(2 * A(n_S, n_D) * ((n_S - n_D - 1))) / (alpha(n_S, n_D)**2) * par for n_S in n]
 
 
 def coeff_TJ14(n_S, n_D, n_P):
@@ -117,7 +100,6 @@ def std_fish_deb_TJ14(n, n_D, par):
 
     n_P = 2  # Number of parameters
 
-    #return [np.sqrt(2 * (n_S - n_D + n_P - 1) / (n_S - n_D - 2)**2) * par for n_S in n]
     return [coeff_TJ14(n_S, n_D, n_P) * par for n_S in n]
 
 
@@ -127,51 +109,7 @@ def std_fish_biased_TJ14(n, n_D, par):
 
     n_P = 2  # Number of parameters
 
-    #return [np.sqrt(2 * (n_S - n_D + n_P - 1) / (n_S - n_D - 2)**2) / alpha(n_S, n_D) * par for n_S in n]
     return [coeff_TJ14(n_S, n_D, n_P) alpha(n_S, n_D) * par for n_S in n]
-
-
-def hatdetF(n_S, n_D, sig2, delta):
-    """Return expectation value of estimated determinant.
-    """
-
-    det = detF(n_D, sig2, delta)
-    det = det * (2 * A(n_S, n_D) + alpha(n_S, n_D)**2)
-    return det 
-
-
-def deltaG2(a, n_S, n_D, sig2, delta):
-    """Return <(Delta G_aa)^2>.
-    """
-
-    pref = 2 * A(n_S, n_D) / sig2**2 * (n_S - n_D - 1) * n_D**2
-
-    if a==0:
-        dG2 = pref
-    elif a==1:
-        dG2 = pref * (delta**2/12.0)**2
-        # TODO: n_D**2 check
-    else:
-        error('Invalid parameter index {}'.format(a))
-
-    return dG2
-
-
-
-def std_fish_biased_ana(a, n, n_D, sig2, delta):
-
-    return [np.sqrt(1.0/hatdetF(n_S, n_D, sig2, delta)**2 *
-               deltaG2(a, n_S, n_D, sig2, delta) 
-            ) for n_S in n]
-
-
-
-def std_fish_biased_exa(a, n, n_D, sig2, delta):
-
-    return [np.sqrt(1.0/detF(n_D, sig2, delta)**2 *
-               deltaG2(a, n_S, n_D, sig2, delta) 
-            ) for n_S in n]
-
 
 
 def params_default():
