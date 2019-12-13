@@ -150,12 +150,6 @@ def std_fish_biased_TJK13(n, n_D, par):
        From TJK13 (49) with A (27) instead of A_corr (28) in (49).
     """
 
-<<<<<<< HEAD
-    #return std_fish_deb(n, n_D, par) * alpha_new(n, n_D)
-=======
-    return [np.sqrt(2 * A(n_S, n_D) / alpha(n_S, n_D)**4 * (n_S - n_D - 1)) * par for n_S in n]
->>>>>>> 25b100a2175c17c6914b5b0d07d8c9fc5a96e380
-
     return [np.sqrt(2 * A(n_S, n_D) / alpha(n_S, n_D)**4 * (n_S - n_D - 1)) * par for n_S in n]
 
 

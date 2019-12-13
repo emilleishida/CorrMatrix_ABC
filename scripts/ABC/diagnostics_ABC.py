@@ -20,6 +20,7 @@ def diagnostics_draws():
 
     Mtot = 0
     nd = 0
+    nit = 0
     for f in files:
 
         m = re.findall('linear_PS\d+.dat', f)
@@ -29,8 +30,9 @@ def diagnostics_draws():
         dat = np.genfromtxt(f, names=True, deletechars=['[]'])
         nd += int(dat['NDraws'].sum())
         Mtot += len(dat)
+        nit += 1
 
-    return Mtot, nd
+    return Mtot, nd, nit
 
 
 
@@ -39,15 +41,13 @@ def main(argv=None):
     """Main program.
     """
 
-    Mtot, nd = diagnostics_draws()
+    Mtot, nd, nit = diagnostics_draws()
 
-    #print('Mtot = {}\t\t\t# Numer of accepted points'.format(Mtot))
-    #print('nd   = {}\t\t\t# Number of total draws'.format(nd))
-    #print('eta  = {:.4f}\t\t\t# Acceptance rate Mtot/nd'.format(float(Mtot)/float(nd)))
+    #print('# Mtot nd ratio nit')
     if nd > 0:
-        print('{} {} {:.4f}'.format(Mtot, nd, float(Mtot)/float(nd)))
+        print('{} {} {:.4f} {}'.format(Mtot, nd, float(Mtot)/float(nd), nit))
     else:
-        print('- - -')
+        print('- - - -')
 
 
 if __name__ == "__main__":

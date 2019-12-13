@@ -127,8 +127,8 @@ def std_fish_biased_TJ14(n, n_D, par):
 
     n_P = 2  # Number of parameters
 
-    #return [np.sqrt(2 * (n_S - n_D + n_P - 1) / (n_S - n_D - 2)**2) / alpha(n_S, n_D) * par for n_S in n]
-    return [coeff_TJ14(n_S, n_D, n_P) alpha(n_S, n_D) * par for n_S in n]
+    return [np.sqrt(2 * (n_S - n_D + n_P - 1) / (n_S - n_D - 2)**2) / alpha(n_S, n_D) * par for n_S in n]
+    #return [coeff_TJ14(n_S, n_D, n_P) alpha(n_S, n_D) * par for n_S in n]
 
 
 def hatdetF(n_S, n_D, sig2, delta):
