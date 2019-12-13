@@ -862,7 +862,8 @@ class Results:
             if n[0] > 10:
                 xmin = (n[0]-5)/fac_xlim**5
             else:
-                xmin = (n[0]-0.5)/fac_xlim**5
+                #xmin = (n[0]-0.5)/fac_xlim**5
+                xmin = (n[0]-2.0)/fac_xlim**5
             xmax = n[-1]*fac_xlim
             rotation = 'vertical'
 
