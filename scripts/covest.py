@@ -153,7 +153,6 @@ def std_fish_biased_TJK13(n, n_D, par):
     return [np.sqrt(2 * A(n_S, n_D) / alpha(n_S, n_D)**4 * (n_S - n_D - 1)) * par for n_S in n]
 
 
-
 def std_affine_off_diag(n, n_D, par):
     """Return RMS for affine model with non-zero off-diagonal covariance matrix.
        For this toy model, n is identified with r, the off-diagonal constant element.
@@ -1062,12 +1061,6 @@ class Results:
             if y.any():
                 if par is not None:
                     n_fine = np.arange(n[0], n[-1], len(n)/10.0)
-                    if 'std_var' in self.fct:
-                        plot_add_legend(i==0, n_fine, self.fct['std_var'](n_fine, n_D, par[i]), \
-                                        '-', color=color[i], label='This work')
-                        cols.append(self.fct['std_var'](n, n_D, par[i]))
-                        names.append('IJ17({})'.format(p))
-
                     if 'std_var_TJK13' in self.fct:
                         plot_add_legend(i==0, n_fine, self.fct['std_var_TJK13'](n_fine, n_D, par[i]), \
                                         '--', color=color[i], label='TJK13')
