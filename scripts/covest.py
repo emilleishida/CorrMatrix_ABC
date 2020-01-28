@@ -1410,24 +1410,24 @@ def Fisher_ana_quad(ell, f_sky, sigma_eps, nbar_rad2, tilt_fid, ampl_fid, cov_mo
         y = model_quad(np.log10(ell), ampl_fid, tilt_fid)
         B = sigma_eps**2 / (2.0 * nbar_rad2)
 
-        #N = 1.0 / (f_sky * (2.0 * ell + 1) * Delta_ell)
         N = 1.0 / (f_sky * (2.0 * ell) * Delta_ell)
         D = N * (y + B)**2
 
-        #N = 1.0/ (2.0 * f_sky * Delta_ln_ell_bar)
-        #D = N / ell**2 * (y + B)**2
-
         u = np.log10(ell)
 
-        c0    = -6.11568527 + 0.1649
-        t0    = 1.0 / (1.85132114 / 0.306)
+        c0    = -6.11568527 + 0.1649            # 5.95 in the paper
+        t0    = 1.0 / (1.85132114 / 0.306)      # 1/6.05 in the paper
         a     = -0.17586216
         u0    = shift(tilt_fid)
 
-        # The following two lines are equivalent
+        # The following two lines are equivalent:
+        # dy_dA = dy_dq  * dq_dc * dc_dA
+        #       = y ln10 * 1     * 2/ln10 A
         dy_dA = 2 * ampl_fid * 10**(c0 + a * (u-u0)**2 - u)
         #dy_dA = 2.0 * y / ampl_fid
 
+        # dy_dt = dy_dq * dq_du0 * du0_dt
+        #       = y ln10 * (-2) a (u -u0) 1/t0
         dy_dt = 1.0 / t0 * (-2.0) * a * (u - u0) * y * np.log(10)
 
     if cov_model == 'Gauss':

@@ -820,9 +820,6 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_an
             fish_num.set(dpar, i, run, which='std')
             fish_num.F[i,run] = F
 
-            # The following also works, if get_std_var is changed at same time
-            #fish_num.set(dpar**2, i, run, which='std')
-
             # using debiased inverse covariance estimate
             cov_est_inv_debiased = debias_cov(cov_est_inv, n_S)
             F = Fisher_num(x1, options.a, options.b, cov_est_inv_debiased)
@@ -845,11 +842,10 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_an
                     cov_est_biased  = bias_cov(cov_est, n_S)
                     res = fit_corr(x1, cov, cov_est_biased, n_jobs=options.n_jobs)
 
-                    # Using true covariance in likelihood
-                    #print('MKDEBUG: cc branch, use true cov for testing')
+                    # For testing sampling noise: Using true covariance in likelihood
                     #res = fit_corr(x1, cov, cov, n_jobs=options.n_jobs)
 
-                    # Using true inverse covariance in likelihood
+                    # For testing sampling noise: Using true inverse covariance in likelihood
                     #print('MKDEBUG: cc branch, use true *inverse* cov for testing')
                     #res = fit_corr_inv_true(x1, cov, options.sig2, n_jobs=options.n_jobs)
 

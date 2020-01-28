@@ -611,8 +611,6 @@ def main(argv=None):
     fit_ABC = Results(param.par_name, n_n_S, param.n_R, file_base='mean_std_ABC', yscale=['linear', 'log'], fct=fct)
 
 
-    # MKDEBUG TODO add check: n_D and nobs in toy_model.input should be consistent, if only for plotting reasons
-
     # Create simulations
     if re.search('s', param.mode) is not None:
 
