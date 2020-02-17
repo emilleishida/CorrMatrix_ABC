@@ -8,7 +8,9 @@ from cosmoabc.priors import flat_prior
 from cosmoabc.ABC_sampler import ABC
 from cosmoabc.plots import plot_2p
 from cosmoabc.ABC_functions import read_input
-from toy_model_functions import linear_dist_data_diag, linear_dist_data, linear_dist_data_acf, model_cov, model_quad
+from toy_model_functions import linear_dist_data_diag, linear_dist_data, linear_dist_data_acf, \
+    linear_dist_data_acf_abs, linear_dist_data_acf_ratio, linear_dist_data_acf_ratio_abs, \
+    model_cov, model_quad
 
 import numpy as np
 import sys
@@ -57,9 +59,12 @@ else:
 Parameters['simulation_func'] = model_cov
 
 ### Distance function
-distance = {'linear_dist_data_diag': linear_dist_data_diag,
-            'linear_dist_data':      linear_dist_data,
-            'linear_dist_data_acf':  linear_dist_data_acf,
+distance = {'linear_dist_data_diag':      linear_dist_data_diag,
+            'linear_dist_data':           linear_dist_data,
+            'linear_dist_data_acf':       linear_dist_data_acf,
+            'linear_dist_data_acf_abs':   linear_dist_data_acf_abs,
+            'linear_dist_data_acf_ratio': linear_dist_data_acf_ratio,
+            'linear_dist_data_acf_ratio_abs': linear_dist_data_acf_ratio_abs,
            }
 distance_str                  = Parameters['distance_func'][0]
 Parameters['distance_func']   = distance[distance_str]

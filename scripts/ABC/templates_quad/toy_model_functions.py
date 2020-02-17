@@ -268,8 +268,25 @@ def acf(C, norm=False, centered=False, reverse=False):
     return xi
 
 
+def linear_dist_data_acf_abs(d2, p):
+    """ACF distance with mode_sum='abs'"""
 
-def linear_dist_data_acf(d2, p):
+    return linear_dist_data_acf(d2, p, weight=True, mode_sum='abs')
+
+
+def linear_dist_data_acf_ratio(d2, p):
+    """ACF distance with mode_sum='ratio'"""
+
+    return linear_dist_data_acf(d2, p, weight=True, mode_sum='ratio')
+
+
+def linear_dist_data_acf_ratio_abs(d2, p):
+    """ACF distance with mode_sum='ratio_abs'"""
+
+    return linear_dist_data_acf(d2, p, weight=True, mode_sum='ratio_abs')
+
+
+def linear_dist_data_acf(d2, p, weight=True, mode_sum='square'):
     """Distance between observed and simulated catalogues using
        the auto-correlation function of the observation
 
@@ -279,6 +296,10 @@ def linear_dist_data_acf(d2, p):
         simulated catalogue
     p: dictionary
         input parameters
+    weight: bool, optional, default=True
+        if True, weigh data by inverse variance
+    mode_sum: string, optional, default='square'
+        mode of summands in distance
 
     Returns
     -------
@@ -295,8 +316,12 @@ def linear_dist_data_acf(d2, p):
         cov = np.loadtxt('cov_est.txt')
 
     # Weighted data points
-    C_ell_sim_w = C_ell_sim / np.sqrt(np.diag(cov))
-    C_ell_obs_w = C_ell_obs / np.sqrt(np.diag(cov))
+    if weight:
+        C_ell_sim_w = C_ell_sim / np.sqrt(np.diag(cov))
+        C_ell_obs_w = C_ell_obs / np.sqrt(np.diag(cov))
+    else:
+        C_ell_sim_w = C_ell_sim
+        C_ell_obs_w = C_ell_obs
 
     xi = acf(C_ell_obs, norm=True, centered=False, reverse=False)
 
@@ -304,9 +329,23 @@ def linear_dist_data_acf(d2, p):
     n_D = len(C_ell_obs)
     for i in range(n_D):
         for j in range(n_D):
-            term = (C_ell_sim_w[i] - C_ell_obs_w[j])**2 * xi[np.abs(i-j)]**2
+            xi_ij = xi[np.abs(i-j)]
+            if mode_sum == 'square':
+                term = (C_ell_sim_w[i] - C_ell_obs_w[j])**2 * xi_ij**2
+            elif mode_sum == 'abs':
+                term = np.abs(C_ell_sim_w[i] - C_ell_obs_w[j]) * np.abs(xi_ij)
+            elif mode_sum == 'ratio':
+                term = (C_ell_sim_w[i] / C_ell_obs_w[j])**2 * xi_ij**2
+            elif mode_sum == 'ratio_abs':
+                term = np.abs(C_ell_sim_w[i] / C_ell_obs_w[j]) * np.abs(xi_ij)
+            else:
+                raise ValueError('invalid mode_sum={}'.format(mode_sum))
             d = d + term
 
+    if mode_sum not in ('abs', 'ratio_abs'):
+        d = np.sqrt(d)
+
     d = np.atleast_1d(d)
+
     return d
 
