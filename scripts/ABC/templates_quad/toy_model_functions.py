@@ -213,7 +213,7 @@ def acf_one(C, di, mean, reverse=False):
     """
 
     n_D  = len(C)
-    # Shift signal and keep to same length (loose entries at high-ell end)
+    # Shift signal and keep to same length (lose entries at high-ell end)
     C1 = C[:n_D - di]
     C2 = C[di:]
 
