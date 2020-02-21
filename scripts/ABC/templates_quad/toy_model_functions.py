@@ -221,7 +221,7 @@ def acf_one(C, di, mean, reverse=False):
         C2 = C2[::-1]
 
     # Estimate ACF
-    xi = sum((C1 - mean) * (C2 - mean)) / float(n_D)
+    xi = sum((C1 - mean) * (C2 - mean)) / float(n_D - di)
 
     return xi
 
@@ -318,7 +318,7 @@ def linear_dist_data_acf(d2, p, weight=True, mode_sum='square'):
         C_ell_sim_w = C_ell_sim
         C_ell_obs_w = C_ell_obs
 
-    xi = acf(C_ell_obs, norm=True, centered=False, reverse=False)
+    xi = acf(C_ell_obs, norm=True, centered=True, reverse=False)
 
     d = 0
     n_D = len(C_ell_obs)
