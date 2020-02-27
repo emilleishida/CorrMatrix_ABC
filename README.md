@@ -9,12 +9,12 @@ Use a `conda` environment:
 ```bash
 conda create -n ABC python=2.7
 conda activate ABC
-conda install statsmodels ipython
+conda install statsmodels ipython astropy
 ```
 
 The following packages should be installed by default, if not, install them by hand:
 ```bash
-conda install numpy scipy matplotlib astropy
+conda install numpy scipy matplotlib
 ```
 
 Install `cosmoabc` with `pip`.
