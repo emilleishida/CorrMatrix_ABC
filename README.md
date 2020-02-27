@@ -21,6 +21,16 @@ Install `cosmoabc` with `pip`.
 ```
 pip install cosmoabc
 ```
+If this fails due to a python error, try to install `cosmoabc from `github`:
+```bash
+git clone git@github.com:emilleishida/CorrMatrix_ABC.git
+```
+Add square brackets to the line in `setup.py` as follows:
+`package_data = {'cosmoabc/data':['SPT_sample.dat']},`
+and install the package
+```bash
+python2 setup.py install
+```
 
 #### MCMC sampling
 
