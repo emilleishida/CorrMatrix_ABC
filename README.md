@@ -83,8 +83,9 @@ To run the sampling with `pystan`, we need to add the option `--fit_stan`, and s
 First, we create the simulations (`-m s`).
 
 ```bash
-cm_likelihood.py -D 750 -p 1_0 -s 5 -v -m s -r -R 5 --n_n_S 10 --fit_stan -L norm_deb --sig_var_noise 4.6e-08_0.000175 --plot_style paper
+cm_likelihood.py -D 750 -p 1_0 -s 5 -v -m s -r -R 5 --n_n_S 10 --fit_stan -L norm_deb --plot_style paper
 ```
 
+Fig. 4 in the paper shows that the raw Fisher-matrix-predicted parameter variance RMS under-estimates the MCMC result. The paper claims that this is due to inherent MCMC "noise". This noise was estimated by running MCMC with the true precision matrix, to isolate this effect. We can subtract this noise from the data points by adding the option `--sig_var_noise 4.6e-08_0.000175`, and indeed the corrected prediction matches much better.
 
 
