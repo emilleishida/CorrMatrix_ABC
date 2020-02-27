@@ -64,6 +64,6 @@ Without this option, the default is 10 logarithmically spaced numbers between n_
 First, we create the simulations (`-m s`).
 
 ```bash
-python2 test_ML.py -D 750 -p 1_0 -s 5 -v -m s -r -R 5 --n_n_S 10 --fit_stan -L norm_deb --sig_var_noise 4.6e-08_0.000175 --plot_style paper
+test_ML.py -D 750 -p 1_0 -s 5 -v -m s -r -R 5 --n_n_S 10 --fit_stan -L norm_deb --sig_var_noise 4.6e-08_0.000175 --plot_style paper
 ```
 
