@@ -21,7 +21,7 @@ Install `cosmoabc` with `pip`.
 ```
 pip install cosmoabc
 ```
-If this fails due to a python error, try to install `cosmoabc from `github`:
+If this fails due to a python error, try to install `cosmoabc` from `github`:
 ```bash
 git clone git@github.com:emilleishida/CorrMatrix_ABC.git
 ```
@@ -32,9 +32,13 @@ and install the package
 python2 setup.py install
 ```
 
-At the last installation step, clone this package:
+At the last installation steps, clone this package:
 ```bash
 git clone git@github.com:emilleishida/CorrMatrix_ABC.git
+```
+and set the `PYTHONPATH`:
+```bash
+export PYTHONPATH=$PYTHONPATH:CorrMatrix_ABC/scripts
 ```
 
 #### MCMC sampling
