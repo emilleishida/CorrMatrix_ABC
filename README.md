@@ -51,8 +51,8 @@ You need pystan to run the MCMC part, with a specific pystan version:
 conda install pystan=2.18
 ```
 
-The main program for MCMC sampling of the example models from the paper is `scripts/cov_matrix_definition/test_ML.py`.
-Run `test_ML.py --help` to see the options.
+The main program for MCMC sampling of the example models from the paper is `cm_likelihood.py`.
+Run `cm_likelihood.py --help` to see the options.
 
 ### Toy example 1
 
@@ -64,6 +64,6 @@ Without this option, the default is 10 logarithmically spaced numbers between n_
 First, we create the simulations (`-m s`).
 
 ```bash
-test_ML.py -D 750 -p 1_0 -s 5 -v -m s -r -R 5 --n_n_S 10 --fit_stan -L norm_deb --sig_var_noise 4.6e-08_0.000175 --plot_style paper
+cm_likelihood.py -D 750 -p 1_0 -s 5 -v -m s -r -R 5 --n_n_S 10 --fit_stan -L norm_deb --sig_var_noise 4.6e-08_0.000175 --plot_style paper
 ```
 
