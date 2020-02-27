@@ -32,6 +32,11 @@ and install the package
 python2 setup.py install
 ```
 
+At the last installation step, clone this package:
+```bash
+git clone git@github.com:emilleishida/CorrMatrix_ABC.git
+```
+
 #### MCMC sampling
 
 You need pystan to run the MCMC part, with a specific pystan version:
