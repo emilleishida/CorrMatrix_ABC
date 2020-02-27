@@ -54,8 +54,13 @@ conda install pystan=2.18
 The main program for MCMC sampling of the example models from the paper is `scripts/cov_matrix_definition/test_ML.py`.
 Run `test_ML.py --help` to see the options.
 
-### Toy model 1
+### Toy example 1
 
-test_ML.py -D 750 -p 1_0 -s 5 -v -m r -r -R 50 --fit_stan -L norm_deb --sig_var_noise 4.6e-08_0.000175 --plot_style paper
+This example is an affine function y=ax+b with fiducial parameter a=1, b=0. A pystan fit (`--fit_stan`) is performed using n_d = 750 (option `-D`) data points, drawn from a multi-variate normal with diagonal covariance with constant sigma=5 (`-s`) on the diagonal. The model is `norm_deb` (`-L`), indicating a Gaussian likelihood with debiased covariance matrix. The paper shows the distribution of n_r=50 (`-R`) runs. Since this takes a long time to run, a smaller number can be used, say 5.
 
+First, we create the simulations (`-m s`).
+
+```bash
+python2 test_ML.py -D 750 -p 1_0 -s 5 -v -m s -r -R 5 --fit_stan -L norm_deb --sig_var_noise 4.6e-08_0.000175 --plot_style paper
+```
 
