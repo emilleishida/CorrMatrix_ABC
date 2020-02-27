@@ -35,7 +35,7 @@ test_ML.py   -D 750   -p   1_0   -s   5   -v   -m r  -r   -n   4   --n_n_S   10 
 
 
 """The following functions correspond to the expectation values for Gaussian
-   distributions. See Taylor, Joachimi & Kitching (2013), TKB13
+   distributions. See Taylor, Joachimi & Kitching (2013)
 """
 
 
@@ -52,7 +52,7 @@ def A_corr(n_S, n_D):
 
 def tr_N_m1_ML(n, n_D, par):
     """Maximum-likelihood estimate of inverse covariance normalised trace.
-       TJK13 (24), IK17 (4).
+       TJK13 (24).
        This is 1/alpha.
     """
 
@@ -64,7 +64,6 @@ def tr_N_m1_ML(n, n_D, par):
 def par_fish(n, n_D, par):
     """Parameter RMS from Fisher matrix using biased precision matrix.
        Square root of expectation value of TJK13 (43), follows from (25).
-       Also square root of IK17 (9).
     """
 
     #return [np.sqrt(1.0 / alpha(n_S, n_D)) * par for n_S in n]
@@ -592,9 +591,6 @@ def fit_corr_inv_true(x1, cov_true, sig2, n_jobs=3):
     import pystan
     start = time.time()
     fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=n_jobs, verbose=False, n_jobs=n_jobs)
-
-    # Testing: fast call to pystan
-    #fit = pystan.stan(model_code=stan_code, data=toy_data, iter=1, chains=1, verbose=False, n_jobs=n_jobs)
 
     end = time.time()
 
