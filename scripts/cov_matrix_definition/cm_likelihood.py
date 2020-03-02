@@ -111,14 +111,14 @@ def params_default():
 
     p_def = param(
         n_D = n_D,
-        n_R = 10,
+        n_R = 50,
         spar = '1.0 0.0',
         sig2 = 5.0,
         xcorr = 0.0,
-        mode   = 's',
+        mode  = 's',
         do_fit_stan = False,
         do_fish_ana = False,
-        likelihood  = 'norm_deb',
+        likelihood = 'norm_deb',
         n_jobs = 1,
         random_seed = False,
         plot_style = 'talk'
