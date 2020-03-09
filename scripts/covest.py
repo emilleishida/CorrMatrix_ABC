@@ -828,9 +828,10 @@ class Results:
 
         n_R = self.mean[self.par_name[0]].shape[1]
 
-        marker     = ['.', 'D']
+        marker = ['.', 'D']
         markersize = [6] * len(marker)
-        color      = ['b', 'g']
+        color = ['b', 'g']
+        linestyle = ['-', '--']
 
         plot_sth = False
         plot_init(n_D, n_R, fs=self.fs)
@@ -903,7 +904,8 @@ class Results:
                             plt.setp(bplot[key], color=color[i], linewidth=2)
                         plt.setp(bplot['whiskers'], linestyle='-', linewidth=2)
                     else:
-                        plt.plot(n, y.mean(axis=1), marker[i], ms=markersize[i], color=color[i])
+                        plt.plot(n, y.mean(axis=1), marker[i], ms=markersize[i], color=color[i],
+                                 linestyle=linestyle[i])
 
                     if xlog == True:
                         ax.set_xscale('log')
@@ -919,9 +921,9 @@ class Results:
                     my_par = par[which]
                     if self.fct is not None and which in self.fct:
                         # Define high-resolution array for smoother lines
-                        plt.plot(n_fine, self.fct[which](n_fine, n_D, my_par[i]), '{}-.'.format(color[i]), linewidth=2)
+                        plt.plot(n_fine, self.fct[which](n_fine, n_D, my_par[i]), '{}{}'.format(color[i], linestyle[i]), linewidth=2)
 
-                    plt.plot(n_fine, no_bias(n_fine, n_D, my_par[i]), '{}-'.format(color[i]), \
+                    plt.plot(n_fine, no_bias(n_fine, n_D, my_par[i]), '{}{}'.format(color[i], linestyle[i]), \
 			                 label='{}$({})$'.format(which, p), linewidth=2)
 
         # Finalize plot
