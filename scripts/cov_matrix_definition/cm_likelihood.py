@@ -19,26 +19,9 @@ sys.path.append('../..')
 from covest import *
 
 
-"""
-test_ML.py.
-
-Example run to create simulations:
-test_ML.py   -D 750   -p   1_0   -s   5   -v   -m s  -r   -n   4   --n_n_S   10   -R 100
-
-Add more simulations:
-test_ML.py   -D 750   -p   1_0   -s   5   -v   -m s  -r   -n   4   --n_n_S   10   -R 100 -a
-
-Read existing simulations:
-test_ML.py   -D 750   -p   1_0   -s   5   -v   -m r  -r   -n   4   --n_n_S   10   -R 100
-"""
-
-
-
 """The following functions correspond to the expectation values for Gaussian
-   distributions. See Taylor, Joachimi & Kitching (2013), TKB13
+   distributions. See Taylor, Joachimi & Kitching (2013), Taylor & Joachimi (2014).
 """
-
-
 
 def A_corr(n_S, n_D):
     """Return TJK13 (28), this is A/alpha^2.
@@ -52,7 +35,7 @@ def A_corr(n_S, n_D):
 
 def tr_N_m1_ML(n, n_D, par):
     """Maximum-likelihood estimate of inverse covariance normalised trace.
-       TJK13 (24), IK17 (4).
+       TJK13 (24).
        This is 1/alpha.
     """
 
@@ -64,7 +47,6 @@ def tr_N_m1_ML(n, n_D, par):
 def par_fish(n, n_D, par):
     """Parameter RMS from Fisher matrix using biased precision matrix.
        Square root of expectation value of TJK13 (43), follows from (25).
-       Also square root of IK17 (9).
     """
 
     #return [np.sqrt(1.0 / alpha(n_S, n_D)) * par for n_S in n]
@@ -129,17 +111,14 @@ def params_default():
 
     p_def = param(
         n_D = n_D,
-        n_R = 10,
-        n_n_S = 10,
-        f_n_S_max = 10.0,
-        n_S_min = n_D + 5,
+        n_R = 50,
         spar = '1.0 0.0',
         sig2 = 5.0,
         xcorr = 0.0,
-        mode   = 's',
+        mode  = 's',
         do_fit_stan = False,
         do_fish_ana = False,
-        likelihood  = 'norm_deb',
+        likelihood = 'norm_deb',
         n_jobs = 1,
         random_seed = False,
         plot_style = 'talk'
@@ -172,14 +151,8 @@ def parse_options(p_def):
         help='Number of data points, default={}'.format(p_def.n_D))
     parser.add_option('-R', '--n_R', dest='n_R', type='int', default=p_def.n_R,
         help='Number of runs per simulation, default={}'.format(p_def.n_R))
-    parser.add_option('', '--n_n_S', dest='n_n_S', type='int', default=p_def.n_n_S,
-        help='Number of n_S, where n_S is the number of simulation, default={}'.format(p_def.n_n_S))
-    parser.add_option('', '--f_n_S_max', dest='f_n_S_max', type='float', default=p_def.f_n_S_max,
-        help='Maximum n_S = n_D x f_n_S_max, default: f_n_S_max={}'.format(p_def.f_n_S_max))
-    parser.add_option('', '--n_S_min', dest='n_S_min', type='int', default=p_def.n_S_min,
-        help='Minimum n_S, default=n_D+5 ({})'.format(p_def.n_S_min))
     parser.add_option('', '--n_S', dest='str_n_S', type='string', default=None,
-        help='Array of n_S, default=None. If given, overrides n_S_min, n_n_S and f_n_S_max')
+        help='Array of n_S, default=None. If not given, 10 log numbers between n_D+5 and 10 n_D are used')
 
 
     parser.add_option('-p', '--par', dest='spar', type='string', default=p_def.spar,
@@ -592,9 +565,6 @@ def fit_corr_inv_true(x1, cov_true, sig2, n_jobs=3):
     start = time.time()
     fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=n_jobs, verbose=False, n_jobs=n_jobs)
 
-    # Testing: fast call to pystan
-    #fit = pystan.stan(model_code=stan_code, data=toy_data, iter=1, chains=1, verbose=False, n_jobs=n_jobs)
-
     end = time.time()
 
     #elapsed = end - start
@@ -978,12 +948,35 @@ def main(argv=None):
     if options.random_seed is False:
         np.random.seed(1056)                 # set seed to replicate example
 
-    par_name = ['a', 'b']            # Parameter list
-    tr_name  = ['tr']                # For cov plots
-    delta    = 200                   # Width of uniform distribution for x
 
-    # Number of simulations
-    n_S_arr, n_n_S = get_n_S_arr(param.n_S_min, param.n_D, param.f_n_S_max, param.n_n_S, n_S=param.n_S)
+    ## Parameters
+
+    # Fixed default parameters
+
+    # Parameter name list (for plots)
+    par_name = ['a', 'b']
+
+    # Name of 'trace' function (for plots of the covariance)
+    tr_name  = ['tr']
+
+    # Width of uniform distribution for ordinate x
+    delta    = 200
+
+
+    # Default parameters, can be changed by command-line arguments
+
+    # Smallest number of simulation, min(n_s)
+    n_S_min_default = param.n_D + 5
+
+    # Largest number of simulations, max(n_S)
+    f_n_S_max_default = 10.0
+
+    # Number of cases of simulations, #{n_S}
+    n_n_S_default = 10
+
+
+    # Return number of simulations
+    n_S_arr, n_n_S = get_n_S_arr(n_S_min_default, param.n_D, f_n_S_max_default, n_n_S_default, n_S=param.n_S)
 
     # Display n_S array and exit
     if re.search('d', param.mode) is not None:
