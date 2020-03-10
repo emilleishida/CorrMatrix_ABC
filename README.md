@@ -111,11 +111,11 @@ job_ABC.py --n_S 125 -v -m r --template_dir templates -b 0.15 --xlog -R 1
 As before for MCMC, the options `--n_S` and `-R` indicate the number of simulations for the covariance, and the number of independent runs, respectively.
 
 The required parameters and python functions to run ABC are found in the template directory, indicated by the `--template_dir` option. This can be a link to the default files `scripts/ABC/template`. Three files are read:
-1. `toy_model.input`
-  The ABC configuration file. See https://github.com/COINtoolbox/CosmoABC for more details. Here, we just emphazise a few config entries:
-  - `nsim = 800`: This is the number of simulations for the covariance, the value will be overwritten by the `--n_S` option.
-2. `toy_model_functions.py`: This python script contains some functions that are specified in the `toy_model.input` configuration file. In particular, these are the functions to create the simulation (config entry `simulation_func`), the distance (`distance_func`), and parameter prior (`prior_func`).
-3. `ABC_est_cov.py`: The master executable python program. It reads the config file, initalises all parameters, creates the covariance matrix, runs ABC, and outputs statistics and plots. This script is called by `job_ABC.py`.
+  1. `toy_model.input`
+    The ABC configuration file. See https://github.com/COINtoolbox/CosmoABC for more details. Here, we just emphazise a few config entries:
+    - `nsim = 800`: This is the number of simulations for the covariance, the value will be overwritten by the `--n_S` option.
+  2. `toy_model_functions.py`: This python script contains some functions that are specified in the `toy_model.input` configuration file. In particular, these are the functions to create the simulation (config entry `simulation_func`), the distance (`distance_func`), and parameter prior (`prior_func`).
+  3. `ABC_est_cov.py`: The master executable python program. It reads the config file, initalises all parameters, creates the covariance matrix, runs ABC, and outputs statistics and plots. This script is called by `job_ABC.py`.
 
   
 
