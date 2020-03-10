@@ -102,4 +102,20 @@ cm_likelihood.py -D 750 -p 1_0 -s 5 -v -m r -r -R 50 --fit_stan -L norm_deb --si
 ```
 There are additional options: The raw Fisher-matrix-predicted parameter variance RMS under-estimates the MCMC result. The paper claims that this is due to inherent MCMC "noise". This noise was estimated by running MCMC with the true precision matrix, to isolate this effect. We can subtract this noise from the data points by adding the option `--sig_var_noise 4.6e-08_0.000175`, and indeed the corrected prediction matches much better. The `--plot_style` options can be `paper` or `talk`, producing small changes in the layout.
 
+#### ABC
+
+The main job user-control script for ABC is in the directory `scripts/ABC'. To create a single ABC run, type
+```bash
+job_ABC.py --n_S 125 -v -m r --template_dir templates -b 0.15 --xlog -R 1
+```
+As before for MCMC, the options `--n_S` and `-R` indicate the number of simulations for the covariance, and the number of independent runs, respectively.
+
+The required parameters and python functions to run ABC are found in the template directory, indicated by the `--template_dir` option. This can be a link to the default files `scripts/ABC/template`. Three files are read:
+1. `toy_model.input`
+  The ABC configuration file. See https://github.com/COINtoolbox/CosmoABC for more details. Here, we just emphazise a few config entries:
+  - `nsim = 800`: This is the number of simulations for the covariance, the value will be overwritten by the `--n_S` option.
+2. `toy_model_functions.py`: This python script contains some functions that are specified in the `toy_model.input` configuration file. In particular, these are the functions to create the simulation (config entry `simulation_func`), the distance (`distance_func`), and parameter prior (`prior_func`).
+3. `ABC_est_cov.py`: The master executable python program. It reads the config file, initalises all parameters, creates the covariance matrix, runs ABC, and outputs statistics and plots. This script is called by `job_ABC.py`.
+
+  
 
