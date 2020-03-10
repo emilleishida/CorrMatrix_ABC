@@ -93,12 +93,13 @@ At the end, to read all existing runs and create plots, use the *read* mode with
 ```bash
 cm_likelihood.py -D 750 -p 1_0 -s 5 -v -m r -r -R 8 --fit_stan -L norm_deb --plot_style paper
 ```
+Since this does not run simulations, this step is fast.
 
 The 50 runs used for Figs. 2 and 4 from the paper are available with this package, to reproduce the plots:
 ```bash
 cd results/norm_deb_MCMC
-cm_likelihood.py -D 750 -p 1_0 -s 5 -v -m r -r -R 50 --fit_stan -L norm_deb --sig_var_noise 4.6e-08_0.00075 --plot_style paper
+cm_likelihood.py -D 750 -p 1_0 -s 5 -v -m r -r -R 50 --fit_stan -L norm_deb --sig_var_noise 4.6e-08_0.000175 --plot_style paper
 ```
-There are additional options: The raw Fisher-matrix-predicted parameter variance RMS under-estimates the MCMC result. The paper claims that this is due to inherent MCMC "noise". This noise was estimated by running MCMC with the true precision matrix, to isolate this effect. We can subtract this noise from the data points by adding the option `--sig_var_noise 4.6e-08_0.000175`, and indeed the corrected prediction matches much better. The `--plot_style` options can be `paper` or `talk`.
+There are additional options: The raw Fisher-matrix-predicted parameter variance RMS under-estimates the MCMC result. The paper claims that this is due to inherent MCMC "noise". This noise was estimated by running MCMC with the true precision matrix, to isolate this effect. We can subtract this noise from the data points by adding the option `--sig_var_noise 4.6e-08_0.000175`, and indeed the corrected prediction matches much better. The `--plot_style` options can be `paper` or `talk`, producing small changes in the layout.
 
 
