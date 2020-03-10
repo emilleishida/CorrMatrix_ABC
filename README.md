@@ -26,7 +26,8 @@ pip install cosmoabc
 ```
 If this fails due to a python error, try to install `cosmoabc` from `github`:
 ```bash
-git clone git@github.com:emilleishida/CorrMatrix_ABC.git
+git clone git@github.com:COINtoolbox/CosmoABC.git
+cd CosmoABC
 ```
 Add square brackets to the line in `setup.py` as follows:
 `package_data = {'cosmoabc/data':['SPT_sample.dat']},`
@@ -41,7 +42,7 @@ git clone git@github.com:emilleishida/CorrMatrix_ABC.git
 ```
 and set the `PYTHONPATH`:
 ```bash
-export PYTHONPATH=$PYTHONPATH:CorrMatrix_ABC/scripts
+export PYTHONPATH=CorrMatrix_ABC/scripts
 ```
 
 ### MCMC sampling and Fisher matrix
@@ -69,7 +70,7 @@ To start, let us only compute the Fisher-matrix predictions without MCMC, which 
 First, we create the simulations (`-m s`), each of the 10 cases of n_s with n_r=50 runs.
 
 ```bash
-cm_likelihood.py -D 750 -p 1_0 -s 5 -v -m s -r -R 50 --n_n_S 10
+cm_likelihood.py -D 750 -p 1_0 -s 5 -v -m s -r -R 50
 ```
 
 This outputs results for the multi-variate normal likelihood with biased (infix `_num`) and debiased precision matrix (`_deb`). The plots show the parameter RMS (prefix `std_Fisher`) and RMS of the parameter variances (`std_2std_Fisher`).
@@ -78,14 +79,26 @@ In addition, plots of the trace of the covariance maximum-likelihood estimate
 
 #### MCMC sampling
 
-To run the sampling with `pystan`, we need to add the option `--fit_stan`, and specify the likelihood. Let's use the Gaussian  with debiased covariance (` -L norm_deb`). To save time, we reduce the number of runs, say to n_r=5.
+To run the sampling with `pystan`, we need to add the option `--fit_stan`, and specify the likelihood. Let's use the Gaussian  with debiased covariance (`-L norm_deb`). To save time, we reduce the number of runs, say to n_r=5.
 
-First, we create the simulations (`-m s`).
-
+First, we create the simulations (`-m s`), with results automatically written in text files on disk.
 ```bash
-cm_likelihood.py -D 750 -p 1_0 -s 5 -v -m s -r -R 5 --n_n_S 10 --fit_stan -L norm_deb --plot_style paper
+cm_likelihood.py -D 750 -p 1_0 -s 5 -v -m s -r -R 5--fit_stan -L norm_deb --plot_style paper
+```
+More simulation runs can always be added to existing ones with the option `-a`. Let's create and add additional 3 runs: 
+```bash
+cm_likelihood.py -D 750 -p 1_0 -s 5 -v -m s -r -a -R 3 --fit_stan -L norm_deb --plot_style paper
+```
+At the end, to read all existing runs and create plots, use the *read* mode with `-m r`:
+```bash
+cm_likelihood.py -D 750 -p 1_0 -s 5 -v -m r -r -R 8 --fit_stan -L norm_deb --plot_style paper
 ```
 
-Fig. 4 in the paper shows that the raw Fisher-matrix-predicted parameter variance RMS under-estimates the MCMC result. The paper claims that this is due to inherent MCMC "noise". This noise was estimated by running MCMC with the true precision matrix, to isolate this effect. We can subtract this noise from the data points by adding the option `--sig_var_noise 4.6e-08_0.000175`, and indeed the corrected prediction matches much better.
+The 50 runs used for Figs. 2 and 4 from the paper are available with this package, to reproduce the plots:
+```bash
+cd results/norm_deb_MCMC
+cm_likelihood.py -D 750 -p 1_0 -s 5 -v -m r -r -R 50 --fit_stan -L norm_deb --sig_var_noise 4.6e-08_0.00075 --plot_style paper
+```
+There are additional options: The raw Fisher-matrix-predicted parameter variance RMS under-estimates the MCMC result. The paper claims that this is due to inherent MCMC "noise". This noise was estimated by running MCMC with the true precision matrix, to isolate this effect. We can subtract this noise from the data points by adding the option `--sig_var_noise 4.6e-08_0.000175`, and indeed the corrected prediction matches much better. The `--plot_style` options can be `paper` or `talk`.
 
 
