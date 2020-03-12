@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 import numpy as np
 from scipy.stats import norm, uniform, multivariate_normal
@@ -870,9 +870,12 @@ def write_to_file(n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fis
 
     if options.do_fish_ana == True:
         fish_ana.write_mean_std(n_S_arr)
+
     fish_num.write_mean_std(n_S_arr)
     fish_num.write_Fisher(n_S_arr)
     fish_deb.write_mean_std(n_S_arr)
+    #fish_deb.write_Fisher(n_S_arr)
+
     if options.do_fit_stan == True:
         if re.search('norm_biased', options.likelihood) is not None:
             fit_norm_num.write_mean_std(n_S_arr)
@@ -899,6 +902,7 @@ def read_from_file(sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_ana, fish_num, f
     fish_num.read_mean_std(verbose=param.verbose)
     fish_num.read_Fisher()
     fish_deb.read_mean_std(verbose=param.verbose)
+    #fish_deb.read_Fisher()
 
     if param.do_fit_stan:
         if re.search('norm_biased', param.likelihood) is not None:

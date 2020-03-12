@@ -752,7 +752,7 @@ class Results:
                         Fij = self.F[:, run, i, j]
                         cols.append(Fij.transpose())
                         names.append('F[{0:d},{1:d}]_run{2:02d}'.format(i, j, run))
-            write_ascii(self.file_base, cols, names)
+            write_ascii('F_{}'.format(self.file_base), cols, names)
 
 
     def append(self, new, verbose=False):
@@ -1039,7 +1039,9 @@ class Results:
         """         
 
         n_R = self.mean[self.par_name[0]].shape[1]
+
         color = ['b', 'g']
+        marker = ['o', 's']
 
         plot_sth = False
         plot_init(n_D, n_R, fs=self.fs, title=title)
@@ -1051,12 +1053,12 @@ class Results:
         for i, p in enumerate(self.par_name):
             y = self.get_std_var(p)
             if y.any():
-                plt.plot(n, y, marker='o', color=color[i], label='$\sigma(\sigma^2_{{{}}})$'.format(p), linestyle='None')
+                plt.plot(n, y, marker=marker[i], color=color[i], label='$\sigma(\sigma^2_{{{}}})$'.format(p), linestyle='None')
                 cols.append(y)
                 names.append('sigma(sigma^2_{})'.format(p))
 
                 if sig_var_noise != None:
-                    plt.plot(n, y - sig_var_noise[i], marker='o', mfc='none', color=color[i], \
+                    plt.plot(n, y - sig_var_noise[i], marker=marker[i], mfc='none', color=color[i], \
                              label='$\sigma(\sigma^2_{0}) - \sigma_n(\sigma^2_{0})$'.format(p), linestyle='None')
 
         for i, p in enumerate(self.par_name):
@@ -1066,7 +1068,7 @@ class Results:
                     n_fine = np.arange(n[0], n[-1], len(n)/10.0)
                     if 'std_var_TJK13' in self.fct:
                         plot_add_legend(i==0, n_fine, self.fct['std_var_TJK13'](n_fine, n_D, par[i]), \
-                                        '--', color=color[i], label='TJK13')
+                                        ':', color=color[i], label='TJK13')
                         cols.append(self.fct['std_var_TJK13'](n, n_D, par[i]))
                         names.append('TJK13({})'.format(p))
 
@@ -1087,7 +1089,7 @@ class Results:
             fac_xlim = 1.6
             xmin = n[0]/fac_xlim
             xmax = n[-1]*fac_xlim
-            ax.set_xscale('log')
+            ax.set_aspect('auto')
             flinlog = lambda x: np.log(x)
         else:
             flinlog = lambda x: x
@@ -1097,8 +1099,9 @@ class Results:
         plt.ylabel('std(var)')
         ax.set_yscale('log')
         ax.legend(loc='best', numpoints=1, frameon=False)
+        #ax.set_aspect(aspect=1)
 
-	    # x-ticks
+	# x-ticks
         ax = plt.gca().xaxis
         ax.set_major_formatter(ScalarFormatter())
         plt.ticklabel_format(axis='x', style='sci')
@@ -1107,7 +1110,7 @@ class Results:
         if xlog:
             plt.plot([n_D, n_D], [8e-9, 1e-1], ':', linewidth=1)
 
-	    # Second x-axis
+	# Second x-axis
         x_loc, x_lab = plt.xticks()
         ax2 = plt.twiny()
         x2_loc = []
@@ -1123,14 +1126,13 @@ class Results:
                 x2_lab.append(lab)
         plt.xticks(x2_loc, x2_lab)
         ax2.set_xlabel('$p / n_{\\rm s}$', size=self.fs)
-        #plt.ticklabel_format(axis='x', style='plain')
-        #ax2.ticklabel_format(useOffset=False)
         if xlog:
             ax2.set_xscale('log')
             plt.xlim(n_D/xmin, n_D/xmax)
 
         # y-scale
         plt.ylim(2e-8, 1.5e-2)
+        plt.axes().set_aspect((plt.xlim()[1] - plt.xlim()[0]) / (plt.ylim()[1] - plt.ylim()[0]))
 
 
         ### Output
