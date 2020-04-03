@@ -19,6 +19,10 @@ The following packages should be installed by default, if not, install them by h
 ```bash
 conda install numpy scipy matplotlib
 ```
+Optionally get `jupyter` to open and run notebooks:
+```bash
+conda install -c conda-forge jupyterlab
+```
 
 Install `cosmoabc` with `pip`.
 ```
