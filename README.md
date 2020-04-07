@@ -19,6 +19,10 @@ The following packages should be installed by default, if not, install them by h
 ```bash
 conda install numpy scipy matplotlib
 ```
+Optionally get `jupyter` to open and run notebooks:
+```bash
+conda install -c conda-forge jupyterlab
+```
 
 Install `cosmoabc` with `pip`.
 ```
@@ -104,14 +108,16 @@ cm_likelihood.py -D 750 -p 1_0 -s 5 -v -m r -r -R 50 --fit_stan -L norm_deb --si
 ```
 There are additional options: The raw Fisher-matrix-predicted parameter variance RMS under-estimates the MCMC result. The paper claims that this is due to inherent MCMC "noise". This noise was estimated by running MCMC with the true precision matrix, to isolate this effect. We can subtract this noise from the data points by adding the option `--sig_var_noise 4.6e-08_0.000175`, and indeed the corrected prediction matches much better. The `--plot_style` options can be `paper` or `talk`, producing small changes in the layout.
 
-#### Sellentin & Heavens (SH; 2017) likelihood
+#### Hotelling T^2 likelihood
 
+Hotelling (1931), also derived in Sellentin & Heavens (2016).
 Instead of `-L norm_deb`, use the flag `-L SH` for this modified normal likelihood that accounts for the uncertainty in the sample covariance. Otherwise run the script `cm_likelihood.py` as for the normal case above.
 
 To reproduce Figs. 3 and 5 from the paper:
 ```
-cd results/SH
+cd results/T2_MCMC
 cm_likelihood.py -D 750 -p 1_0 -s 5 -v -m r -R 50 --fit_stan -L SH --plot_style paper
+```
 
 ### ABC
 
@@ -127,6 +133,12 @@ The required parameters and python functions to run ABC are found in the templat
     - `nsim = 800`: This is the number of simulations for the covariance, the value will be overwritten by the `--n_S` option.
   2. `toy_model_functions.py`: This python script contains some functions that are specified in the `toy_model.input` configuration file. In particular, these are the functions to create the simulation (config entry `simulation_func`), the distance (`distance_func`), and parameter prior (`prior_func`).
   3. `ABC_est_cov.py`: The master executable python program. It reads the config file, initalises all parameters, creates the covariance matrix, runs ABC, and outputs statistics and plots. This script is called by `job_ABC.py`.
-
   
+The command above creates ABC output files in the directory `nsim_125/nr_0`. More runs (with `-R <n_r>' with n_r>1)
+will be written to `nsim_125/nr_1`, `nsim_125/nr_2`, etc. As before, multiple n_s values can be given, each case will be written in the respective `nsim_<n_s>` directory. See https://github.com/COINtoolbox/cosmoabc for a description of the output files.
 
+Fig. 6 can in principle be reproduced with the command `job_ABC.py --n_S 2_5_26_15_58_125_755_1622_3488_7500 -v -m s --template_dir templates -b 0.15 --xlog -R 50`. Since this will however take a long time, we have added to this repository all ABC output result files `num_res.dat`. They can be read in with
+```bash
+cd results/norm_ABC
+job_ABC.py --n_S 2_5_26_15_58_125_755_1622_3488_7500 -v -m r --template_dir ../../scripts/ABC/templates -b 0.15 --xlog -R 50
+```
