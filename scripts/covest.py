@@ -334,7 +334,7 @@ def get_cov_Gauss(ell, C_ell, f_sky, sigma_eps, nbar):
     C_ell_tot = C_ell + sigma_eps**2 / nbar
 
 
-    # MKDEBUG New 11/09/2018: Added Delta ell
+    # New 11/09/2018: Added Delta ell
 
     # The following seems complicated
     # To just use Delta_ell = diff(ell) would bias the Delta's,
@@ -473,7 +473,7 @@ def get_cov_WL(model, ell, C_ell_obs, nbar, f_sky, sigma_eps, nsim):
             d = np.diag(cov_SSC) * d_SSC
             cov_SSC = cov_SSC + np.diag(d)
 
-            print('MKDEBUG diag factor d_SSC = {}'.format(d_SSC))
+            print('diag factor d_SSC = {}'.format(d_SSC))
             print('Mean increase of diagonal wrt tot = {}'.format(np.mean(d/np.diag(cov_G+cov_SSC))))
 
         cov = cov_G + cov_SSC
@@ -859,7 +859,7 @@ class Results:
         else:
             fac_xlim   = 1.05
             #xmin = (n[0]-5)/fac_xlim**5
-            # MKDEBUG NEW 3/9/2019 for xcorr plots, n_S is actually r
+            # NEW 3/9/2019 for xcorr plots, n_S is actually r
             if n[0] > 10:
                 xmin = (n[0]-5)/fac_xlim**5
             else:
@@ -912,7 +912,7 @@ class Results:
 
                     if len(n) > 1:
                         #n_fine = np.arange(n[0], n[-1], len(n)/10.0)
-                        # MKDEBUG NEW 3/9/2019 for xcorr plots
+                        # NEW 3/9/2019 for xcorr plots
                         n_fine = np.arange(n[0], n[-1]+len(n)/20.0, len(n)/20.0)
                     else:
                         x0 = n[0] / 4
@@ -1090,6 +1090,7 @@ class Results:
             xmin = n[0]/fac_xlim
             xmax = n[-1]*fac_xlim
             ax.set_aspect('auto')
+            ax.set_xscale('log')
             flinlog = lambda x: np.log(x)
         else:
             flinlog = lambda x: x
@@ -1132,7 +1133,9 @@ class Results:
 
         # y-scale
         plt.ylim(2e-8, 1.5e-2)
-        plt.axes().set_aspect((plt.xlim()[1] - plt.xlim()[0]) / (plt.ylim()[1] - plt.ylim()[0]))
+        # The following causes matplotlib error for xlog==True
+        if not xlog:
+            plt.axes().set_aspect((plt.xlim()[1] - plt.xlim()[0]) / (plt.ylim()[1] - plt.ylim()[0]))
 
 
         ### Output
