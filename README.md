@@ -140,5 +140,5 @@ will be written to `nsim_125/nr_1`, `nsim_125/nr_2`, etc. As before, multiple n_
 Fig. 6 can in principle be reproduced with the command `job_ABC.py --n_S 2_5_26_15_58_125_755_1622_3488_7500 -v -m s --template_dir templates -b 0.15 --xlog -R 50`. Since this will however take a long time, we have added to this repository all ABC output result files `num_res.dat`. They can be read in with
 ```bash
 cd results/norm_ABC
-job_ABC.py --n_S 2_5_26_15_58_125_755_1622_3488_7500 -v -m s --template_dir templates -b 0.15 --xlog -R 50
+job_ABC.py --n_S 2_5_26_15_58_125_755_1622_3488_7500 -v -m r --template_dir ../../scripts/ABC/templates -b 0.15 --xlog -R 50
 ```
