@@ -863,8 +863,7 @@ class Results:
             if n[0] > 10:
                 xmin = (n[0]-5)/fac_xlim**5
             else:
-                #xmin = (n[0]-0.5)/fac_xlim**5
-                xmin = (n[0]-2.0)/fac_xlim**5
+                xmin = (n[0]-0.5)/fac_xlim**5
             xmax = n[-1]*fac_xlim
             rotation = 'vertical'
 
@@ -921,7 +920,8 @@ class Results:
                     my_par = par[which]
                     if self.fct is not None and which in self.fct:
                         # Define high-resolution array for smoother lines
-                        plt.plot(n_fine, self.fct[which](n_fine, n_D, my_par[i]), '{}{}'.format(color[i], linestyle[i]), linewidth=2)
+                        plt.plot(n_fine, self.fct[which](n_fine, n_D, my_par[i]), '{}{}'.format(color[i],
+                                 linestyle[i]), linewidth=2)
 
                     plt.plot(n_fine, no_bias(n_fine, n_D, my_par[i]), '{}{}'.format(color[i], linestyle[i]), \
 			                 label='{}$({})$'.format(which, p), linewidth=2)
@@ -952,7 +952,7 @@ class Results:
                 ax.set_major_formatter(ScalarFormatter())
                 plt.ticklabel_format(axis='x', style='sci')
 
-	            # For MCMC: Remove second tick label due to text overlap if little space
+	        # For MCMC: Remove second tick label due to text overlap if little space
                 x_loc = []
                 x_lab = []
                 for i, n_S in enumerate(n):
@@ -965,7 +965,7 @@ class Results:
                 plt.xticks(x_loc, x_lab, rotation=rotation)
                 ax.label.set_size(self.fs)
 
-	            # Second x-axis
+	        # Second x-axis
                 if model != 'affine_off_diag':
                     ax2 = plt.twiny()
                     x2_loc = []

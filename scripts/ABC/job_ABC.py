@@ -683,15 +683,10 @@ def main(argv=None):
     else:
         raise ABCCovError('Unknown model \'{}\''.format(param.model))
 
-    #try:
-    if 1:
-        fit_ABC.plot_mean_std(n_S_arr, n_D, par={'mean': param.par, 'std': dpar_exact}, boxwidth=param.boxwidth, xlog=param.xlog, model=param.model)
-        dpar2 = dpar_exact**2
-        fit_ABC.plot_std_var(n_S_arr, n_D, par=dpar2, xlog=param.xlog)
-    #except:
-        #print('Error occured while plotting ABC mean and std. Maybe just the display could not be accessed. Continuing anyway...')
-        #pass
-
+    fit_ABC.plot_mean_std(n_S_arr, n_D, par={'mean': param.par, 'std': dpar_exact},
+                          boxwidth=param.boxwidth, xlog=param.xlog, model=param.model)
+    dpar2 = dpar_exact**2
+    fit_ABC.plot_std_var(n_S_arr, n_D, par=dpar2, xlog=param.xlog)
 
     return 0
 
