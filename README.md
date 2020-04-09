@@ -142,3 +142,8 @@ Fig. 6 can in principle be reproduced with the command `job_ABC.py --n_S 2_5_26_
 cd results/norm_ABC
 job_ABC.py --n_S 2_5_26_15_58_125_755_1622_3488_7500 -v -m r --template_dir ../../scripts/ABC/templates -b 0.15 --xlog -R 50
 ```
+
+Fig. 8 corresponds to toy example 2. The plot is reproduced with pre-computed output files in `results/norm_xcorr_ABC/combined', with
+```bash
+job_ABC.py --n_S 0_0.5_1_2_3_4 -R 25 -v -m r --template_dir . -b 0.2 -M affine_off_diag
+```
