@@ -98,9 +98,10 @@ def parse_options(p_def):
         help='Model, one in \'affine\', \'affine_off_diag\', \'quadratic\', default=\'{}\''.format(p_def.model))
 
     parser.add_option('-m', '--mode', dest='mode', type='string', default=p_def.mode,
-        help='Mode: \'s\'=simulate, \'r\'=read ABC dirs, \'R\'=read master file, default={}'.format(p_def.mode))
+        help='Mode: \'s\'=simulate, \'r\'=read ABC dirs, \'R\'=read master file, '
+             '\'o\'=write observation and exit, default={}'.format(p_def.mode))
     parser.add_option('', '--recov_iter', dest='recov_iter', action='store_true',
-        help='Re-estimate covariance at beginning ofevery iteration')
+        help='Re-estimate covariance at beginning of every iteration')
 
     parser.add_option('-b', '--boxwidth', dest='boxwidth', type='float', default=None,
         help='box width for box plot, default=None, determined from n_S array')
@@ -109,6 +110,8 @@ def parse_options(p_def):
 
     parser.add_option('', '--template_dir', dest='templ_dir', type='string', default=p_def.templ_dir,
         help='Template directory, default=\'{}\''.format(p_def.templ_dir))
+    parser.add_option('', '--obs_dir', dest='obs_dir', type='string',
+        help='Observations main directory, if None create new observations')
 
     parser.add_option('-v', '--verbose', dest='verbose', action='store_true', help='verbose output')
 
@@ -397,7 +400,7 @@ def substitute(dat, key, val_old, val_new):
 
 
 
-def run_ABC_in_dir(real_dir, n_S, templ_dir, nruns=-1, prev_run=-1):
+def run_ABC_in_dir(real_dir, n_S, templ_dir, nruns=-1, prev_run=-1, only_obs=False):
     """ Runs or continues ABC in given directory.
 
     Parameters
@@ -412,6 +415,8 @@ def run_ABC_in_dir(real_dir, n_S, templ_dir, nruns=-1, prev_run=-1):
         maximum number of runs (if < 0 run until convergence)
     prev_run: int, optional, default=-1
         if > 0, continue ABC from iteration #prev_run instead of running from start
+    only_obs: bool, optional, default=False
+        if True, only create and write observation, do not run ABC
 
     Returns
     -------
@@ -428,7 +433,8 @@ def run_ABC_in_dir(real_dir, n_S, templ_dir, nruns=-1, prev_run=-1):
         if os.path.exists(source):
             copy2(source, '{}/{}'.format(real_dir, f))
 
-    fin  = open('{}/{}'.format(templ_dir, 'toy_model.input'))
+    in_path = '{}/{}'.format(templ_dir, 'toy_model.input')
+    fin  = open(in_path)
     fout = open('{}/{}'.format(real_dir, 'toy_model.input'), 'w')
     dat = fin.read()
     fin.close()
@@ -445,13 +451,16 @@ def run_ABC_in_dir(real_dir, n_S, templ_dir, nruns=-1, prev_run=-1):
 
     os.chdir(real_dir)
 
-    if prev_run < 0:
-        run_cmd('python ABC_est_cov.py', run=True, verbose=False)
+    if only_obs:
+        run_cmd('python ABC_est_cov.py --only_observation', run=True, verbose=False)
     else:
-        # Re-compute and write estimated coariance
-        run_cmd('python ABC_est_cov.py --only_cov_est', run=True, verbose=False)
-        # Continue ABC for one run
-        run_cmd('continue_ABC.py -i toy_model.input -f toy_model_functions.py -p {}'.format(prev_run), run=True, verbose=False)
+        if prev_run < 0:
+            run_cmd('python ABC_est_cov.py', run=True, verbose=False)
+        else:
+            # Re-compute and write estimated coariance
+            run_cmd('python ABC_est_cov.py --only_cov_est', run=True, verbose=False)
+            # Continue ABC for one run
+            run_cmd('continue_ABC.py -i toy_model.input -f toy_model_functions.py -p {}'.format(prev_run), run=True, verbose=False)
 
     os.chdir('../..')
 
@@ -461,6 +470,11 @@ def simulate(n_S_arr, param):
 
     if param.verbose == True:
         print('Creating {} simulations with {} runs each'.format(len(n_S_arr), param.n_R))
+
+    if param.mode == 'o':
+        only_obs = True
+    else:
+        only_obs = False
 
     for i, n_S in enumerate(n_S_arr):
 
@@ -485,7 +499,36 @@ def simulate(n_S_arr, param):
 
                 if not param.recov_iter:
 
-                    run_ABC_in_dir(real_dir, n_S, param.templ_dir)
+                    # Check and link to existing observation
+                    if param.obs_dir:
+
+                        # From cosmoabc.ABC_functions.py.
+                        in_path = '{}/{}'.format(param.templ_dir, 'toy_model.input')
+                        op1 = open(in_path, 'r')
+                        lin1 = op1.readlines()
+                        op1.close()
+                        data1 = [elem.split() for elem in lin1]
+                        params_ini = dict([(line[0], line[2:]) for line in data1 if len(line) > 1])
+
+                        obs_path_dst = '{}/{}'.format(real_dir, params_ini['path_to_obs'][0])
+
+                        # Check consistency bw cmd line and cfg file
+                        if obs_path_dst == 'None':
+                            raise('path_to_obs is \'None\' but obs_dir given on command line') 
+
+                        # Check existing sub-directory and observation file
+                        obs_run_dir = '{}/nr_{}'.format(param.obs_dir, run)
+                        if not os.path.exists(obs_run_dir):
+                            raise IOError('Observation run directory {} does not exist'.format(obs_run_dir))
+                        obs_path_src = '{}/{}'.format(obs_run_dir, params_ini['path_to_obs'][0])
+                        if not os.path.exists(obs_path_src):
+                            raise IOError('Observation path \'{}\' does not exist'.format(obs_path_src))
+
+                        # Create symbolic link
+                        os.symlink(obs_path_src, obs_path_dst)
+
+                    # Run ABC once, normal processing
+                    run_ABC_in_dir(real_dir, n_S, param.templ_dir, only_obs=only_obs)
 
                 else:
 
@@ -498,7 +541,6 @@ def simulate(n_S_arr, param):
                     # Loop over calls of continue_ABC.py, each time running for nruns=1 
                     for prev_run in range(1, nruns_max):
                         run_ABC_in_dir(real_dir, n_S, param.templ_dir, nruns=1, prev_run=prev_run)
-
 
 
 def read_from_ABC_dirs(n_S_arr, par_name, fit_ABC, options):
@@ -541,7 +583,6 @@ def Fisher_ana_quad_read_par(templ_dir, par, mode=1):
     """
 
     from cosmoabc.ABC_functions import read_input
-
     filename = '{}/{}'.format(templ_dir, 'toy_model.input')
     Parameters = read_input(filename)
 
@@ -611,8 +652,8 @@ def main(argv=None):
     fit_ABC = Results(param.par_name, n_n_S, param.n_R, file_base='mean_std_ABC', yscale=['linear', 'log'], fct=fct)
 
 
-    # Create simulations
-    if re.search('s', param.mode) is not None:
+    # Create simulations/write observation
+    if re.search('s', param.mode) is not None or re.search('o', param.mode) is not None:
 
         simulate(n_S_arr, param)
 

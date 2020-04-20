@@ -1,4 +1,5 @@
 import sys
+import os
 
 import matplotlib
 matplotlib.use("TkAgg")
@@ -38,9 +39,13 @@ Parameters['distance_func'] = linear_dist
 Parameters['prior']['a']['func'] = gaussian_prior
 Parameters['prior']['b']['func'] = gaussian_prior
 
-# construnct 1 instance of exploratory variable
-x = uniform.rvs(loc=Parameters['xmin'], scale=Parameters['xmax'] - Parameters['xmin'], size=Parameters['nobs'])
-x.sort()
+if Parameters['path_to_obs'] == 'None':
+    # construnct 1 instance of exploratory variable
+    x = uniform.rvs(loc=Parameters['xmin'], scale=Parameters['xmax'] - Parameters['xmin'], size=Parameters['nobs'])
+    x.sort()
+else:
+    dat = np.loadtxt(Parameters['path_to_obs'])
+    x = dat[:,0]
 
 # fiducial model
 ytrue = Parameters['a']*x + Parameters['b']
@@ -59,6 +64,34 @@ if xcorr != 0:
         sys.exit(1)
     print('Cholesky: covariance matrix is positive')
 
+
+# generate or read catalog
+if Parameters['path_to_obs'] == 'None':
+    y = multivariate_normal.rvs(mean=ytrue, cov=cov, size=1)
+else:
+    y = dat[:,0]
+
+# add to parameter dictionary
+Parameters['dataset1'] = np.array([[x[i], y[i]] for i in range(Parameters['nobs'])])
+
+
+# Write to disk.
+# For continue_ABC.py this needs to be checked again!
+obs_path = 'observation_xy.txt'
+if not os.path.exists(obs_path):
+    op1 = open(obs_path, 'w')
+    for line in Parameters['dataset1']:
+        for item in line:
+            op1.write(str(item) + '    ')
+        op1.write('\n')
+    op1.close()
+else:
+
+if len(sys.argv) > 1 and sys.argv[1] == '--only_observation':
+    print('Written observation, exiting.')
+    sys.exit(0)
+
+
 #############################################
 Parameters['nsim'] = int(Parameters['nsim'][0])
 cov_est = get_cov_ML(ytrue, cov, Parameters['nsim'])
@@ -75,19 +108,6 @@ if len(sys.argv) > 1 and sys.argv[1] == '--only_cov_est':
     sys.exit(0)
 #############################################
 
-
-# generate catalog
-y = multivariate_normal.rvs(mean=ytrue, cov=cov, size=1)
-
-# add to parameter dictionary
-Parameters['dataset1'] = np.array([[x[i], y[i]] for i in range(Parameters['nobs'])])
-# write to disk, in case it is read by continue_ABC.py
-op1 = open('observation_xy.txt', 'w')
-for line in Parameters['dataset1']:
-    for item in line:
-        op1.write(str(item) + '    ')
-    op1.write('\n')
-op1.close()
 
 # add observed catalog to simulation parameters
 if bool(Parameters['xfix']):

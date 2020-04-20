@@ -180,6 +180,29 @@ def std_affine_off_diag(n, n_D, par):
     return std
 
 
+def par_fish_SH(n, n_D, par):
+    """Parameter RMS from Fisher matrix esimation of SH likelihood.
+    """
+
+    return [np.sqrt(alpha_new(n_S, n_D) * 2.0 * n / (n - 1.0)) * par for n_S in n]
+
+
+def coeff_TJ14(n_S, n_D, n_P):
+    """Square root of the prefactor for the variance of the parameter variance, TJ14 (12).
+    """
+
+    return np.sqrt(2 * (n_S - n_D + n_P - 1) / (n_S - n_D - 2)**2)
+
+
+def std_fish_deb_TJ14(n, n_D, par):
+    """Error on variance from the Fisher matrix. From TJ14 (12).
+    """
+
+    n_P = 2  # Number of parameters
+
+    return [coeff_TJ14(n_S, n_D, n_P) * par for n_S in n]
+
+
 def get_n_S_R_from_fit_file(file_base, npar=2):
     """Return array of number of simulations, n_n_S, and number of runs, n_R from fit output file.
 
@@ -581,7 +604,7 @@ class param:
         self.__dict__.update(kwds)
 
     def __str__(self, **kwds):
-        print(self.__dict__)
+        return str(self.__dict__)
 
     def var_list(self, **kwds):
         return vars(self)
@@ -596,9 +619,9 @@ class Results:
            with n_R runs each
         """
 
-        self.mean      = {}
-        self.std       = {}
-        self.par_name  = par_name
+        self.mean = {}
+        self.std = {}
+        self.par_name = par_name
 
         self.file_base = file_base
 
@@ -609,8 +632,8 @@ class Results:
 
         self.fct = fct
         for p in par_name:
-            self.mean[p]   = np.zeros(shape = (n_n_S, n_R))
-            self.std[p]    = np.zeros(shape = (n_n_S, n_R))
+            self.mean[p] = np.zeros(shape = (n_n_S, n_R))
+            self.std[p] = np.zeros(shape = (n_n_S, n_R))
 
         self.F  = np.zeros(shape = (n_n_S, n_R, 2, 2))
         self.fs = 16
@@ -675,33 +698,64 @@ class Results:
         return m, s, s2
 
 
-    def read_mean_std(self, format='ascii', npar=2, verbose=False):
-        """Read mean and std from file
+    def read_mean_std(self, npar=2, update=False, verbose=False):
+        """Read mean and std from file.
+
+        Parameters
+        ----------
+        npar: int, optional, default=2
+            number of parameters
+        update: bool, optional, default=False
+            if True updates values from init call;
+            if False exits with error if values different
+        verbose: bool, optional, defaut=False
+            verbose output if True
+
+        Returns
+        -------
+        n_S_arr: array of int
+            list of value of n_S, number of simulations
+        None
         """
 
-        n_n_S, n_R = self.mean[self.par_name[0]].shape
-        if format == 'ascii':
-            in_name = '{}.txt'.format(self.file_base)
-            if verbose:
-                print('Reading file {}'.format(in_name))
-            try:
-                dat = read_ascii(in_name)
-                my_n_S, my_n_R = get_n_S_R_from_fit_file(self.file_base, npar=npar)
-                if my_n_R != n_R:
-                    error('File {} has n_R={}, not {}'.format(in_name, my_n_R, n_R))
+        if not update:
+            dummy_n_n_S, n_R = self.mean[self.par_name[0]].shape
+
+        in_name = '{}.txt'.format(self.file_base)
+        if verbose:
+            print('Reading file {}'.format(in_name))
+        try:
+            dat = read_ascii(in_name)
+            my_n_S_arr, my_n_R = get_n_S_R_from_fit_file(self.file_base, npar=npar)
+
+            if update:
+                my_n_n_S = len(my_n_S_arr)
                 for p in self.par_name:
-                    for run in range(n_R):
-                        col_name = 'mean[{0:s}]_run{1:02d}'.format(p, run)
-                        self.mean[p].transpose()[run] = dat[col_name]
-                        col_name = 'std[{0:s}]_run{1:02d}'.format(p, run)
-                        self.std[p].transpose()[run] = dat[col_name]
-            except IOError as exc:
-                if exc.errno == errno.ENOENT:
-                    if verbose == True:
-                        warning('File {} not found'.format(in_name))
-                    pass
-                else:
-                    raise
+                    self.mean[p] = np.zeros(shape = (my_n_n_S, my_n_R))
+                    self.std[p] = np.zeros(shape = (my_n_n_S, my_n_R))
+                n_R = my_n_R
+            else:
+                if my_n_R != n_R:
+                    raise IOError('File {} has n_R={}, not {}'.format(in_name, my_n_R, n_R))
+
+
+            for p in self.par_name:
+                for run in range(n_R):
+                    col_name = 'mean[{0:s}]_run{1:02d}'.format(p, run)
+                    self.mean[p].transpose()[run] = dat[col_name]
+                    col_name = 'std[{0:s}]_run{1:02d}'.format(p, run)
+                    self.std[p].transpose()[run] = dat[col_name]
+
+        except IOError as exc:
+            if exc.errno == errno.ENOENT:
+                if verbose == True:
+                    warning('File {} not found'.format(in_name))
+                pass
+            else:
+                raise
+
+        n_S_arr = [int(n_S) for n_S in my_n_S_arr]
+        return n_S_arr
 
 
     def write_mean_std(self, n, format='ascii'):
@@ -836,36 +890,21 @@ class Results:
         plot_sth = False
         plot_init(n_D, n_R, fs=self.fs)
 
-        if boxwidth == None:
-            if xlog == False:
-                if len(n) > 1:
-                    box_width = (n[1] - n[0]) / 2
-                else:
-                    box_width = 50
-            else:
-                if len(n) > 1:
-                    box_width = np.sqrt(n[1]/n[0]) # ?
-                else:
-                    box_width = 0.1
-            
-        else:
-            box_width = boxwidth
+        box_width = set_box_width(boxwidth, xlog, n)
+        rotation = 'vertical'
 
         if xlog == True:
             fac_xlim = 1.6
             xmin = n[0]/fac_xlim
             xmax = n[-1]*fac_xlim
-            rotation = 'vertical'
         else:
             fac_xlim   = 1.05
-            #xmin = (n[0]-5)/fac_xlim**5
             # NEW 3/9/2019 for xcorr plots, n_S is actually r
             if n[0] > 10:
                 xmin = (n[0]-5)/fac_xlim**5
             else:
                 xmin = (n[0]-0.5)/fac_xlim**5
             xmax = n[-1]*fac_xlim
-            rotation = 'vertical'
 
         # Set the number of required subplots (1 or 2)
 
@@ -1011,7 +1050,7 @@ class Results:
                 plt.ylim(ylim)
 
 
-        if plot_sth == True:
+        if plot_sth == True and last:
             plt.tight_layout(h_pad=5.0)
             plt.savefig('{}.pdf'.format(self.file_base), bbox_inches="tight")
 
@@ -1141,11 +1180,29 @@ class Results:
         ### Output
         outbase = 'std_2{}'.format(self.file_base)
 
-        if plot_sth == True:
+        if plot_sth == True and last:
             plt.savefig('{}.pdf'.format(outbase))
 
         write_ascii(outbase, cols, names)
 
+
+def set_box_width(boxwidth, xlog, n):
+    if boxwidth == None:
+        if xlog == False:
+            if len(n) > 1:
+                box_width = (n[1] - n[0]) / 2
+            else:
+                box_width = 50
+        else:
+            if len(n) > 1:
+                box_width = np.sqrt(n[1]/n[0]) # ?
+            else:  
+                box_width = 0.1
+
+    else:
+        box_width = boxwidth
+
+    return box_width
 
 
 def plot_init(n_D, n_R, title=False, fs=16):
@@ -1294,7 +1351,6 @@ def detF(n_D, sig2, delta):
 
     det = (n_D/sig2)**2 * delta**2 / 12.0
     return det
-
 
 
 def Fisher_error_ana(x, sig2, xcorr, delta, mode=-1):

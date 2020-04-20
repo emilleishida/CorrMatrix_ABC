@@ -1,4 +1,4 @@
-path_to_obs		= None   	                        # path to observed data 
+path_to_obs		= observation_xy.txt                    # path to observed data 
 
 param_to_fit 		= a b                                   # parameters to fit
 param_to_sim    	= a b sig xmin xmax nobs cov xfix       # parameters needed for simulation
@@ -30,7 +30,7 @@ xmin                    = -100                                  # min value for 
 xmax                    = 100                                   # max value for exploratory variable
 nobs                    = 750                                   # number of observations
 cov                     = 1                                     # covariance matrix to be determined in Python file
-xfix                    = 0                                     # if 0, generate new x in each simulation, otherwise use observed x 
+xfix                    = 1                                     # if 0, generate new x in each simulation, otherwise use observed x 
 
 M 		        = 100				        # number of particle in each particle system
 Mini                    = 200                                   # number of draws for 1st particle system

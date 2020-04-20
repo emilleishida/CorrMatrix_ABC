@@ -53,36 +53,12 @@ def par_fish(n, n_D, par):
     return [np.sqrt(alpha_new(n_S, n_D)) * par for n_S in n]
  
 
-
-def par_fish_SH(n, n_D, par):
-    """Parameter RMS from Fisher matrix esimation of SH likelihood.
-    """
-
-    return [np.sqrt(alpha_new(n_S, n_D) * 2.0 * n / (n - 1.0)) * par for n_S in n]
-
-
 def std_fish_deb(n, n_D, par):
     """Error on variance from Fisher matrix with debiased inverse covariance estimate.
        Square root of TJK13 (49, 50).
     """
 
     return [np.sqrt(2.0 / (n_S - n_D - 4.0)) * par for n_S in n]
-
-
-def coeff_TJ14(n_S, n_D, n_P):
-    """Square root of the prefactor for the variance of the parameter variance, TJ14 (12).
-    """
-
-    return np.sqrt(2 * (n_S - n_D + n_P - 1) / (n_S - n_D - 2)**2)
-
-
-def std_fish_deb_TJ14(n, n_D, par):
-    """Error on variance from the Fisher matrix. From TJ14 (12).
-    """
-
-    n_P = 2  # Number of parameters
-
-    return [coeff_TJ14(n_S, n_D, n_P) * par for n_S in n]
 
 
 def std_fish_biased_TJ14(n, n_D, par):
