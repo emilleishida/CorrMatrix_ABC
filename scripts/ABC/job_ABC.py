@@ -439,7 +439,7 @@ def run_ABC_in_dir(real_dir, n_S, templ_dir, nruns=-1, prev_run=-1, only_obs=Fal
     dat = fin.read()
     fin.close()
 
-    dat = substitute(dat, 'nsim', 800, n_S)
+    dat = substitute(dat, 'nsim', 800, int(n_S))
     dat = substitute(dat, 'nruns', -1, nruns)
 
     if prev_run > 0:
@@ -637,7 +637,6 @@ def main(argv=None):
 
     # Number of simulations
     n_S_arr, n_n_S = get_n_S_arr(param.n_S_min, param.n_D, param.f_n_S_max, param.n_n_S, n_S=param.n_S)
-
 
     # Display n_S array and exit
     if re.search('d', param.mode) is not None:

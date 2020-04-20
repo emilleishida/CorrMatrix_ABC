@@ -1,4 +1,5 @@
 path_to_obs		= observation_xy.txt                    # path to observed data 
+#path_to_obs		= None
 
 param_to_fit 		= a b                                   # parameters to fit
 param_to_sim    	= a b sig xmin xmax nobs cov xfix       # parameters needed for simulation

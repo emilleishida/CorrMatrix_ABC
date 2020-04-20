@@ -104,6 +104,12 @@ def get_n_S_arr(n_S_min, n_D, f_n_S_max, n_n_S, n_S=None):
     """
 
     if n_S != None:
+        if min(n_S) > 1:
+            n_S = [int(n) for n in n_S]
+        else:
+            # For the affine_off_diag model, n_S might be encoding
+            # the float correlation coefficient r<1
+            pass
         n_S_arr = np.array(n_S)
         n_n_S   = len(n_S_arr)
     else:

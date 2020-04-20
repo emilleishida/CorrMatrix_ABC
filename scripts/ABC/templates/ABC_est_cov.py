@@ -85,7 +85,6 @@ if not os.path.exists(obs_path):
             op1.write(str(item) + '    ')
         op1.write('\n')
     op1.close()
-else:
 
 if len(sys.argv) > 1 and sys.argv[1] == '--only_observation':
     print('Written observation, exiting.')
