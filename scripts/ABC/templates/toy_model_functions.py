@@ -14,6 +14,8 @@ as long as you respect the input/ouput requirements and
     in the user input file
 ***. 
 
+Updated by Martin Kilbinger 2019 - 2020.
+
 """
 
 
@@ -24,6 +26,7 @@ from scipy.stats import uniform
 from scipy import stats
 import statsmodels.formula.api as smf
 import statsmodels.api as sm
+from covest import acf_one, acf, linear_dist_data_acf
 
 
 def model_cov(p):

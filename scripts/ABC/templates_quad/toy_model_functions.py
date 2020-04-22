@@ -25,7 +25,7 @@ from scipy import stats
 import statsmodels.formula.api as smf
 import statsmodels.api as sm
 from covest import model_quad
-
+from covest import acf_one, acf, linear_dist_data_acf
 
 
 def model_cov(p):
@@ -188,81 +188,6 @@ def linear_dist_data_diag(d2, p):
     return np.atleast_1d(dist)
 
 
-
-# See WL/w_functions.py
-
-
-def acf_one(C, di, mean, reverse=False):
-    """Return one value of the auto-correlation function xi(x) of C at argument x=di
-
-    Parameters
-    ----------
-    C: array(float)
-        observed power spectrum
-    di: int
-        difference of ell-mode indices
-    mean: float
-        mean value of C (can be 0 if un-centered acf is desired)
-    reverse: bool, optional, default=False
-        if True, reverse one of the vectors
-
-    Returns
-    -------
-    xi: float
-        auto-correlation function value
-    """
-
-    n_D  = len(C)
-    # Shift signal and keep to same length (lose entries at high-ell end)
-    C1 = C[:n_D - di]
-    C2 = C[di:]
-
-    if reverse:
-        C2 = C2[::-1]
-
-    # Estimate ACF
-    xi = sum((C1 - mean) * (C2 - mean)) / float(n_D - di)
-
-    return xi
-
-
-
-def acf(C, norm=False, centered=False, reverse=False):
-    """Return auto-correlation function of C.
-
-    Parameters
-    ----------
-    C: array(float)
-        observed power spectrum
-    di: int
-        difference of ell-mode indices
-    norm: bool, optional, default=False
-        if True, acf is normalised by the variance
-    centered: bool, optional, default=False
-        if True, center acf by subtracting the mean
-
-    Returns
-    -------
-    xi: array of float
-        auto-correlation function value
-    """
-
-    if centered:
-        mean = 0
-    else:
-        mean = C.mean()
-
-    xi = []
-    for di in range(len(C)):
-        xi.append(acf_one(C, di, mean, reverse=reverse))
-
-    if norm:
-        # Var = < C_ell C_ell> = xi(0)
-        xi = xi / xi[0]
-
-    return xi
-
-
 def linear_dist_data_acf_abs(d2, p):
     """ACF distance with mode_sum='abs'"""
 
@@ -279,68 +204,3 @@ def linear_dist_data_acf_ratio_abs(d2, p):
     """ACF distance with mode_sum='ratio_abs'"""
 
     return linear_dist_data_acf(d2, p, weight=True, mode_sum='ratio_abs')
-
-
-def linear_dist_data_acf(d2, p, weight=True, mode_sum='square'):
-    """Distance between observed and simulated catalogues using
-       the auto-correlation function of the observation
-
-    Parameters
-    ----------
-    d2: array(double, 2)
-        simulated catalogue
-    p: dictionary
-        input parameters
-    weight: bool, optional, default=True
-        if True, weigh data by inverse variance
-    mode_sum: string, optional, default='square'
-        mode of summands in distance
-
-    Returns
-    -------
-    dist: double
-        distance
-    """
-
-    C_ell_sim = d2[:,1]
-    C_ell_obs = p['dataset1'][:,1]
-
-    if 'cov' in p:
-        cov = p['cov']
-    else:
-        cov = np.loadtxt('cov_est.txt')
-
-    # Weighted data points
-    if weight:
-        C_ell_sim_w = C_ell_sim / np.sqrt(np.diag(cov))
-        C_ell_obs_w = C_ell_obs / np.sqrt(np.diag(cov))
-    else:
-        C_ell_sim_w = C_ell_sim
-        C_ell_obs_w = C_ell_obs
-
-    xi = acf(C_ell_obs, norm=True, centered=True, reverse=False)
-
-    d = 0
-    n_D = len(C_ell_obs)
-    for i in range(n_D):
-        for j in range(n_D):
-            xi_ij = xi[np.abs(i-j)]
-            if mode_sum == 'square':
-                term = (C_ell_sim_w[i] - C_ell_obs_w[j])**2 * xi_ij**2
-            elif mode_sum == 'abs':
-                term = np.abs(C_ell_sim_w[i] - C_ell_obs_w[j]) * np.abs(xi_ij)
-            elif mode_sum == 'ratio':
-                term = (C_ell_sim_w[i] / C_ell_obs_w[j])**2 * xi_ij**2
-            elif mode_sum == 'ratio_abs':
-                term = np.abs(C_ell_sim_w[i] / C_ell_obs_w[j]) * np.abs(xi_ij)
-            else:
-                raise ValueError('invalid mode_sum={}'.format(mode_sum))
-            d = d + term
-
-    if mode_sum not in ('abs', 'ratio_abs'):
-        d = np.sqrt(d)
-
-    d = np.atleast_1d(d)
-
-    return d
-
