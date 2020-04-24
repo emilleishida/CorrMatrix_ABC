@@ -164,7 +164,7 @@ def update_param(p_def, options):
     return param
 
 
-def read_fit(par_name, fbase, label, fct=None, verbose=False):
+def read_fit(par_name, fbase, label, fct=None, flab=None, verbose=False):
     """Read fit mean and std and return Result
 
     Parameters
@@ -175,8 +175,10 @@ def read_fit(par_name, fbase, label, fct=None, verbose=False):
         file base
     label: string
         label string
-    fct: dictionary
-        functions for plotting of mean, std predictions
+    fct: dictionary, optional, default=None
+        functions for plotting of mean, std, std(var) predictions
+    flab: dictionary, optional, default=None
+        labels for mean, std, std(var) predictions
     verbose: bool, optional, default=False
         verbose output if True
 
@@ -191,6 +193,7 @@ def read_fit(par_name, fbase, label, fct=None, verbose=False):
 
     fit.label = label
     fit.n_S_arr = n_S_arr
+    fit.flab = flab
 
     return fit
 
@@ -258,6 +261,8 @@ def plot_box(fits, n_D, par, dpar, which, boxwidth=None, xlog=False, ylog=False,
         ax = fig.add_subplot(1, 1, 1)
         leg = []
         labels = []
+        leg2 = []
+        labels2 = []
         x_loc = []
         x_lab = []
 
@@ -301,11 +306,12 @@ def plot_box(fits, n_D, par, dpar, which, boxwidth=None, xlog=False, ylog=False,
                 print(rem)
 
             if which is not 'std_var':
-                bplot = ax.boxplot(y.transpose(), 0, '{}.'.format(color[k]), positions=n*dn, widths=width(n, box_width))
-                leg.append(bplot['boxes'][0])
+                bplot = ax.boxplot(y.transpose(), 0, '{}.'.format(color[k]), positions=n*dn, widths=width(n, box_width), patch_artist=True)
                 for key in bplot:
                     plt.setp(bplot[key], color=color[k], linewidth=1)
                 plt.setp(bplot['whiskers'], linestyle=linestyle[k], linewidth=1)
+                plt.setp(bplot['boxes'], facecolor=lighten_color(color[k], amount=0.25))
+                leg.append(bplot['boxes'][0])
             else:
                 pl, = ax.plot(n, y, marker=marker[k], color=color[k], linestyle='None')
                 leg.append(pl)
@@ -334,10 +340,15 @@ def plot_box(fits, n_D, par, dpar, which, boxwidth=None, xlog=False, ylog=False,
                 else:
                     c = color[k]
                     ls = linestyle[k]
-                ax.plot(n_fine, fit.fct[which](n_fine, n_D, par[i]), color=c, linestyle=ls)
+                pl = ax.plot(n_fine, fit.fct[which](n_fine, n_D, par[i]), color=c, linestyle=ls)
+                if fit.flab and which in fit.flab:
+                    leg2.append(pl[0])
+                    labels2.append(fit.flab[which])
                 if sig_var_noise:
-                    ax.plot(n_fine, fit.fct[which](n_fine, n_D, par[i]) + no_bias(n_fine, n_D, sig_var_noise[i]),
+                    pl = ax.plot(n_fine, fit.fct[which](n_fine, n_D, par[i]) + no_bias(n_fine, n_D, sig_var_noise[i]),
                             color=color[k], linestyle='dotted')
+                    leg2.append(pl[0])
+                    labels2.append('{} + $\\sigma_{{\\mathrm{{n}}}}$'.format(fit.flab[which]))
 
 
         # Dashed vertical line at n_S = n_D
@@ -356,7 +367,9 @@ def plot_box(fits, n_D, par, dpar, which, boxwidth=None, xlog=False, ylog=False,
         else:
             s = '$\sigma(\sigma^2_{{{}}})$'.format(p)
         plt.ylabel(s, fontsize=fit.fs)
-        ax.legend(leg, labels, loc='best', frameon=False)
+        Leg2 = plt.legend(leg2, labels2, frameon=False, loc='best')
+        plt.gca().add_artist(Leg2)
+        ax.legend(leg, labels, loc='upper left', frameon=False)
 
         # Limits
         if xlog:
@@ -429,11 +442,12 @@ def main(argv=None):
 
 
     fit_ABC = read_fit(param.par_name, param.ABC, 'ABC',
-                       fct={'mean': no_bias}, verbose=param.verbose)
+                       fct={'mean': no_bias}, flab={'mean': 'true value'}, verbose=param.verbose)
     fit_MCMC_norm = read_fit(param.par_name, param.MCMC_norm, 'MCMC normal',
-                             fct={'mean': no_bias, 'std': no_bias, 'std_var': std_fish_deb_TJ14}, verbose=param.verbose)
+                             fct={'std': no_bias, 'std_var': std_fish_deb_TJ14},
+                             flab={'std': 'Fisher(normal) ', 'std_var': 'TJ14'}, verbose=param.verbose)
     fit_MCMC_T2 = read_fit(param.par_name, param.MCMC_T2, 'MCMC $T^2$',
-                           fct={'std': par_fish_SH}, verbose=param.verbose)
+                           fct={'std': par_fish_SH}, flab={'std': 'Fisher($T^2$'}, verbose=param.verbose)
 
     mode = -1
     delta = 200
