@@ -1056,7 +1056,7 @@ class Results:
                 plt.ylim(ylim)
 
 
-        if plot_sth == True and last:
+        if plot_sth == True:
             plt.tight_layout(h_pad=5.0)
             plt.savefig('{}.pdf'.format(self.file_base), bbox_inches="tight")
 
@@ -1186,7 +1186,7 @@ class Results:
         ### Output
         outbase = 'std_2{}'.format(self.file_base)
 
-        if plot_sth == True and last:
+        if plot_sth == True:
             plt.savefig('{}.pdf'.format(outbase))
 
         write_ascii(outbase, cols, names)
