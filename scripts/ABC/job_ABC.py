@@ -522,10 +522,16 @@ def simulate(n_S_arr, param):
                             raise IOError('Observation run directory {} does not exist'.format(obs_run_dir))
                         obs_path_src = '{}/{}'.format(obs_run_dir, params_ini['path_to_obs'][0])
                         if not os.path.exists(obs_path_src):
-                            raise IOError('Observation path \'{}\' does not exist'.format(obs_path_src))
+                            raise IOError('Observation path (from --obs_dir) \'{}\' does not exist'.format(obs_path_src))
 
-                        # Create symbolic link
-                        os.symlink(obs_path_src, obs_path_dst)
+                        if os.path.exists(obs_path_dst):
+                            if not os.path.islink(obs_path_dst):
+                                raise IOError('Observation file \'{}\' already exists in run dir \'{}\', '
+                                            'but it not a link to previously computed observation'.format(
+                                            obs_path_dst, real_dir))
+                        else:
+                            # Create symbolic link
+                            os.symlink(obs_path_src, obs_path_dst)
 
                     # Run ABC once, normal processing
                     run_ABC_in_dir(real_dir, n_S, param.templ_dir, only_obs=only_obs)
