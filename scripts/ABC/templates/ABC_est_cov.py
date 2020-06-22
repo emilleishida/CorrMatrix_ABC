@@ -8,13 +8,15 @@ from cosmoabc.priors import flat_prior
 from cosmoabc.ABC_sampler import ABC
 from cosmoabc.plots import plot_2p
 from cosmoabc.ABC_functions import read_input
-from toy_model_functions import linear_dist, linear_dist_data, model_cov, gaussian_prior
+from toy_model_functions import linear_dist, linear_dist_data, linear_dist_data_acf, \
+    linear_dist_noabsb, model_cov, gaussian_prior, linear_dist_data_acf_zeros, \
+    linear_dist_data_acf_subtract_sim
 
 import numpy as np
 from numpy.linalg import LinAlgError
 from scipy.stats import uniform, multivariate_normal
 from statsmodels.stats.weightstats import DescrStatsW
-from covest import weighted_std, get_cov_ML
+from covest import weighted_std, get_cov_ML, cov_corr
 
 
 #user input file
@@ -29,13 +31,31 @@ Parameters['xmax'] = float(Parameters['xmax'][0])
 Parameters['a'] = float(Parameters['a'][0])
 Parameters['b'] = float(Parameters['b'][0])
 Parameters['sig'] = float(Parameters['sig'][0])
-Parameters['xcorr'] = float(Parameters['xcorr'][0])
+try:
+    Parameters['xcorr'] = float(Parameters['xcorr'][0])
+    model = 'affine_off_diag'
+except:
+    try:
+        Parameters['step'] = float(Parameters['step'][0])
+        model = 'affine_corr'
+    except:
+        raise ValueError('Neither keys \'xcorr\' nor \'step\' found')
+
 Parameters['nobs'] = int(Parameters['nobs'][0])
 
 # set functions
 Parameters['simulation_func'] = model_cov
-Parameters['distance_func'] = linear_dist
-#Parameters['distance_func'] = linear_dist_data
+
+distance = {'linear_dist': linear_dist,
+            'linear_dist_noabsb': linear_dist_noabsb,
+            'linear_dist_data': linear_dist_data,
+            'linear_dist_data_acf': linear_dist_data_acf,
+            'linear_dist_data_acf_zeros': linear_dist_data_acf_zeros,
+            'linear_dist_data_acf_subtract_sim': linear_dist_data_acf_subtract_sim
+           }
+distance_str                  = Parameters['distance_func'][0]
+Parameters['distance_func']   = distance[distance_str]
+
 Parameters['prior']['a']['func'] = gaussian_prior
 Parameters['prior']['b']['func'] = gaussian_prior
 
@@ -50,19 +70,19 @@ else:
 # fiducial model
 ytrue = Parameters['a']*x + Parameters['b']
 
-# true covariance matrix: *sig* on diagonal, *xcorr* on off-diagonal
 sig2 = Parameters['sig']
-xcorr = Parameters['xcorr']
-cov = np.diag([sig2 - xcorr for i in range(Parameters['nobs'])]) + xcorr
 
-# check whether cov is positive definite
-if xcorr != 0:
-    try:
-        L = np.linalg.cholesky(cov)
-    except LinAlgError:
-        print('Cholesky decomposition of covariance matrix failed, exiting.')
-        sys.exit(1)
-    print('Cholesky: covariance matrix is positive')
+if model == 'affine_off_diag':
+    xcorr = Parameters['xcorr']
+    # true covariance matrix: *sig* on diagonal, *xcorr* on off-diagonal
+    cov = np.diag([sig2 - xcorr for i in range(Parameters['nobs'])]) + xcorr
+else:
+    step = Parameters['step']
+    cov = cov_corr(sig2, step, Parameters['nobs'])
+
+# check whether cov is positive definite.
+# Failure will raise LinAlgError
+L = np.linalg.cholesky(cov)
 
 
 # generate or read catalog
@@ -96,7 +116,7 @@ Parameters['nsim'] = int(Parameters['nsim'][0])
 cov_est = get_cov_ML(ytrue, cov, Parameters['nsim'])
 
 # add covariance to user input parameters
-Parameters['simulation_input']['cov'] = cov_est
+Parameters['simulation_input']['cov_est'] = cov_est
 
 # save cov_est.txt to disk
 # this file is read when running continue_ABC.py or plot_ABC.py

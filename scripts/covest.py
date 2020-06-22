@@ -159,7 +159,35 @@ def std_fish_biased_TJK13(n, n_D, par):
     return [np.sqrt(2 * A(n_S, n_D) / alpha(n_S, n_D)**4 * (n_S - n_D - 1)) * par for n_S in n]
 
 
-def std_affine_off_diag(n, n_D, par):
+def std_affine_corr(n, n_D, par, pname=None):
+    """Return RMS for affine model with non-zero off-diagonal covariance matrix.
+       ('corr' model).
+       For this toy model, n is identified with step, the decreae step.
+    """
+
+    delta = 200
+    x = uniform.rvs(loc=-delta/2, scale=delta, size=n_D)
+    x.sort()
+
+    sig2 = 5.0
+
+    std = []
+    for step in n:
+        (da, db), det = Fisher_error_ana_corr(x, sig2, step, delta, mode=2)
+
+        if pname == 'a':
+            d = da
+        elif pname == 'b':
+            d = db
+        else:
+            raise ValueError('Invalid parameter value/name {}/{}'.format(par, p))
+
+        std.append(d)
+
+    return std
+
+
+def std_affine_off_diag(n, n_D, par, pname=None):
     """Return RMS for affine model with non-zero off-diagonal covariance matrix.
        For this toy model, n is identified with r, the off-diagonal constant element.
     """
@@ -174,13 +202,13 @@ def std_affine_off_diag(n, n_D, par):
     for xcorr in n:
         (da, db), det = Fisher_error_ana(x, sig2, xcorr, delta, mode=2)
 
-        # This is a really bad hack
-        if abs(par/0.0014 - 1) < 0.1:   # a
+        if pname == 'a':
             d = da
-        elif abs(par/0.0817 - 1) < 0.1:  # b
+        elif pname == 'b':
             d = db
         else:
-            raise ValueError('Invalid parameter par={}'.format(par))
+            raise ValueError('Invalid parameter value/name {}/{}'.format(par, p))
+
         std.append(d)
 
     return std
@@ -879,7 +907,7 @@ class Results:
         ylim: array of two floats, optional, default None
             y-limits
         model: string
-            model, one in 'affine', 'affine_off_diag', or 'quadratic'
+            model, one in 'affine', 'affine_off_diag', 'affine_corr', or 'quadratic'
 
         Returns
         -------
@@ -965,7 +993,7 @@ class Results:
                     my_par = par[which]
                     if self.fct is not None and which in self.fct:
                         # Define high-resolution array for smoother lines
-                        plt.plot(n_fine, self.fct[which](n_fine, n_D, my_par[i]), '{}{}'.format(color[i],
+                        plt.plot(n_fine, self.fct[which](n_fine, n_D, my_par[i], pname=p), '{}{}'.format(color[i],
                                  linestyle[i]), linewidth=2)
 
                     plt.plot(n_fine, no_bias(n_fine, n_D, my_par[i]), '{}{}'.format(color[i], linestyle[i]), \
@@ -1379,8 +1407,58 @@ def detF(n_D, sig2, delta):
     return det
 
 
+def cov_corr(sig2, step, n_D):
+
+    # Diagonal
+    cov = np.diag([sig2 for i in range(n_D)])
+    # Fill secondary diagonals with decreasing values
+    k = 0
+    val = sig2 - step
+    while val > 0 and k < n_D:
+        k = k + 1
+        cov = cov + np.diag([val for i in range(n_D-k)], k=k) \
+              + np.diag([val for i in range(n_D-k)], k=-k)
+        val = sig2 - (k+1)*step
+
+    return cov
+
+
+def Fisher_error_ana_corr(x, sig2, step, delta, mode=-1):
+    """Return Fisher matrix parameter errors (std), and Fisher matrix determinant, for affine function parameters (a, b),
+       and the 'affine_corr' model.
+    """
+
+    n_D = len(x)
+
+    # The four following ways to compute the Fisher matrix errors are statistically equivalent,
+    # for a digonal input covariance matrix cov = diag(sigma^2).
+    # Note that mode==-1,0 uses the statistical properties mean and variance of the uniform
+    # distribution, whereas mode=1,2 uses the actual sample x.
+
+    if mode not in [2]:
+        raise ABCCovError('For the \'affine_corr\' model, Fisher matrix can only be computed with mode=2')
+
+    if mode == 2:
+        # numerically using uniform vector x
+
+        cov = cov_corr(sig2, step, n_D)
+        # Numerical inverse. Will raise exception if inversion fails
+        Psi = np.linalg.inv(cov)
+
+        # Seems not to work well for a
+        F_11 = np.einsum('i,ij,j', x, Psi, x)
+        F_22 = np.einsum('i,ij,j', np.ones(shape=n_D), Psi, np.ones(shape=n_D))
+        F_12 = np.einsum('i,ij,j', x, Psi, np.ones(shape=n_D))
+
+        det = F_11 * F_22 - F_12**2
+        da2 = F_22 / det
+        db2 = F_11 / det
+
+    return np.sqrt([da2, db2]), det
+
+
 def Fisher_error_ana(x, sig2, xcorr, delta, mode=-1):
-    """Return Fisher matrix parameter errors (std), and Fisher matrix detminant, for affine function parameters (a, b)
+    """Return Fisher matrix parameter errors (std), and Fisher matrix determinant, for affine function parameters (a, b)
     """
 
     n_D = len(x)
@@ -1746,7 +1824,46 @@ def run_cmd(cmd_list, run=True, verbose=True, stop=False, parallel=True, file_li
     return s
 
 
-def acf_one(C, di, mean, reverse=False):
+def linear_dist_data_true_prec(d2, p):
+    """Distance between observed and simulated catalogues using
+       true inverse covariance.
+
+    Parameters
+    ----------
+    d2: array(double, 2)
+        simulated catalogue
+    p: dictionary
+        input parameters
+
+    Returns
+    -------
+    dist: double
+        distance
+    """
+
+    C_ell_sim = d2[:,1]
+    C_ell_obs = p['dataset1'][:,1]
+
+    dC = C_ell_sim - C_ell_obs
+
+    # Unweighted distances
+    #dist    = np.sqrt(sum(dC**2))
+
+    # Least squares weighted by covariance
+    if 'cov_true_inv' in p:
+        #print('linear_dist_data: Using true inverse covariance matrix')
+        cov_inv = p['cov_true_inv']
+    else:
+        print('linear_dist_data: Reading cov_true_inv.txt from disk')
+        cov_inv = np.loadtxt('cov_true_inv.txt')
+
+    dist = np.einsum('i,ij,j', dC, cov_inv, dC)
+    dist = np.sqrt(dist)
+
+    return np.atleast_1d(dist)
+
+
+def acf_one(C, di, mean, reverse=False, count_zeros=False):
     """Return one value of the auto-correlation function xi(x) of C at argument x=di
 
     Parameters
@@ -1767,20 +1884,28 @@ def acf_one(C, di, mean, reverse=False):
     """
 
     n_D  = len(C)
-    # Shift signal and keep to same length (lose entries at high-ell end)
+    # Shift signal and keep to same length (loose entries at high-ell end)
     C1 = C[:n_D - di]
     C2 = C[di:]
 
     if reverse:
         C2 = C2[::-1]
 
+    # Normalisation pre-factor, if count_zeros is True, normalisation factor
+    # accounts for entire original input data vector length, those which
+    # are 'shifted out' are interpreted as zero
+    if count_zeros:
+        norm = float(n_D)
+    else:
+        norm = float(n_D - di)
+
     # Estimate ACF
-    xi = sum((C1 - mean) * (C2 - mean)) / float(n_D - di)
+    xi = sum((C1 - mean) * (C2 - mean)) / norm
 
     return xi
 
 
-def acf(C, norm=False, centered=False, reverse=False):
+def acf(C, norm=False, centered=False, reverse=False, count_zeros=False):
     """Return auto-correlation function of C.
 
     Parameters
@@ -1807,16 +1932,28 @@ def acf(C, norm=False, centered=False, reverse=False):
 
     xi = []
     for di in range(len(C)):
-        xi.append(acf_one(C, di, mean, reverse=reverse))
+        xi.append(acf_one(C, di, mean, reverse=reverse, count_zeros=count_zeros))
 
     if norm:
         # Var = < C_ell C_ell> = xi(0)
-        xi = xi / xi[0]
+
+        if xi[0] != 0:
+            xi = xi / xi[0]
 
     return xi
 
 
-def linear_dist_data_acf(d2, p, weight=True, mode_sum='square'):
+def linear_dist_data_acf_zeros(d2, p, weight=False, mode_sum='square'):
+
+    return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=True)
+
+
+def linear_dist_data_acf_subtract_sim(d2, p, weight=False, mode_sum='square', count_zeros=False, subtract_sim=False):
+
+    return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=count_zeros, subtract_sim=True)
+
+
+def linear_dist_data_acf(d2, p, weight=False, mode_sum='square', count_zeros=False, subtract_sim=False):
     """Distance between observed and simulated catalogues using
        the auto-correlation function of the observation
 
@@ -1830,6 +1967,11 @@ def linear_dist_data_acf(d2, p, weight=True, mode_sum='square'):
         if True, weigh data by inverse variance
     mode_sum: string, optional, default='square'
         mode of summands in distance
+    count_zeros: bool, optional, default=False
+        if True zero-pad shifted arrays before acf, effectively
+        counting zeros
+    subtract_sim: bool, optional, default=False
+        if True subtract simulation from observation. Leads to dist(y, y) = 0.
 
     Returns
     -------
@@ -1840,20 +1982,24 @@ def linear_dist_data_acf(d2, p, weight=True, mode_sum='square'):
     C_ell_sim = d2[:,1]
     C_ell_obs = p['dataset1'][:,1]
 
-    if 'cov' in p:
-        cov = p['cov']
+    if 'cov_est' in p:
+        cov_est = p['cov_est']
     else:
-        cov = np.loadtxt('cov_est.txt')
+        cov_est = np.loadtxt('cov_est.txt')
 
     # Weighted data points
     if weight:
-        C_ell_sim_w = C_ell_sim / np.sqrt(np.diag(cov))
-        C_ell_obs_w = C_ell_obs / np.sqrt(np.diag(cov))
+        C_ell_sim_w = C_ell_sim / np.sqrt(np.diag(cov_est))
+        C_ell_obs_w = C_ell_obs / np.sqrt(np.diag(cov_est))
     else:
         C_ell_sim_w = C_ell_sim
         C_ell_obs_w = C_ell_obs
 
-    xi = acf(C_ell_obs, norm=True, centered=True, reverse=False)
+    if subtract_sim:
+        yy = C_ell_obs
+    else:
+        yy = C_ell_obs - C_ell_sim
+    xi = acf(yy, norm=True, centered=True, reverse=False, count_zeros=count_zeros)
 
     d = 0
     n_D = len(C_ell_obs)
@@ -1872,10 +2018,43 @@ def linear_dist_data_acf(d2, p, weight=True, mode_sum='square'):
                 raise ValueError('invalid mode_sum={}'.format(mode_sum))
             d = d + term
 
+            #if i == j:
+                #print('MKDEBUG {} {} {}'.format(mode_sum, d, term))
+
     if mode_sum not in ('abs', 'ratio_abs'):
         d = np.sqrt(d)
 
     d = np.atleast_1d(d)
 
     return d
+
+def linear_dist_data_dummy(d2, p):
+    """Distance between observed and simulated catalogues using
+       least squares between observed and simulated data points y.
+
+    Parameters
+    ----------
+    d2: array(double, 2)
+        simulated catalogue
+    p: dictionary
+        input parameters
+
+    Returns
+    -------
+    dist: double
+        distance
+    """
+
+    if bool(p['xfix']) == False:
+        raise ValueError('Parameter xfix needs to be 1 for linear_dist_data distance')
+
+    y_sim = d2[:,1]
+    y_obs = p['dataset1'][:,1]
+
+    y_delta = y_sim - y_obs
+
+    # Unweighted distances
+    dist    = np.sqrt(sum(y_delta**2))
+
+    return np.atleast_1d(dist)
 

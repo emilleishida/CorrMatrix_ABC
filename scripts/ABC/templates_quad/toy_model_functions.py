@@ -25,7 +25,7 @@ from scipy import stats
 import statsmodels.formula.api as smf
 import statsmodels.api as sm
 from covest import model_quad
-from covest import acf_one, acf, linear_dist_data_acf
+from covest import acf_one, acf, linear_dist_data_acf, linear_dist_data_true_prec
 
 
 def model_cov(p):
@@ -117,41 +117,11 @@ def gaussian_prior(par, func=False):
 def linear_dist_data(d2, p):
     """Distance between observed and simulated catalogues using
        true inverse covariance.
-
-    Parameters
-    ----------
-    d2: array(double, 2)
-        simulated catalogue
-    p: dictionary
-        input parameters
-
-    Returns
-    -------
-    dist: double
-        distance
+       Calls to this function have been replaced by
+       covest.py:linear_dist_data_true_prec
     """
 
-    C_ell_sim = d2[:,1]
-    C_ell_obs = p['dataset1'][:,1]
-
-    dC = C_ell_sim - C_ell_obs
-
-    # Unweighted distances
-    #dist    = np.sqrt(sum(dC**2))
-
-    # Least squares weighted by covariance
-    if 'cov_true_inv' in p:
-        #print('linear_dist_data: Using true inverse covariance matrix')
-        cov_inv = p['cov_true_inv']
-    else:
-        print('linear_dist_data: Reading cov_true_inv.txt from disk')
-        cov_inv = np.loadtxt('cov_true_inv.txt')
-
-    dist = np.einsum('i,ij,j', dC, cov_inv, dC)
-    dist = np.sqrt(dist)
-
-    return np.atleast_1d(dist)
-
+   return 0
 
 
 def linear_dist_data_diag(d2, p):

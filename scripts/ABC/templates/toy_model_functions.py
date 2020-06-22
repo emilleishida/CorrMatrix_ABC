@@ -26,7 +26,8 @@ from scipy.stats import uniform
 from scipy import stats
 import statsmodels.formula.api as smf
 import statsmodels.api as sm
-from covest import acf_one, acf, linear_dist_data_acf
+from covest import acf_one, acf, linear_dist_data_acf, linear_dist_data_true_prec, \
+    linear_dist_data_acf_zeros, linear_dist_data_acf_subtract_sim
 
 
 def model_cov(p):
@@ -56,7 +57,7 @@ def model_cov(p):
     x.sort()
     ytrue = np.array(p['a']*x + p['b'])
 
-    if isinstance(p['cov'], float):
+    if isinstance(p['cov_est'], float):
         cov_est = np.loadtxt('cov_est.txt')
         #raise ValueError('Covariance is not a matrix!')
     else:
@@ -97,7 +98,7 @@ def gaussian_prior(par, func=False):
         return dist
 
 
-def linear_dist(d2, p):
+def linear_dist(d2, p, abs_b=True):
     """
     Distance between observed and simulated catalogues using
     least squares between observed fitted and simulated parameters a, b.
@@ -126,13 +127,30 @@ def linear_dist(d2, p):
     mod_obs = mod_obs0.fit()
       
     delta_a = mod_sim.params[0] - mod_obs.params[0]
-    delta_b = abs(mod_sim.params[1]) - abs(mod_obs.params[1])
+    if abs_b:
+        delta_b = abs(mod_sim.params[1]) - abs(mod_obs.params[1])
+    else:
+        delta_b = mod_sim.params[1] - mod_obs.params[1]
    
     res = np.sqrt( pow(delta_a, 2) + pow(delta_b, 2) )
 
     return np.atleast_1d(res)
 
-    
+
+def linear_dist_noabsb(d2, p):
+    """
+    Distance between observed and simulated catalogues using
+    least squares between observed fitted and simulated parameters a, b.
+
+    input: d2 -> array of simulated catalogue
+           p -> dictonary of input parameters
+
+    output: list of 1 scalar (distance)
+    """
+
+    return linear_dist(d2, p, abs_b=False)
+
+   
 def linear_dist_data(d2, p):
     """Distance between observed and simulated catalogues using
        least squares between observed and simulated data points y.

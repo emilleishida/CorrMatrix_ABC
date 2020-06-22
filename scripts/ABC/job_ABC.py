@@ -95,7 +95,7 @@ def parse_options(p_def):
     parser.add_option('-P', '--par_name', dest='spar_name', type='string', default=p_def.spar_name,
         help='Parameter names, default=\'{}\''.format(p_def.spar_name))
     parser.add_option('-M', '--model', dest='model', type='string', default=p_def.model,
-        help='Model, one in \'affine\', \'affine_off_diag\', \'quadratic\', default=\'{}\''.format(p_def.model))
+        help='Model, one in \'affine\', \'affine_off_diag\', \'affine_corr\', \'quadratic\', default=\'{}\''.format(p_def.model))
 
     parser.add_option('-m', '--mode', dest='mode', type='string', default=p_def.mode,
         help='Mode: \'s\'=simulate, \'r\'=read ABC dirs, \'R\'=read master file, '
@@ -173,7 +173,7 @@ def update_param(p_def, options):
         param.n_S = None
     else:
         str_n_S_list = my_string_split(options.str_n_S, verbose=False, stop=True)
-        if param.model == 'affine_off_diag':
+        if param.model in ['affine_off_diag', 'affine_corr']:
             # Added 3/9/2019 for xcorr plots with non-int n_S (= r)
             param.n_S = [float(str_n_S) for str_n_S in str_n_S_list]
         else:
@@ -652,8 +652,10 @@ def main(argv=None):
     # Initialisation of results
     if param.model in ['affine', 'quadratic']:
         fct = {}
-    else:
+    elif param.model == ['affine_off_diag']:
         fct = {'std': std_affine_off_diag}
+    else:
+        fct = {'std': std_affine_corr}
     fit_ABC = Results(param.par_name, n_n_S, param.n_R, file_base='mean_std_ABC', yscale=['linear', 'log'], fct=fct)
 
 
@@ -677,7 +679,7 @@ def main(argv=None):
     par = my_string_split(param.spar, num=2, verbose=param.verbose, stop=True)
     param.par = [float(p) for p in par]
 
-    if param.model in ['affine', 'affine_off_diag']:
+    if param.model in ['affine', 'affine_off_diag', 'affine_corr']:
         delta = 200
         x1 = uniform.rvs(loc=-delta/2, scale=delta, size=param.n_D)        # exploratory variable
         x1.sort()
@@ -686,16 +688,25 @@ def main(argv=None):
         filename = '{}/{}'.format(param.templ_dir, 'toy_model.input')
         Parameters = read_input(filename)
         sig2 = float(Parameters['sig'][0])
-        xcorr = float(Parameters['xcorr'][0])
+
+        if param.model == 'affine_corr':
+            step = float(Parameters['step'][0])
+            my_mode = [2]
+        else:
+            xcorr = float(Parameters['xcorr'][0])
+            if xcorr == 0:
+                my_mode = [-1, 2]
+            else:
+                my_mode = [2]
+
         n_D = int(Parameters['nobs'][0])
         if n_D != param.n_D:
             raise('nobs in config file ({})) != n_D on command line ({})'.format(n_D, param.n_D))
-        if xcorr == 0:
-            my_mode = [-1, 2]
-        else:
-            my_mode = [2]
         for mode in my_mode:
-            dpar_exact, det = Fisher_error_ana(x1, sig2, xcorr, delta, mode=mode)
+            if param.model == 'affine_corr':
+                dpar_exact, det = Fisher_error_ana_corr(x1, sig2, step, delta, mode=mode)
+            else:
+                dpar_exact, det = Fisher_error_ana(x1, sig2, xcorr, delta, mode=mode)
             print('input par and exact std:          ', end='')
             for i, p in enumerate(param.par):
                 print('{:.4f}  +- {:.5f} (mode={})            '.format(p, dpar_exact[i], mode), end='')
