@@ -26,8 +26,7 @@ from scipy.stats import uniform
 from scipy import stats
 import statsmodels.formula.api as smf
 import statsmodels.api as sm
-from covest import acf_one, acf, linear_dist_data_acf, linear_dist_data_true_prec, \
-    linear_dist_data_acf_zeros, linear_dist_data_acf_subtract_sim
+from covest import *
 
 
 def model_cov(p):
@@ -149,34 +148,3 @@ def linear_dist_noabsb(d2, p):
     """
 
     return linear_dist(d2, p, abs_b=False)
-
-   
-def linear_dist_data(d2, p):
-    """Distance between observed and simulated catalogues using
-       least squares between observed and simulated data points y.
-
-    Parameters
-    ----------
-    d2: array(double, 2)
-        simulated catalogue
-    p: dictionary
-        input parameters
-
-    Returns
-    -------
-    dist: double
-        distance
-    """
-
-    if bool(p['xfix']) == False:
-        raise ValueError('Parameter xfix needs to be 1 for linear_dist_data distance')
-
-    y_sim = d2[:,1]
-    y_obs = p['dataset1'][:,1]
-
-    y_delta = y_sim - y_obs
-    
-    # Unweighted distances
-    dist    = np.sqrt(sum(y_delta**2))
-
-    return np.atleast_1d(dist)

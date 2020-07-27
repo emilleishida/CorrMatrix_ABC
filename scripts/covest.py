@@ -1011,10 +1011,12 @@ class Results:
                 plt.plot([n_D, n_D], [1e-5, 1e2], ':', linewidth=1)
 
                 # Main-axes settings
-                if model != 'affine_off_diag':
-                    plt.xlabel('$n_{{\\rm s}}$')
-                else:
+                if model == 'affine_off_diag':
                     plt.xlabel('$r$')
+                elif model == 'affine_corr':
+                    plt.xlabel('$s$')
+                else:
+                    plt.xlabel('$n_{{\\rm s}}$')
                 plt.ylabel('<{}>'.format(which))
                 ax.set_yscale(self.yscale[j])
                 ax.legend(frameon=False)
@@ -1039,7 +1041,7 @@ class Results:
                 ax.label.set_size(self.fs)
 
 	        # Second x-axis
-                if model != 'affine_off_diag':
+                if model not in ['affine_off_diag', 'affine_corr']:
                     ax2 = plt.twiny()
                     x2_loc = []
                     x2_lab = []
@@ -1070,6 +1072,8 @@ class Results:
                         plt.ylim(-2, 2)
                     elif model == 'affine_off_diag':
                         plt.ylim(-0.75, 1.25)
+                    elif model == 'affine_corr':
+                        plt.ylim(-0.1, 1.1)
                     else:
                         plt.ylim(0, 1)
                 if which == 'std':
@@ -1077,6 +1081,8 @@ class Results:
                         plt.ylim(1e-4, 3e-1)
                     elif model == 'affine_off_diag':
                         plt.ylim(3e-4, 5)
+                    elif model == 'affine_corr':
+                        plt.ylim(1e-3, 1)
                     else:
                         plt.ylim(5e-4, 2e-2)
 
@@ -1824,6 +1830,37 @@ def run_cmd(cmd_list, run=True, verbose=True, stop=False, parallel=True, file_li
     return s
 
 
+def linear_dist_data(d2, p):
+    """Distance between observed and simulated catalogues using
+       least squares between observed and simulated data points y.
+
+    Parameters
+    ----------
+    d2: array(double, 2)
+        simulated catalogue
+    p: dictionary
+        input parameters
+
+    Returns
+    -------
+    dist: double
+        distance
+    """
+
+    if bool(p['xfix']) == False:
+        raise ValueError('Parameter xfix needs to be 1 for linear_dist_data distance')
+
+    y_sim = d2[:,1]
+    y_obs = p['dataset1'][:,1]
+
+    y_delta = y_sim - y_obs
+
+    # Unweighted distances
+    dist    = np.sqrt(sum(y_delta**2))
+
+    return np.atleast_1d(dist)
+
+
 def linear_dist_data_true_prec(d2, p):
     """Distance between observed and simulated catalogues using
        true inverse covariance.
@@ -1948,12 +1985,57 @@ def linear_dist_data_acf_zeros(d2, p, weight=False, mode_sum='square'):
     return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=True)
 
 
-def linear_dist_data_acf_subtract_sim(d2, p, weight=False, mode_sum='square', count_zeros=False, subtract_sim=False):
+def linear_dist_data_acf_abs(d2, p, weight=False):
+
+    return linear_dist_data_acf(d2, p, weight=weight, mode_sum='abs')
+
+
+def linear_dist_data_acf_subtract_sim(d2, p, weight=False, mode_sum='square', count_zeros=False):
 
     return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=count_zeros, subtract_sim=True)
 
 
-def linear_dist_data_acf(d2, p, weight=False, mode_sum='square', count_zeros=False, subtract_sim=False):
+def linear_dist_data_acf_add_one(d2, p, weight=True, mode_sum='square', count_zeros=False):
+
+    return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=count_zeros, add=3)
+
+
+def linear_dist_data_acf_xisqrt(d2, p, weight=True, mode_sum='square', count_zeros=True):
+
+    return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=count_zeros, xipow=0.5)
+
+
+def linear_dist_data_acf_xipow4(d2, p, weight=True, mode_sum='square', count_zeros=True):
+
+    return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=count_zeros, xipow=4)
+
+
+def linear_dist_data_acf_xipow0(d2, p, weight=True, mode_sum='square', count_zeros=True):
+
+    return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=count_zeros, xipow=0)
+
+
+def linear_dist_data_acf_tmax10(d2, p, weight=True, mode_sum='square', count_zeros=False):
+
+    return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=count_zeros, tmax=10)
+
+
+def linear_dist_data_acf_tmax25(d2, p, weight=True, mode_sum='square', count_zeros=False):
+
+    return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=count_zeros, tmax=25)
+
+
+def linear_dist_data_plus_acf(d2, p):
+
+    d1 = linear_dist_data_acf(d2, p)
+    # MKDEBUG: Rescaling by hand, should be improved, e.g. based on previous iteration range
+    d1 = (d1 - 40000) / 10
+    d2 = linear_dist_data(d2, p)
+
+    return d1 + d2
+
+
+def linear_dist_data_acf(d2, p, weight=False, mode_sum='square', count_zeros=False, subtract_sim=False, add=0, xipow=2, tmax=None):
     """Distance between observed and simulated catalogues using
        the auto-correlation function of the observation
 
@@ -1972,6 +2054,12 @@ def linear_dist_data_acf(d2, p, weight=False, mode_sum='square', count_zeros=Fal
         counting zeros
     subtract_sim: bool, optional, default=False
         if True subtract simulation from observation. Leads to dist(y, y) = 0.
+    add: float, optional, default=0
+        add to xi
+    xipow: float, optional, default=2
+        exponent of the ACF
+    tmax: int, optional, deffault=None
+        set xi(t>xmax) = 0
 
     Returns
     -------
@@ -1983,6 +2071,7 @@ def linear_dist_data_acf(d2, p, weight=False, mode_sum='square', count_zeros=Fal
     C_ell_obs = p['dataset1'][:,1]
 
     if 'cov_est' in p:
+        print('cov_est from p')
         cov_est = p['cov_est']
     else:
         cov_est = np.loadtxt('cov_est.txt')
@@ -1995,11 +2084,19 @@ def linear_dist_data_acf(d2, p, weight=False, mode_sum='square', count_zeros=Fal
         C_ell_sim_w = C_ell_sim
         C_ell_obs_w = C_ell_obs
 
-    if subtract_sim:
-        yy = C_ell_obs
+    if 'xi' in p:
+        xi = p['xi']
     else:
-        yy = C_ell_obs - C_ell_sim
-    xi = acf(yy, norm=True, centered=True, reverse=False, count_zeros=count_zeros)
+        xi = acf(C_ell_obs, norm=True, centered=True, reverse=False, count_zeros=count_zeros)
+
+        if tmax:
+            xi[tmax:] = 0
+
+    if subtract_sim:
+        xi = xi - acf(C_ell_sim, norm=True, centered=True, reverse=False, count_zeros=count_zeros)
+    xi = xi + add
+
+    xi = np.abs(xi)
 
     d = 0
     n_D = len(C_ell_obs)
@@ -2007,19 +2104,16 @@ def linear_dist_data_acf(d2, p, weight=False, mode_sum='square', count_zeros=Fal
         for j in range(n_D):
             xi_ij = xi[np.abs(i-j)]
             if mode_sum == 'square':
-                term = (C_ell_sim_w[i] - C_ell_obs_w[j])**2 * xi_ij**2
+                term = (C_ell_sim_w[i] - C_ell_obs_w[j])**2 * xi_ij**xipow
             elif mode_sum == 'abs':
-                term = np.abs(C_ell_sim_w[i] - C_ell_obs_w[j]) * np.abs(xi_ij)
+                term = np.abs(C_ell_sim_w[i] - C_ell_obs_w[j]) * xi_ij
             elif mode_sum == 'ratio':
-                term = (C_ell_sim_w[i] / C_ell_obs_w[j])**2 * xi_ij**2
+                term = (C_ell_sim_w[i] / C_ell_obs_w[j])**2 * xi_ij**xipow
             elif mode_sum == 'ratio_abs':
-                term = np.abs(C_ell_sim_w[i] / C_ell_obs_w[j]) * np.abs(xi_ij)
+                term = np.abs(C_ell_sim_w[i] / C_ell_obs_w[j]) * xi_ij
             else:
                 raise ValueError('invalid mode_sum={}'.format(mode_sum))
             d = d + term
-
-            #if i == j:
-                #print('MKDEBUG {} {} {}'.format(mode_sum, d, term))
 
     if mode_sum not in ('abs', 'ratio_abs'):
         d = np.sqrt(d)
@@ -2027,6 +2121,7 @@ def linear_dist_data_acf(d2, p, weight=False, mode_sum='square', count_zeros=Fal
     d = np.atleast_1d(d)
 
     return d
+
 
 def linear_dist_data_dummy(d2, p):
     """Distance between observed and simulated catalogues using

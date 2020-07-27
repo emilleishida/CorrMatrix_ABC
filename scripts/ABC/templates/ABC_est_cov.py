@@ -8,9 +8,7 @@ from cosmoabc.priors import flat_prior
 from cosmoabc.ABC_sampler import ABC
 from cosmoabc.plots import plot_2p
 from cosmoabc.ABC_functions import read_input
-from toy_model_functions import linear_dist, linear_dist_data, linear_dist_data_acf, \
-    linear_dist_noabsb, model_cov, gaussian_prior, linear_dist_data_acf_zeros, \
-    linear_dist_data_acf_subtract_sim
+from toy_model_functions import *
 
 import numpy as np
 from numpy.linalg import LinAlgError
@@ -51,7 +49,15 @@ distance = {'linear_dist': linear_dist,
             'linear_dist_data': linear_dist_data,
             'linear_dist_data_acf': linear_dist_data_acf,
             'linear_dist_data_acf_zeros': linear_dist_data_acf_zeros,
-            'linear_dist_data_acf_subtract_sim': linear_dist_data_acf_subtract_sim
+            'linear_dist_data_acf_abs': linear_dist_data_acf_abs,
+            'linear_dist_data_acf_add_one': linear_dist_data_acf_add_one,
+            'linear_dist_data_acf_subtract_sim': linear_dist_data_acf_subtract_sim,
+            'linear_dist_data_plus_acf': linear_dist_data_plus_acf,
+            'linear_dist_data_acf_xipow4' : linear_dist_data_acf_xipow4,
+            'linear_dist_data_acf_xipow0' : linear_dist_data_acf_xipow0,
+            'linear_dist_data_acf_tmax10' : linear_dist_data_acf_tmax10,
+            'linear_dist_data_acf_tmax25' : linear_dist_data_acf_tmax25,
+            'linear_dist_data_acf_xisqrt' : linear_dist_data_acf_xisqrt
            }
 distance_str                  = Parameters['distance_func'][0]
 Parameters['distance_func']   = distance[distance_str]
@@ -94,6 +100,22 @@ else:
 # add to parameter dictionary
 Parameters['dataset1'] = np.array([[x[i], y[i]] for i in range(Parameters['nobs'])])
 
+
+# Compute ACF of observation
+print(Parameters['distance_func'])
+if Parameters['distance_func'] == 'linear_dist_data_acf_tmax10':
+    print('MKDEBUG pre-computing xi, writing to disk')
+    tmax = 10
+    xi = acf(y, norm=True, reverse=False, count_zeros=False)
+    xi_tmp = xi
+    xi[tmax:] = 0
+    Parameters['xi'] = xi
+
+    # write to disk
+    fout = open('xi.txt', 'w')
+    for i, x in enumerate(xi):
+        print >>fout, '{} {} {}'.format(i, xi_tmp[i], x)
+    fout.close()
 
 # Write to disk.
 # For continue_ABC.py this needs to be checked again!
