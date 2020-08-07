@@ -57,6 +57,7 @@ distance = {'linear_dist': linear_dist,
             'linear_dist_data_acf_xipow0' : linear_dist_data_acf_xipow0,
             'linear_dist_data_acf_tmax10' : linear_dist_data_acf_tmax10,
             'linear_dist_data_acf_tmax25' : linear_dist_data_acf_tmax25,
+            'linear_dist_data_acf_xipos' : linear_dist_data_acf_xipos,
             'linear_dist_data_acf_xisqrt' : linear_dist_data_acf_xisqrt
            }
 distance_str                  = Parameters['distance_func'][0]
@@ -102,19 +103,19 @@ Parameters['dataset1'] = np.array([[x[i], y[i]] for i in range(Parameters['nobs'
 
 
 # Compute ACF of observation
-print(Parameters['distance_func'])
-if Parameters['distance_func'] == 'linear_dist_data_acf_tmax10':
-    print('MKDEBUG pre-computing xi, writing to disk')
-    tmax = 10
+if distance_str in ['linear_dist_data_acf', 'linear_dist_data_acf_tmax10', \
+                    'linear_dist_data_acf_tmax25', 'linear_dist_data_acf_xipos']:
     xi = acf(y, norm=True, reverse=False, count_zeros=False)
-    xi_tmp = xi
-    xi[tmax:] = 0
     Parameters['xi'] = xi
+
+    if 'tmax' in Parameters:
+        tmax = int(Parameters['tmax'][0]) 
+        xi[tmax:] = 0
 
     # write to disk
     fout = open('xi.txt', 'w')
     for i, x in enumerate(xi):
-        print >>fout, '{} {} {}'.format(i, xi_tmp[i], x)
+        print >>fout, '{} {}'.format(i, x)
     fout.close()
 
 # Write to disk.

@@ -2025,6 +2025,11 @@ def linear_dist_data_acf_tmax25(d2, p, weight=True, mode_sum='square', count_zer
     return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=count_zeros, tmax=25)
 
 
+def linear_dist_data_acf_xipos(d2, p, weight=True, mode_sum='square', count_zeros=False):
+
+    return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=count_zeros, xipos=True)
+
+
 def linear_dist_data_plus_acf(d2, p):
 
     d1 = linear_dist_data_acf(d2, p)
@@ -2035,7 +2040,7 @@ def linear_dist_data_plus_acf(d2, p):
     return d1 + d2
 
 
-def linear_dist_data_acf(d2, p, weight=False, mode_sum='square', count_zeros=False, subtract_sim=False, add=0, xipow=2, tmax=None):
+def linear_dist_data_acf(d2, p, weight=False, mode_sum='square', count_zeros=False, subtract_sim=False, add=0, xipow=2, tmax=None, xipos=False):
     """Distance between observed and simulated catalogues using
        the auto-correlation function of the observation
 
@@ -2058,8 +2063,10 @@ def linear_dist_data_acf(d2, p, weight=False, mode_sum='square', count_zeros=Fal
         add to xi
     xipow: float, optional, default=2
         exponent of the ACF
-    tmax: int, optional, deffault=None
+    tmax: int, optional, default=None
         set xi(t>xmax) = 0
+    xipos: bool, optional, default=False
+        set xi>0
 
     Returns
     -------
@@ -2084,16 +2091,25 @@ def linear_dist_data_acf(d2, p, weight=False, mode_sum='square', count_zeros=Fal
         C_ell_sim_w = C_ell_sim
         C_ell_obs_w = C_ell_obs
 
+    # Load from data structure if present; compute if not
     if 'xi' in p:
         xi = p['xi']
     else:
         xi = acf(C_ell_obs, norm=True, centered=True, reverse=False, count_zeros=count_zeros)
 
-        if tmax:
-            xi[tmax:] = 0
+    # Set xi_t = 0 for t>=tmax 
+    if tmax:
+        xi[tmax:] = 0
 
+    # Set xi positive
+    if xipos:
+        xi[xi < 0] = 0
+
+    # Subtract acf of simulation
     if subtract_sim:
         xi = xi - acf(C_ell_sim, norm=True, centered=True, reverse=False, count_zeros=count_zeros)
+
+    # Add constant
     xi = xi + add
 
     xi = np.abs(xi)
