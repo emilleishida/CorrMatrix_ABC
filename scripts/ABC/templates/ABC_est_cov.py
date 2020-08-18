@@ -55,11 +55,12 @@ distance = {'linear_dist': linear_dist,
             'linear_dist_data_plus_acf': linear_dist_data_plus_acf,
             'linear_dist_data_acf_xipow4' : linear_dist_data_acf_xipow4,
             'linear_dist_data_acf_xipow0' : linear_dist_data_acf_xipow0,
-            'linear_dist_data_acf_tmax10' : linear_dist_data_acf_tmax10,
-            'linear_dist_data_acf_tmax25' : linear_dist_data_acf_tmax25,
             'linear_dist_data_acf_xipos' : linear_dist_data_acf_xipos,
-            'linear_dist_data_acf_xisqrt' : linear_dist_data_acf_xisqrt
+            'linear_dist_data_acf_xisqrt' : linear_dist_data_acf_xisqrt,
+            'linear_dist_data_acf_meanstdt': linear_dist_data_acf_meanstdt
            }
+#'linear_dist_data_acf_tmax10' : linear_dist_data_acf_tmax10,
+#'linear_dist_data_acf_tmax25' : linear_dist_data_acf_tmax25,
 distance_str                  = Parameters['distance_func'][0]
 Parameters['distance_func']   = distance[distance_str]
 
@@ -103,9 +104,17 @@ Parameters['dataset1'] = np.array([[x[i], y[i]] for i in range(Parameters['nobs'
 
 
 # Compute ACF of observation
-if distance_str in ['linear_dist_data_acf', 'linear_dist_data_acf_tmax10', \
-                    'linear_dist_data_acf_tmax25', 'linear_dist_data_acf_xipos']:
-    xi = acf(y, norm=True, reverse=False, count_zeros=False)
+#if distance_str in ['linear_dist_data_acf', 'linear_dist_data_acf_tmax10', \
+                    #'linear_dist_data_acf_tmax25', 'linear_dist_data_acf_xipos']:
+if distance_str in ['linear_dist_data_acf', 'linear_dist_data_acf_xipos', \
+                    'linear_dist_data_acf_meanstdt']:
+
+    if distance_str == 'linear_dist_data_acf_meanstdt':
+        mean_std_t = True
+    else:
+        mean_std_t = False
+
+    xi = acf(y, norm=True, reverse=False, count_zeros=False, mean_std_t=mean_std_t)
     Parameters['xi'] = xi
 
     if 'tmax' in Parameters:
