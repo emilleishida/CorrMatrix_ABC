@@ -1900,7 +1900,7 @@ def linear_dist_data_true_prec(d2, p):
     return np.atleast_1d(dist)
 
 
-def acf_one(C, di, mean, reverse=False, count_zeros=False, mean_std_t=False):
+def acf_one(C, di, mean, count_zeros=False, mean_std_t=False):
     """Return one value of the auto-correlation function xi(x) of C at argument x=di
 
     Parameters
@@ -1910,9 +1910,9 @@ def acf_one(C, di, mean, reverse=False, count_zeros=False, mean_std_t=False):
     di: int
         difference of ell-mode indices
     mean: float
-        mean value of C (can be 0 if un-centered acf is desired)
-    reverse: bool, optional, default=False
-        if True, reverse one of the vectors
+        mean value of C, only used if mean_std_t is False
+    mean_std_t: bool, optional, default=False
+        if True, mean and std depend on t in acf
 
     Returns
     -------
@@ -1924,9 +1924,6 @@ def acf_one(C, di, mean, reverse=False, count_zeros=False, mean_std_t=False):
     # Shift signal and keep to same length (loose entries at high-ell end)
     C1 = C[:n_D - di]
     C2 = C[di:]
-
-    if reverse:
-        C2 = C2[::-1]
 
     # Normalisation pre-factor, if count_zeros is True, normalisation factor
     # accounts for entire original input data vector length, those which
@@ -1948,14 +1945,13 @@ def acf_one(C, di, mean, reverse=False, count_zeros=False, mean_std_t=False):
             xi = sum((C1 - mean1) * (C2 - mean2)) / fac
         else:
             xi = 0
-        #print('{}  {} {}  {} {}  {}  {}'.format(di, mean1, mean2, std1, std2, fac,  xi))
     else:
         xi = sum((C1 - mean) * (C2 - mean)) / norm
 
     return xi
 
 
-def acf(C, norm=False, centered=False, reverse=False, count_zeros=False, mean_std_t=False):
+def acf(C, norm=False, count_zeros=False, mean_std_t=False):
     """Return auto-correlation function of C.
 
     Parameters
@@ -1966,8 +1962,6 @@ def acf(C, norm=False, centered=False, reverse=False, count_zeros=False, mean_st
         difference of ell-mode indices
     norm: bool, optional, default=False
         if True, acf is normalised by the variance
-    centered: bool, optional, default=False
-        if True, center acf by subtracting the mean
 
     Returns
     -------
@@ -1975,14 +1969,12 @@ def acf(C, norm=False, centered=False, reverse=False, count_zeros=False, mean_st
         auto-correlation function value
     """
 
-    if centered or mean_std_t:
-        mean = 0
-    else:
-        mean = C.mean()
+    mean = C.mean()
 
     xi = []
     for di in range(len(C)):
-        xi.append(acf_one(C, di, mean, reverse=reverse, count_zeros=count_zeros, mean_std_t=mean_std_t))
+        xi.append(acf_one(C, di, mean, count_zeros=count_zeros,
+                          mean_std_t=mean_std_t))
 
     #if norm and not mean_std_t:
     if norm:
@@ -2004,9 +1996,16 @@ def linear_dist_data_acf_abs(d2, p, weight=False):
     return linear_dist_data_acf(d2, p, weight=weight, mode_sum='abs')
 
 
-def linear_dist_data_acf_subtract_sim(d2, p, weight=False, mode_sum='square', count_zeros=False):
+def linear_dist_data_acf_subtract_sim_int(d2, p, weight=False, mode_sum='square', count_zeros=False):
 
-    return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=count_zeros, subtract_sim=True)
+    return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=count_zeros,
+                                subtract_sim='internal', mean_std_t=True)
+
+
+def linear_dist_data_acf_subtract_sim_ext(d2, p, weight=False, mode_sum='square', count_zeros=False):
+
+    return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=count_zeros,
+                                subtract_sim='external')
 
 
 def linear_dist_data_acf_add_one(d2, p, weight=True, mode_sum='square', count_zeros=False):
@@ -2034,16 +2033,6 @@ def linear_dist_data_acf_meanstdt(d2, p, weight=True, mode_sum='square', count_z
     return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=count_zeros, mean_std_t=True)
 
 
-#def linear_dist_data_acf_tmax10(d2, p, weight=True, mode_sum='square', count_zeros=False):
-#
-    #return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=count_zeros, tmax=10)
-
-
-#def linear_dist_data_acf_tmax25(d2, p, weight=True, mode_sum='square', count_zeros=False):
-#
-    #return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=count_zeros, tmax=25)
-
-
 def linear_dist_data_acf_xipos(d2, p, weight=True, mode_sum='square', count_zeros=False):
 
     return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=count_zeros, xipos=True)
@@ -2059,7 +2048,7 @@ def linear_dist_data_plus_acf(d2, p):
     return d1 + d2
 
 
-def linear_dist_data_acf(d2, p, weight=False, mode_sum='square', count_zeros=False, subtract_sim=False,
+def linear_dist_data_acf(d2, p, weight=False, mode_sum='square', count_zeros=False, subtract_sim=None,
                          add=0, xipow=2, tmax=None, xipos=False, mean_std_t=False):
     """Distance between observed and simulated catalogues using
        the auto-correlation function of the observation
@@ -2077,7 +2066,7 @@ def linear_dist_data_acf(d2, p, weight=False, mode_sum='square', count_zeros=Fal
     count_zeros: bool, optional, default=False
         if True zero-pad shifted arrays before acf, effectively
         counting zeros
-    subtract_sim: bool, optional, default=False
+    subtract_sim: string, optional, default=None
         if True subtract simulation from observation. Leads to dist(y, y) = 0.
     add: float, optional, default=0
         add to xi
@@ -2117,23 +2106,38 @@ def linear_dist_data_acf(d2, p, weight=False, mode_sum='square', count_zeros=Fal
     if 'xi' in p:
         xi = p['xi']
     else:
-        xi = acf(C_ell_obs, norm=True, centered=True, reverse=False, count_zeros=count_zeros, mean_std_t=mean_std_t)
+        if subtract_sim == 'internal':
+            dC = C_ell_obs - C_ell_sim
+            fout = open('d.txt', 'w')
+            for i in range(len(dC)):
+                fout.write('{} {} {} {}\n'.format(i, dC[i], C_ell_obs[i], C_ell_sim[i]))
+            fout.close()
+        else:
+            dC = C_ell_obs
+        xi = acf(dC, norm=True, count_zeros=count_zeros, mean_std_t=mean_std_t)
 
-    # Set xi_t = 0 for t>=tmax 
+        fout = open('xi.txt', 'w')
+        for i, x in enumerate(xi):
+            fout.write('{} {}\n'.format(i, x))
+        fout.close()
+
     if tmax:
-        print('Warning: tmax!=0 in distance argument is obsolete')
-        xi[tmax:] = 0
+        raise ValueError('Warning: tmax!=0 in distance argument is obsolete')
+
+    # Subtract acf of simulation, omitting zero entries of xi due to earlier tmax
+    if subtract_sim == 'external':
+        xi_sim = acf(C_ell_sim, norm=True, count_zeros=count_zeros)
+        w = np.where(xi == 0)[0]
+        if len(w) > 0:
+            xi_sim[w] = 0
+        xi = xi - xi_sim
+
+    # Add constant
+    xi = xi + add
 
     # Set xi positive
     if xipos:
         xi[xi < 0] = 0
-
-    # Subtract acf of simulation
-    if subtract_sim:
-        xi = xi - acf(C_ell_sim, norm=True, centered=True, reverse=False, count_zeros=count_zeros)
-
-    # Add constant
-    xi = xi + add
 
     xi = np.abs(xi)
 

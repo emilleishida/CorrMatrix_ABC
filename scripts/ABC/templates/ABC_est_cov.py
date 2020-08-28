@@ -51,7 +51,8 @@ distance = {'linear_dist': linear_dist,
             'linear_dist_data_acf_zeros': linear_dist_data_acf_zeros,
             'linear_dist_data_acf_abs': linear_dist_data_acf_abs,
             'linear_dist_data_acf_add_one': linear_dist_data_acf_add_one,
-            'linear_dist_data_acf_subtract_sim': linear_dist_data_acf_subtract_sim,
+            'linear_dist_data_acf_subtract_sim_ext': linear_dist_data_acf_subtract_sim_ext,
+            'linear_dist_data_acf_subtract_sim_int': linear_dist_data_acf_subtract_sim_int,
             'linear_dist_data_plus_acf': linear_dist_data_plus_acf,
             'linear_dist_data_acf_xipow4' : linear_dist_data_acf_xipow4,
             'linear_dist_data_acf_xipow0' : linear_dist_data_acf_xipow0,
@@ -59,8 +60,6 @@ distance = {'linear_dist': linear_dist,
             'linear_dist_data_acf_xisqrt' : linear_dist_data_acf_xisqrt,
             'linear_dist_data_acf_meanstdt': linear_dist_data_acf_meanstdt
            }
-#'linear_dist_data_acf_tmax10' : linear_dist_data_acf_tmax10,
-#'linear_dist_data_acf_tmax25' : linear_dist_data_acf_tmax25,
 distance_str                  = Parameters['distance_func'][0]
 Parameters['distance_func']   = distance[distance_str]
 
@@ -88,6 +87,8 @@ else:
     step = Parameters['step']
     cov = cov_corr(sig2, step, Parameters['nobs'])
 
+
+
 # check whether cov is positive definite.
 # Failure will raise LinAlgError
 L = np.linalg.cholesky(cov)
@@ -104,8 +105,6 @@ Parameters['dataset1'] = np.array([[x[i], y[i]] for i in range(Parameters['nobs'
 
 
 # Compute ACF of observation
-#if distance_str in ['linear_dist_data_acf', 'linear_dist_data_acf_tmax10', \
-                    #'linear_dist_data_acf_tmax25', 'linear_dist_data_acf_xipos']:
 if distance_str in ['linear_dist_data_acf', 'linear_dist_data_acf_xipos', \
                     'linear_dist_data_acf_meanstdt']:
 
@@ -114,7 +113,7 @@ if distance_str in ['linear_dist_data_acf', 'linear_dist_data_acf_xipos', \
     else:
         mean_std_t = False
 
-    xi = acf(y, norm=True, reverse=False, count_zeros=False, mean_std_t=mean_std_t)
+    xi = acf(y, norm=True, count_zeros=False, mean_std_t=mean_std_t)
     Parameters['xi'] = xi
 
     if 'tmax' in Parameters:
@@ -126,6 +125,7 @@ if distance_str in ['linear_dist_data_acf', 'linear_dist_data_acf_xipos', \
     for i, x in enumerate(xi):
         print >>fout, '{} {}'.format(i, x)
     fout.close()
+
 
 # Write to disk.
 # For continue_ABC.py this needs to be checked again!
@@ -147,18 +147,15 @@ if len(sys.argv) > 1 and sys.argv[1] == '--only_observation':
 Parameters['nsim'] = int(Parameters['nsim'][0])
 cov_est = get_cov_ML(ytrue, cov, Parameters['nsim'])
 
+if len(sys.argv) > 1 and sys.argv[1] == '--no_run':
+    # this file is read when running continue_ABC.py or plot_ABC.py
+    np.savetxt('cov_est.txt', cov_est)
+    np.savetxt('cov_true.txt', cov)
+    print('Not running ABC, exiting.')
+    sys.exit(0)
+
 # add covariance to user input parameters
 Parameters['simulation_input']['cov_est'] = cov_est
-
-# save cov_est.txt to disk
-# this file is read when running continue_ABC.py or plot_ABC.py
-np.savetxt('cov_est.txt', cov_est)
-
-if len(sys.argv) > 1 and sys.argv[1] == '--only_cov_est':
-    print('Written estimated covariance matrix, exiting.')
-    sys.exit(0)
-#############################################
-
 
 # add observed catalog to simulation parameters
 if bool(Parameters['xfix']):
