@@ -99,7 +99,7 @@ L = np.linalg.cholesky(cov)
 if Parameters['path_to_obs'] == 'None':
     y = multivariate_normal.rvs(mean=ytrue, cov=cov, size=1)
 else:
-    y = dat[:,0]
+    y = dat[:,1]
 
 # add to parameter dictionary
 Parameters['dataset1'] = np.array([[x[i], y[i]] for i in range(Parameters['nobs'])])
@@ -130,14 +130,16 @@ if distance_str in ['linear_dist_data_acf', 'linear_dist_data_acf_xipos', \
 
 # Write to disk.
 # For continue_ABC.py this needs to be checked again!
-obs_path = 'observation_xy.txt'
-if not os.path.exists(obs_path):
-    op1 = open(obs_path, 'w')
-    for line in Parameters['dataset1']:
-        for item in line:
-            op1.write(str(item) + '    ')
-        op1.write('\n')
-    op1.close()
+if Parameters['path_to_obs'] == 'None':
+    if os.path.exists(Parameters['path_to_obs']):
+        raise IOError('File \'{}\' should not exist'.format(Parameters['path_to_obs']))
+    else:
+        op1 = open(obs_path, 'w')
+        for line in Parameters['dataset1']:
+            for item in line:
+                op1.write(str(item) + '    ')
+            op1.write('\n')
+        op1.close()
 
 if len(sys.argv) > 1 and sys.argv[1] == '--only_observation':
     print('Written observation, exiting.')
@@ -154,10 +156,13 @@ if len(sys.argv) > 1 and sys.argv[1] == '--no_run':
     np.savetxt('cov_true.txt', cov)
     print('Not running ABC, exiting.')
     sys.exit(0)
+else:
+    # MKDEBUG: Bug when cov_est.txt is not written to disk,
+    # linear_dist_data... does not get it from p
+    np.savetxt('cov_est.txt', cov_est)
 
 # add covariance to user input parameters
 Parameters['simulation_input']['cov_est'] = cov_est
-Parameters['cov_est'] = cov_est
 
 # add observed catalog to simulation parameters
 if bool(Parameters['xfix']):

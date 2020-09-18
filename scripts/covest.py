@@ -2122,12 +2122,13 @@ def linear_dist_data_acf(d2, p, weight=False, mode_sum='square', count_zeros=Fal
             fout.close()
         elif subtract_sim == 'model':
             x = p['dataset1'][:,0]
-            C_ell_mod = ytrue = np.array(p['a']*x + p['b'])
+            C_ell_mod = np.array(p['a']*x + p['b'])
             dC = C_ell_obs - C_ell_mod
-            fout = open('dmod.txt', 'w')
-            for i in range(len(dC)):
-                fout.write('{} {} {} {}\n'.format(i, dC[i], C_ell_obs[i], C_ell_mod[i]))
-            fout.close()
+            print('a, b:', p['a'], p['b'])
+            #fout = open('dmod.txt', 'w')
+            #for i in range(len(dC)):
+                #fout.write('{} {} {} {}\n'.format(i, dC[i], C_ell_obs[i], C_ell_mod[i]))
+            #fout.close()
         elif subtract_sim == 'internal':
             raise ValueError('subtract_sim = internal not compatible with pre-'
                              'computed xi')
@@ -2135,10 +2136,11 @@ def linear_dist_data_acf(d2, p, weight=False, mode_sum='square', count_zeros=Fal
             dC = C_ell_obs
         xi = acf(dC, norm=True, count_zeros=count_zeros, mean_std_t=mean_std_t)
 
-        fout = open('xi.txt', 'w')
-        for i, x in enumerate(xi):
-            fout.write('{} {}\n'.format(i, x))
-        fout.close()
+        if not os.path.exists('xi.txt'):
+            fout = open('xi.txt', 'w')
+            for i, x in enumerate(xi):
+                fout.write('{} {}\n'.format(i, x))
+            fout.close()
 
     if tmax:
         raise ValueError('Warning: tmax!=0 in distance argument is obsolete')
