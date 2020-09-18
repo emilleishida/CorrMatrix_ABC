@@ -53,6 +53,7 @@ distance = {'linear_dist': linear_dist,
             'linear_dist_data_acf_add_one': linear_dist_data_acf_add_one,
             'linear_dist_data_acf_subtract_sim_ext': linear_dist_data_acf_subtract_sim_ext,
             'linear_dist_data_acf_subtract_sim_int': linear_dist_data_acf_subtract_sim_int,
+            'linear_dist_data_acf_subtract_mod': linear_dist_data_acf_subtract_mod,
             'linear_dist_data_plus_acf': linear_dist_data_plus_acf,
             'linear_dist_data_acf_xipow4' : linear_dist_data_acf_xipow4,
             'linear_dist_data_acf_xipow0' : linear_dist_data_acf_xipow0,
@@ -156,6 +157,7 @@ if len(sys.argv) > 1 and sys.argv[1] == '--no_run':
 
 # add covariance to user input parameters
 Parameters['simulation_input']['cov_est'] = cov_est
+Parameters['cov_est'] = cov_est
 
 # add observed catalog to simulation parameters
 if bool(Parameters['xfix']):

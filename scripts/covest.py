@@ -2008,6 +2008,12 @@ def linear_dist_data_acf_subtract_sim_ext(d2, p, weight=False, mode_sum='square'
                                 subtract_sim='external')
 
 
+def linear_dist_data_acf_subtract_mod(d2, p, weight=False, mode_sum='square', count_zeros=False):
+
+    return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=count_zeros,
+                                mean_std_t=True, subtract_sim='model')
+
+
 def linear_dist_data_acf_add_one(d2, p, weight=True, mode_sum='square', count_zeros=False):
 
     return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=count_zeros, add=3)
@@ -2067,7 +2073,9 @@ def linear_dist_data_acf(d2, p, weight=False, mode_sum='square', count_zeros=Fal
         if True zero-pad shifted arrays before acf, effectively
         counting zeros
     subtract_sim: string, optional, default=None
-        if True subtract simulation from observation. Leads to dist(y, y) = 0.
+        if 'external', subtract xi(y_sim) from xi(y_obs). Leads to dist(y, y) = 0.
+        if 'internal', subtract y_sim from y_obs inside xi(.). Leads to dist(y, y) = 0.
+        if 'model', subtract a*y + b from y_obs, with (a, b) the sample point
     add: float, optional, default=0
         add to xi
     xipow: float, optional, default=2
@@ -2088,14 +2096,14 @@ def linear_dist_data_acf(d2, p, weight=False, mode_sum='square', count_zeros=Fal
     C_ell_sim = d2[:,1]
     C_ell_obs = p['dataset1'][:,1]
 
-    if 'cov_est' in p:
-        print('cov_est from p')
-        cov_est = p['cov_est']
-    else:
-        cov_est = np.loadtxt('cov_est.txt')
-
     # Weighted data points
     if weight:
+        if 'cov_est' in p:
+            print('cov_est from p')
+            cov_est = p['cov_est']
+        else:
+            cov_est = np.loadtxt('cov_est.txt')
+
         C_ell_sim_w = C_ell_sim / np.sqrt(np.diag(cov_est))
         C_ell_obs_w = C_ell_obs / np.sqrt(np.diag(cov_est))
     else:
@@ -2112,6 +2120,17 @@ def linear_dist_data_acf(d2, p, weight=False, mode_sum='square', count_zeros=Fal
             for i in range(len(dC)):
                 fout.write('{} {} {} {}\n'.format(i, dC[i], C_ell_obs[i], C_ell_sim[i]))
             fout.close()
+        elif subtract_sim == 'model':
+            x = p['dataset1'][:,0]
+            C_ell_mod = ytrue = np.array(p['a']*x + p['b'])
+            dC = C_ell_obs - C_ell_mod
+            fout = open('dmod.txt', 'w')
+            for i in range(len(dC)):
+                fout.write('{} {} {} {}\n'.format(i, dC[i], C_ell_obs[i], C_ell_mod[i]))
+            fout.close()
+        elif subtract_sim == 'internal':
+            raise ValueError('subtract_sim = internal not compatible with pre-'
+                             'computed xi')
         else:
             dC = C_ell_obs
         xi = acf(dC, norm=True, count_zeros=count_zeros, mean_std_t=mean_std_t)
