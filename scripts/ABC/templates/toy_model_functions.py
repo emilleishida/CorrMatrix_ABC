@@ -55,6 +55,7 @@ def model_cov(p):
     
     x.sort()
     ytrue = np.array(p['a']*x + p['b'])
+    print('model a, b: ', p['a'], p['b'])
 
     if isinstance(p['cov_est'], float):
         cov_est = np.loadtxt('cov_est.txt')
@@ -64,7 +65,8 @@ def model_cov(p):
 
     y = multivariate_normal.rvs(mean=ytrue, cov=cov_est)
 
-    return np.array([[x[i], y[i]] for i in range(int(p['nobs']))])
+    return np.array([[x[i], y[i], p['a'], p['b']] for i in range(int(p['nobs']))])
+    #return np.array([[x[i], y[i]] for i in range(int(p['nobs']))])
 
 
 

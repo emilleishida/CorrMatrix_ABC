@@ -2122,9 +2122,11 @@ def linear_dist_data_acf(d2, p, weight=False, mode_sum='square', count_zeros=Fal
             fout.close()
         elif subtract_sim == 'model':
             x = p['dataset1'][:,0]
-            C_ell_mod = np.array(p['a']*x + p['b'])
+            a = p['a']
+            b = p['b']
+            C_ell_mod = np.array(a*x + b)
             dC = C_ell_obs - C_ell_mod
-            print('a, b:', p['a'], p['b'])
+            print('dist a, b: ', a, b)
             #fout = open('dmod.txt', 'w')
             #for i in range(len(dC)):
                 #fout.write('{} {} {} {}\n'.format(i, dC[i], C_ell_obs[i], C_ell_mod[i]))
