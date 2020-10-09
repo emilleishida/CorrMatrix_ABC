@@ -48,6 +48,8 @@ distance = {'linear_dist': linear_dist,
             'linear_dist_noabsb': linear_dist_noabsb,
             'linear_dist_data': linear_dist_data,
             'linear_dist_data_acf': linear_dist_data_acf,
+            'linear_dist_data_acf2': linear_dist_data_acf2,
+            'linear_dist_data_acf2_no2': linear_dist_data_acf2_no2,
             'linear_dist_data_acf_zeros': linear_dist_data_acf_zeros,
             'linear_dist_data_acf_abs': linear_dist_data_acf_abs,
             'linear_dist_data_acf_add_one': linear_dist_data_acf_add_one,
@@ -107,9 +109,11 @@ Parameters['dataset1'] = np.array([[x[i], y[i]] for i in range(Parameters['nobs'
 
 # Compute ACF of observation
 if distance_str in ['linear_dist_data_acf', 'linear_dist_data_acf_xipos', \
-                    'linear_dist_data_acf_meanstdt']:
+                    'linear_dist_data_acf_meanstdt', 'linear_dist_data_acf2',
+                    'linear_dist_data_acf2_no2']:
 
-    if distance_str == 'linear_dist_data_acf_meanstdt':
+    if distance_str in ['linear_dist_data_acf_meanstdt', 'linear_dist_data_acf2',
+                        'linear_dist_data_acf2_no2']:
         mean_std_t = True
     else:
         mean_std_t = False

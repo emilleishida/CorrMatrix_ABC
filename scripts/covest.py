@@ -2189,6 +2189,54 @@ def linear_dist_data_acf(d2, p, weight=False, mode_sum='square', count_zeros=Fal
     return d
 
 
+def linear_dist_data_acf2_no2(d2, p):
+
+    return linear_dist_data_acf2(d2, p, mode='xi')
+
+
+def linear_dist_data_acf2(d2, p, mode='xi_square'):
+    """New distance between observed and simulated catalogues using
+       the auto-correlation function of the observation"
+
+    Parameters
+    ----------
+    d2: array(double, 2)
+        simulated catalogue
+    p: dictionary
+    mode: bool, optional, default='xi_square'
+
+    Returns
+    -------
+    dist: double
+        distance
+    """
+
+    C_ell_sim = d2[:,1]
+    C_ell_obs = p['dataset1'][:,1]
+    if 'xi' in p:
+        xi = p['xi']
+    else:
+        raise ValueError('xi not found in parameter dict')
+
+    d = 0
+    n_D = len(C_ell_obs)
+    for i in range(n_D):
+        for j in range(n_D):
+            xi_ij = xi[np.abs(i-j)]
+            if mode == 'xi_square':
+                term = (C_ell_sim[i] - C_ell_obs[i]) * xi_ij**2 * (C_ell_sim[j] - C_ell_obs[j])
+            elif mode == 'xi':
+                term = (C_ell_sim[i] - C_ell_obs[i]) * xi_ij * (C_ell_sim[j] - C_ell_obs[j])
+            d = d + term
+
+    if mode == 'xi_square':
+        d = np.sqrt(d)
+    elif mode == 'xi':
+        d = np.abs(d)
+    d = np.atleast_1d(d)
+    return d
+
+
 def linear_dist_data_dummy(d2, p):
     """Distance between observed and simulated catalogues using
        least squares between observed and simulated data points y.

@@ -55,7 +55,6 @@ def model_cov(p):
     
     x.sort()
     ytrue = np.array(p['a']*x + p['b'])
-    print('model a, b: ', p['a'], p['b'])
 
     if isinstance(p['cov_est'], float):
         cov_est = np.loadtxt('cov_est.txt')
