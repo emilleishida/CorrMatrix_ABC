@@ -1082,7 +1082,9 @@ class Results:
                     elif model == 'affine_off_diag':
                         plt.ylim(3e-4, 5)
                     elif model == 'affine_corr':
-                        plt.ylim(1e-3, 1)
+                        #plt.ylim(1e-3, 1)
+                        # Temporarily increase lower plot bound
+                        plt.ylim(2e-4, 1)
                     else:
                         plt.ylim(5e-4, 2e-2)
 
@@ -2189,12 +2191,28 @@ def linear_dist_data_acf(d2, p, weight=False, mode_sum='square', count_zeros=Fal
     return d
 
 
-def linear_dist_data_acf2_no2(d2, p):
+def linear_dist_data_acf2_lin_diag(d2, p):
+    """ For testing."""
+
+    return linear_dist_data_acf2(d2, p, mode='xi', diag=True)
+
+
+def linear_dist_data_acf2_lin(d2, p):
 
     return linear_dist_data_acf2(d2, p, mode='xi')
 
 
-def linear_dist_data_acf2(d2, p, mode='xi_square'):
+def linear_dist_data_acf2_sqr(d2, p):
+
+    return linear_dist_data_acf2(d2, p, mode='xi_square')
+
+
+def linear_dist_data_acf2_cub(d2, p):
+
+    return linear_dist_data_acf2(d2, p, mode='xi_cub')
+
+
+def linear_dist_data_acf2(d2, p, mode='xi_square', diag=False):
     """New distance between observed and simulated catalogues using
        the auto-correlation function of the observation"
 
@@ -2203,7 +2221,11 @@ def linear_dist_data_acf2(d2, p, mode='xi_square'):
     d2: array(double, 2)
         simulated catalogue
     p: dictionary
+        parameters
     mode: bool, optional, default='xi_square'
+        mode, one in 'xi', 'xi_square', 'xi_cub''
+    diag: bool, optional, default=False
+        if True only uses 'diagonal' xi_i=j}
 
     Returns
     -------
@@ -2222,16 +2244,20 @@ def linear_dist_data_acf2(d2, p, mode='xi_square'):
     n_D = len(C_ell_obs)
     for i in range(n_D):
         for j in range(n_D):
+            if diag and i != j:
+                continue
             xi_ij = xi[np.abs(i-j)]
-            if mode == 'xi_square':
-                term = (C_ell_sim[i] - C_ell_obs[i]) * xi_ij**2 * (C_ell_sim[j] - C_ell_obs[j])
-            elif mode == 'xi':
+            if mode == 'xi':
                 term = (C_ell_sim[i] - C_ell_obs[i]) * xi_ij * (C_ell_sim[j] - C_ell_obs[j])
+            elif mode == 'xi_square':
+                term = (C_ell_sim[i] - C_ell_obs[i]) * xi_ij**2 * (C_ell_sim[j] - C_ell_obs[j])
+            elif mode == 'xi_cub':
+                term = (C_ell_sim[i] - C_ell_obs[i]) * xi_ij**3 * (C_ell_sim[j] - C_ell_obs[j])
             d = d + term
 
     if mode == 'xi_square':
         d = np.sqrt(d)
-    elif mode == 'xi':
+    elif mode == 'xi' or mode == 'xi_cub':
         d = np.abs(d)
     d = np.atleast_1d(d)
     return d
