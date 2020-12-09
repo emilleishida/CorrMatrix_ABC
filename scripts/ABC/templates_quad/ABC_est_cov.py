@@ -2,24 +2,27 @@ import matplotlib
 
 # The following line is required for the non-framework version of OSX python
 matplotlib.use('TkAgg')
-#matplotlib.use("Agg")
+
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 from cosmoabc.priors import flat_prior
 from cosmoabc.ABC_sampler import ABC
 from cosmoabc.plots import plot_2p
 from cosmoabc.ABC_functions import read_input
-from toy_model_functions import linear_dist_data_diag, linear_dist_data, linear_dist_data_acf, \
-    linear_dist_data_acf_abs, linear_dist_data_acf_ratio, linear_dist_data_acf_ratio_abs, \
-    model_cov, model_quad
+from toy_model_functions import *
 
 import numpy as np
 import sys
 
 from scipy.stats import uniform, multivariate_normal
 from statsmodels.stats.weightstats import DescrStatsW
-from covest import weighted_std, get_cov_WL
+from covest import *
 
 from astropy import units
+
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
 
@@ -65,6 +68,7 @@ distance = {'linear_dist_data_diag':      linear_dist_data_diag,
             'linear_dist_data_acf_abs':   linear_dist_data_acf_abs,
             'linear_dist_data_acf_ratio': linear_dist_data_acf_ratio,
             'linear_dist_data_acf_ratio_abs': linear_dist_data_acf_ratio_abs,
+            'linear_dist_data_acf2_lin': linear_dist_data_acf2_lin,
            }
 distance_str                  = Parameters['distance_func'][0]
 Parameters['distance_func']   = distance[distance_str]
@@ -89,10 +93,14 @@ else:
     # Consistency check of input parameters
     path_to_obs = Parameters['path_to_obs']
     if path_to_obs != 'None':
-        print('Inconsistent parameters: input_is_true = False (sampled input) *and* path_to_obs not \'None\'')
-        sys.exit(5)
-
-    y_input  = multivariate_normal.rvs(mean=y_true, cov=cov)
+        # MKDEBUG New 11/2020: Load pre-computed observation from file
+        #print('Inconsistent parameters: input_is_true = False (sampled input) *and* path_to_obs not \'None\'')
+        #sys.exit(5)
+        dat = np.loadtxt(path_to_obs)
+        y_input = dat[:,1]
+        # MKDEBUG TODO: Check whether logell are consistent
+    else:
+        y_input  = multivariate_normal.rvs(mean=y_true, cov=cov)
 
 np.savetxt('y_true.txt', np.array([10**logell, y_true]).transpose())
 np.savetxt('y_input.txt', np.array([10**logell, y_input]).transpose())
@@ -115,6 +123,36 @@ if distance_str == 'linear_dist_data':
     cov_true_inv = np.linalg.inv(cov)
     Parameters['cov_true_inv'] = cov_true_inv
     np.savetxt('cov_true_inv.txt', cov_true_inv)
+
+# Compute ACF of observation
+if distance_str == 'linear_dist_data_acf2_lin':
+    mean_std_t = True
+    xi = acf(y_input, norm=True, count_zeros=False, mean_std_t=mean_std_t)
+    Parameters['xi'] = xi
+
+    # write to disk
+    fout = open('xi.txt', 'w')
+    for i, x in enumerate(xi):
+        print >>fout, '{} {}'.format(i, x)
+    fout.close()
+
+# Write to disk.
+# For continue_ABC.py this needs to be checked again!
+if Parameters['path_to_obs'] == 'None':
+    obs_path_to_create = 'observation_xy.txt'
+    if os.path.exists(obs_path_to_create):
+        raise IOError('File \'{}\' should not exist'.format(obs_path_to_create))
+    else:
+        op1 = open(obs_path_to_create, 'w')
+        for line in Parameters['dataset1']:
+            for item in line:
+                op1.write(str(item) + '    ')
+            op1.write('\n')
+        op1.close()
+
+if len(sys.argv) > 1 and sys.argv[1] == '--only_observation':
+    print('Written observation, exiting.')
+    sys.exit(0)
 
 
 #############################################

@@ -25,7 +25,7 @@ from scipy import stats
 import statsmodels.formula.api as smf
 import statsmodels.api as sm
 from covest import model_quad
-from covest import acf_one, acf, linear_dist_data_acf, linear_dist_data_true_prec
+from covest import acf_one, acf, linear_dist_data_acf, linear_dist_data_true_prec, linear_dist_data
 
 
 def model_cov(p):
@@ -111,17 +111,6 @@ def gaussian_prior(par, func=False):
         return draw
     else:
         return dist
-
-
-
-def linear_dist_data(d2, p):
-    """Distance between observed and simulated catalogues using
-       true inverse covariance.
-       Calls to this function have been replaced by
-       covest.py:linear_dist_data_true_prec
-    """
-
-   return 0
 
 
 def linear_dist_data_diag(d2, p):

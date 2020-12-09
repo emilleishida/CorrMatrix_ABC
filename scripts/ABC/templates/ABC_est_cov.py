@@ -2,7 +2,10 @@ import sys
 import os
 
 import matplotlib
-matplotlib.use("TkAgg")
+matplotlib.use('TkAgg')
+
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 from cosmoabc.priors import flat_prior
 from cosmoabc.ABC_sampler import ABC
@@ -139,10 +142,11 @@ if distance_str in ['linear_dist_data_acf', 'linear_dist_data_acf_xipos', \
 # Write to disk.
 # For continue_ABC.py this needs to be checked again!
 if Parameters['path_to_obs'] == 'None':
-    if os.path.exists(Parameters['path_to_obs']):
-        raise IOError('File \'{}\' should not exist'.format(Parameters['path_to_obs']))
+    obs_path_to_create = 'observation_xy.txt'
+    if os.path.exists(obs_path_to_create):
+        raise IOError('File \'{}\' should not exist'.format(obs_path_to_create))
     else:
-        op1 = open(obs_path, 'w')
+        op1 = open(obs_path_to_create, 'w')
         for line in Parameters['dataset1']:
             for item in line:
                 op1.write(str(item) + '    ')

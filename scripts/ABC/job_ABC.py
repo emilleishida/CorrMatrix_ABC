@@ -664,6 +664,9 @@ def main(argv=None):
 
         simulate(n_S_arr, param)
 
+    if re.search('o', param.mode) is not None:
+        return 0
+
     # Read simulations from ABC run directories and write to master file
     if re.search('r', param.mode) is not None:
 
