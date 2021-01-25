@@ -11,6 +11,7 @@ You can reproduce the plots and results from the paper.
 Use a `conda` environment:
 ```bash
 conda env create -f environment.yml
+python setup.py install
 ```
 
 The main program for Fisher-matrix computation and MCMC sampling of the first
