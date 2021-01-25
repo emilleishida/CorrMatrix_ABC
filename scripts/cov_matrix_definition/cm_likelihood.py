@@ -2,8 +2,6 @@
 
 import numpy as np
 from scipy.stats import norm, uniform, multivariate_normal
-#import matplotlib
-#matplotlib.use("Agg")
 import pylab as plt
 import sys
 import os
@@ -16,7 +14,7 @@ from optparse import OptionParser
 from optparse import OptionGroup
 
 sys.path.append('../..')
-from covest import *
+from CorrMatrix_ABC.covest import *
 
 
 """The following functions correspond to the expectation values for Gaussian

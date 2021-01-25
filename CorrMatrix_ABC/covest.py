@@ -10,9 +10,6 @@ import shlex
 from astropy import units
 from astropy.io import ascii
 
-import matplotlib
-matplotlib.use("TkAgg")
-
 import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 

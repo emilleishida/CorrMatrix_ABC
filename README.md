@@ -10,54 +10,12 @@ You can reproduce the plots and results from the paper.
 
 Use a `conda` environment:
 ```bash
-conda create -n ABC python=2.7
-conda activate ABC
-conda install statsmodels ipython astropy
+conda env create -f environment.yml
 ```
 
-The following packages should be installed by default, if not, install them by hand:
-```bash
-conda install numpy scipy matplotlib
-```
-Optionally get `jupyter` to open and run notebooks:
-```bash
-conda install -c conda-forge jupyterlab
-```
-
-Install `cosmoabc` with `pip`.
-```
-pip install cosmoabc
-```
-If this fails due to a python error, try to install `cosmoabc` from `github`:
-```bash
-git clone git@github.com:COINtoolbox/CosmoABC.git
-cd CosmoABC
-```
-Add square brackets to the line in `setup.py` as follows:
-`package_data = {'cosmoabc/data':['SPT_sample.dat']},`
-and install the package
-```bash
-python2 setup.py install
-```
-
-At the last installation steps, clone this package:
-```bash
-git clone git@github.com:emilleishida/CorrMatrix_ABC.git
-```
-and set the `PYTHONPATH`:
-```bash
-export PYTHONPATH=CorrMatrix_ABC/scripts
-```
-
-## Installation for MCMC sampling
-
-You need pystan to run the MCMC part, with a specific pystan version:
-```bash
-conda install pystan=2.18
-```
-
-The main program for MCMC sampling of the example models from the paper is `cm_likelihood.py`.
-Run `cm_likelihood.py --help` to see the options.
+The main program for Fisher-matrix computation and MCMC sampling of the first
+two example models
+from the paper is `cm_likelihood.py`. Run `cm_likelihood.py --help` to see the options.
 
 ## Toy example 1
 
