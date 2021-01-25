@@ -993,7 +993,7 @@ class Results:
                     my_par = par[which]
                     if self.fct is not None and which in self.fct:
                         # Define high-resolution array for smoother lines
-                        plt.plot(n_fine, self.fct[which](n_fine, n_D, my_par[i], pname=p), '{}{}'.format(color[i],
+                        plt.plot(n_fine, self.fct[which](n_fine, n_D, my_par[i]), '{}{}'.format(color[i],
                                  linestyle[i]), linewidth=2)
 
                     plt.plot(n_fine, no_bias(n_fine, n_D, my_par[i]), '{}{}'.format(color[i], linestyle[i]), \
