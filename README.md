@@ -89,7 +89,7 @@ To run the sampling with `pystan`, we need to add the option `--fit_stan`, and s
 
 First, we create the simulations (`-m s`), with results automatically written in text files on disk.
 ```bash
-cm_likelihood.py -D 750 -p 1_0 -s 5 -v -m s -r -R 5--fit_stan -L norm_deb --plot_style paper
+cm_likelihood.py -D 750 -p 1_0 -s 5 -v -m s -r -R 5 --fit_stan -L norm_deb --plot_style paper
 ```
 More simulation runs can always be added to existing ones with the option `-a`. Let's create and add additional 3 runs: 
 ```bash
