@@ -159,61 +159,6 @@ def std_fish_biased_TJK13(n, n_D, par):
     return [np.sqrt(2 * A(n_S, n_D) / alpha(n_S, n_D)**4 * (n_S - n_D - 1)) * par for n_S in n]
 
 
-def std_affine_corr(n, n_D, par, pname=None):
-    """Return RMS for affine model with non-zero off-diagonal covariance matrix.
-       ('corr' model).
-       For this toy model, n is identified with step, the decreae step.
-    """
-
-    delta = 200
-    x = uniform.rvs(loc=-delta/2, scale=delta, size=n_D)
-    x.sort()
-
-    sig2 = 5.0
-
-    std = []
-    for step in n:
-        (da, db), det = Fisher_error_ana_corr(x, sig2, step, delta, mode=2)
-
-        if pname == 'a':
-            d = da
-        elif pname == 'b':
-            d = db
-        else:
-            raise ValueError('Invalid parameter value/name {}/{}'.format(par, p))
-
-        std.append(d)
-
-    return std
-
-
-def std_affine_off_diag(n, n_D, par, pname=None):
-    """Return RMS for affine model with non-zero off-diagonal covariance matrix.
-       For this toy model, n is identified with r, the off-diagonal constant element.
-    """
-
-    delta = 200
-    x = uniform.rvs(loc=-delta/2, scale=delta, size=n_D)
-    x.sort()
-
-    sig2 = 5.0
-
-    std = []
-    for xcorr in n:
-        (da, db), det = Fisher_error_ana(x, sig2, xcorr, delta, mode=2)
-
-        if pname == 'a':
-            d = da
-        elif pname == 'b':
-            d = db
-        else:
-            raise ValueError('Invalid parameter value/name {}/{}'.format(par, p))
-
-        std.append(d)
-
-    return std
-
-
 def par_fish_SH(n, n_D, par):
     """Parameter RMS from Fisher matrix esimation of SH likelihood.
     """
@@ -907,7 +852,7 @@ class Results:
         ylim: array of two floats, optional, default None
             y-limits
         model: string
-            model, one in 'affine', 'affine_off_diag', 'affine_corr', or 'quadratic'
+            model, one in 'affine', 'quadratic'
 
         Returns
         -------
@@ -1011,12 +956,7 @@ class Results:
                 plt.plot([n_D, n_D], [1e-5, 1e2], ':', linewidth=1)
 
                 # Main-axes settings
-                if model == 'affine_off_diag':
-                    plt.xlabel('$r$')
-                elif model == 'affine_corr':
-                    plt.xlabel('$s$')
-                else:
-                    plt.xlabel('$n_{{\\rm s}}$')
+                plt.xlabel('$n_{{\\rm s}}$')
                 plt.ylabel('<{}>'.format(which))
                 ax.set_yscale(self.yscale[j])
                 ax.legend(frameon=False)
@@ -1027,7 +967,7 @@ class Results:
                 ax.set_major_formatter(ScalarFormatter())
                 plt.ticklabel_format(axis='x', style='sci')
 
-	        # For MCMC: Remove second tick label due to text overlap if little space
+	            # For MCMC: Remove second tick label due to text overlap if little space
                 x_loc = []
                 x_lab = []
                 for i, n_S in enumerate(n):
@@ -1040,28 +980,27 @@ class Results:
                 plt.xticks(x_loc, x_lab, rotation=rotation)
                 ax.label.set_size(self.fs)
 
-	        # Second x-axis
-                if model not in ['affine_off_diag', 'affine_corr']:
-                    ax2 = plt.twiny()
-                    x2_loc = []
-                    x2_lab = []
-                    for i, n_S in enumerate(n):
-                        if n_S > 0:
-                            if n_panel == 1 or i != 1 or len(n)<10 or n_S<n_D:
-                                frac = float(n_D) / float(n_S)
-                                if frac > 100:
-                                    lab = '{:.3g}'.format(frac)
-                                else:
-                                    lab = '{:.2g}'.format(frac)
+	            # Second x-axis
+                ax2 = plt.twiny()
+                x2_loc = []
+                x2_lab = []
+                for i, n_S in enumerate(n):
+                    if n_S > 0:
+                        if n_panel == 1 or i != 1 or len(n)<10 or n_S<n_D:
+                            frac = float(n_D) / float(n_S)
+                            if frac > 100:
+                                lab = '{:.3g}'.format(frac)
                             else:
-                                lab = ''
-                            x2_loc.append(flinlog(n_S))
-                            x2_lab.append(lab)
-                    plt.xticks(x2_loc, x2_lab)
-                    ax2.set_xlabel('$p / n_{\\rm s}$', size=self.fs)
-                    for tick in ax2.get_xticklabels():
-                        tick.set_rotation(90)
-                    plt.xlim(flinlog(xmin), flinlog(xmax))
+                                lab = '{:.2g}'.format(frac)
+                        else:
+                            lab = ''
+                        x2_loc.append(flinlog(n_S))
+                        x2_lab.append(lab)
+                plt.xticks(x2_loc, x2_lab)
+                ax2.set_xlabel('$p / n_{\\rm s}$', size=self.fs)
+                for tick in ax2.get_xticklabels():
+                    tick.set_rotation(90)
+                plt.xlim(flinlog(xmin), flinlog(xmax))
 
                 plot_sth = True
 
@@ -1070,21 +1009,11 @@ class Results:
                 if which == 'mean':
                     if model == 'affine':
                         plt.ylim(-2, 2)
-                    elif model == 'affine_off_diag':
-                        plt.ylim(-0.75, 1.25)
-                    elif model == 'affine_corr':
-                        plt.ylim(-0.1, 1.1)
                     else:
                         plt.ylim(0, 1)
                 if which == 'std':
                     if model == 'affine':
                         plt.ylim(1e-4, 3e-1)
-                    elif model == 'affine_off_diag':
-                        plt.ylim(3e-4, 5)
-                    elif model == 'affine_corr':
-                        #plt.ylim(1e-3, 1)
-                        # Temporarily increase lower plot bound
-                        plt.ylim(2e-4, 1)
                     else:
                         plt.ylim(5e-4, 2e-2)
 
@@ -1413,56 +1342,6 @@ def detF(n_D, sig2, delta):
 
     det = (n_D/sig2)**2 * delta**2 / 12.0
     return det
-
-
-def cov_corr(sig2, step, n_D):
-
-    # Diagonal
-    cov = np.diag([sig2 for i in range(n_D)])
-    # Fill secondary diagonals with decreasing values
-    k = 0
-    val = sig2 - step
-    while val > 0 and k < n_D:
-        k = k + 1
-        cov = cov + np.diag([val for i in range(n_D-k)], k=k) \
-              + np.diag([val for i in range(n_D-k)], k=-k)
-        val = sig2 - (k+1)*step
-
-    return cov
-
-
-def Fisher_error_ana_corr(x, sig2, step, delta, mode=-1):
-    """Return Fisher matrix parameter errors (std), and Fisher matrix determinant, for affine function parameters (a, b),
-       and the 'affine_corr' model.
-    """
-
-    n_D = len(x)
-
-    # The four following ways to compute the Fisher matrix errors are statistically equivalent,
-    # for a digonal input covariance matrix cov = diag(sigma^2).
-    # Note that mode==-1,0 uses the statistical properties mean and variance of the uniform
-    # distribution, whereas mode=1,2 uses the actual sample x.
-
-    if mode not in [2]:
-        raise ABCCovError('For the \'affine_corr\' model, Fisher matrix can only be computed with mode=2')
-
-    if mode == 2:
-        # numerically using uniform vector x
-
-        cov = cov_corr(sig2, step, n_D)
-        # Numerical inverse. Will raise exception if inversion fails
-        Psi = np.linalg.inv(cov)
-
-        # Seems not to work well for a
-        F_11 = np.einsum('i,ij,j', x, Psi, x)
-        F_22 = np.einsum('i,ij,j', np.ones(shape=n_D), Psi, np.ones(shape=n_D))
-        F_12 = np.einsum('i,ij,j', x, Psi, np.ones(shape=n_D))
-
-        det = F_11 * F_22 - F_12**2
-        da2 = F_22 / det
-        db2 = F_11 / det
-
-    return np.sqrt([da2, db2]), det
 
 
 def Fisher_error_ana(x, sig2, xcorr, delta, mode=-1):
