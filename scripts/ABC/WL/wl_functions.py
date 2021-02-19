@@ -26,7 +26,7 @@ from scipy import stats
 import statsmodels.formula.api as smf
 import statsmodels.api as sm
 
-import nicaea_ABC
+from CorrMatrix_ABC import nicaea_ABC
 
 
 

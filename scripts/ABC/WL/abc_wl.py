@@ -14,9 +14,9 @@ import sys
 from scipy.stats import multivariate_normal
 from statsmodels.stats.weightstats import DescrStatsW
 
-import nicaea_ABC
+from CorrMatrix_ABC import nicaea_ABC
 
-from covest import get_cov_ML, get_cov_Gauss, weighted_std, get_cov_WL
+from CorrMatrix_ABC.covest import get_cov_ML, get_cov_Gauss, weighted_std, get_cov_WL
 
 
 
@@ -92,8 +92,6 @@ xi_c = acf(Parameters['dataset1'][:,1], norm=True, centered=True)
 print('# i xi_uu xi_n xi_nc')
 for di in range(Parameters['nell']):
     print('{} {} {} {}'.format(di, xi_u[di], xi[di], xi_c[di]))
-
-sys.exit(0)
 
 #############################################
 ### Covariance

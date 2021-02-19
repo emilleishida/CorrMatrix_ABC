@@ -14,7 +14,7 @@ Functions are copied from ~/python/nicaea.py
 """
 
 
-import covest
+from CorrMatrix_ABC import covest
 
 from astropy.io import ascii
 
