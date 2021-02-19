@@ -14,18 +14,16 @@ Functions are copied from ~/python/nicaea.py
 """
 
 
-import covest
+from CorrMatrix_ABC import covest
 
 from astropy.io import ascii
 
 
-def run_nicaea(path, lmin, lmax, nell, par_name=None, par_val=None):
+def run_nicaea(lmin, lmax, nell, par_name=None, par_val=None):
     """Calls nicaea.
 
     Parameters
     ----------
-    path: string
-        path to nicaea
     lmin: double
         minimum ell
     lmax: double
@@ -58,7 +56,7 @@ def run_nicaea(path, lmin, lmax, nell, par_name=None, par_val=None):
         out_suf_str = ''
 
     verbose = False
-    err = covest.run_cmd('{}/bin/lensingdemo -D 0 {} {} {} -q -H 1'.format(path, Lstr, parstr, out_suf_str), verbose=verbose, stop=True)
+    err = covest.run_cmd('lensingdemo -D 0 {} {} {} -q -H 1'.format(Lstr, parstr, out_suf_str), verbose=verbose, stop=True)
 
     C_ell_name = 'P_kappa{}'.format(out_suf)
 

@@ -451,7 +451,7 @@ def main(argv=None):
 
     mode = -1
     delta = 200
-    dpar_exact, det = Fisher_error_ana(np.zeros(param.n_D), param.sig2, 0.0, delta, mode=mode)
+    dpar_exact, det = Fisher_error_ana(np.zeros(param.n_D), param.sig2, delta, mode=mode)
     print('input par and exact std:          ', end='')
     for i, p in enumerate(param.par):
         print('{:.4f}  +- {:.5f} (mode={})            '.format(p, dpar_exact[i], mode), end='')

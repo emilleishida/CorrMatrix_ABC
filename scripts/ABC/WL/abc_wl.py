@@ -14,9 +14,9 @@ import sys
 from scipy.stats import multivariate_normal
 from statsmodels.stats.weightstats import DescrStatsW
 
-import nicaea_ABC
+from CorrMatrix_ABC import nicaea_ABC
 
-from covest import get_cov_ML, get_cov_Gauss, weighted_std, get_cov_WL
+from CorrMatrix_ABC.covest import get_cov_ML, get_cov_Gauss, weighted_std, get_cov_WL
 
 
 
@@ -45,13 +45,13 @@ Parameters['simulation_input']['lmin'] = Parameters['lmin']
 Parameters['simulation_input']['lmax'] = Parameters['lmax']
 Parameters['simulation_input']['nell'] = Parameters['nell']
 
-Parameters['path_to_nicaea'] = Parameters['path_to_nicaea'][0]
+#Parameters['path_to_nicaea'] = Parameters['path_to_nicaea'][0]
 #if Parameters['simulation_input']['path_to_nicaea'][0] != '/':
     # Relative path, add $HOME
     #Parameters['simulation_input']['path_to_nicaea'] = '{}/{}'.format(os.environ['HOME'], Parameters['simulation_input']['path_to_nicaea'])
 
 # Replace $VAR with environment variable value
-Parameters['path_to_nicaea'] = re.sub('(\$\w*)', os.environ['NICAEA'], Parameters['path_to_nicaea'])
+#Parameters['path_to_nicaea'] = re.sub('(\$\w*)', os.environ['NICAEA'], Parameters['path_to_nicaea'])
 
 ### Dictionaries for functions
 
@@ -73,8 +73,7 @@ Parameters['distance_func']   = distance[distance_str]
 
 # Get 'observation' (fiducial model)
 # Call nicaea
-nicaea_ABC.run_nicaea(Parameters['path_to_nicaea'], Parameters['lmin'], \
-    Parameters['lmax'], Parameters['nell'])
+nicaea_ABC.run_nicaea(Parameters['lmin'], Parameters['lmax'], Parameters['nell'])
 
 # Read nicaea output
 ell, C_ell_obs = nicaea_ABC.read_Cl('.', 'P_kappa')
@@ -93,8 +92,6 @@ xi_c = acf(Parameters['dataset1'][:,1], norm=True, centered=True)
 print('# i xi_uu xi_n xi_nc')
 for di in range(Parameters['nell']):
     print('{} {} {} {}'.format(di, xi_u[di], xi[di], xi_c[di]))
-
-sys.exit(0)
 
 #############################################
 ### Covariance

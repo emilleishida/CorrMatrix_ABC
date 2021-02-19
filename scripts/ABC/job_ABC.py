@@ -22,7 +22,7 @@ from optparse import OptionGroup
 import numpy as np
 from scipy.stats import norm, uniform
 
-from covest import *
+from CorrMatrix_ABC.covest import *
 
 
 def params_default():
@@ -95,7 +95,7 @@ def parse_options(p_def):
     parser.add_option('-P', '--par_name', dest='spar_name', type='string', default=p_def.spar_name,
         help='Parameter names, default=\'{}\''.format(p_def.spar_name))
     parser.add_option('-M', '--model', dest='model', type='string', default=p_def.model,
-        help='Model, one in \'affine\', \'affine_off_diag\', \'affine_corr\', \'quadratic\', default=\'{}\''.format(p_def.model))
+        help='Model, one in \'affine\', \'quadratic\', default=\'{}\''.format(p_def.model))
 
     parser.add_option('-m', '--mode', dest='mode', type='string', default=p_def.mode,
         help='Mode: \'s\'=simulate, \'r\'=read ABC dirs, \'R\'=read master file, '
@@ -173,11 +173,7 @@ def update_param(p_def, options):
         param.n_S = None
     else:
         str_n_S_list = my_string_split(options.str_n_S, verbose=False, stop=True)
-        if param.model in ['affine_off_diag', 'affine_corr']:
-            # Added 3/9/2019 for xcorr plots with non-int n_S (= r)
-            param.n_S = [float(str_n_S) for str_n_S in str_n_S_list]
-        else:
-            param.n_S = [int(str_n_S) for str_n_S in str_n_S_list]
+        param.n_S = [int(str_n_S) for str_n_S in str_n_S_list]
 
     param.par_name = my_string_split(options.spar_name, verbose=False, stop=True)
 
@@ -552,7 +548,7 @@ def simulate(n_S_arr, param):
 def read_from_ABC_dirs(n_S_arr, par_name, fit_ABC, options):
 
     if options.verbose == True:
-        print('Reading simulation results (mean, std) from disk (ABC run directories)')
+        print('Reading simulation results (mean, std) from disk (ABC run directories)', file=sys.stderr)
 
     for i, n_S in enumerate(n_S_arr):
 
@@ -613,7 +609,6 @@ def Fisher_ana_quad_read_par(templ_dir, par, mode=1):
         logell = np.log10(ell)
 
     cov_model = Parameters['cov_model'][0]
-    print('Covariance used in Fisher matrix = {}'.format(cov_model))
 
     ampl_fid, tilt_fid = par
 
@@ -650,13 +645,7 @@ def main(argv=None):
         return 0
 
     # Initialisation of results
-    if param.model in ['affine', 'quadratic']:
-        fct = {}
-    elif param.model == ['affine_off_diag']:
-        fct = {'std': std_affine_off_diag}
-    else:
-        fct = {'std': std_affine_corr}
-    fit_ABC = Results(param.par_name, n_n_S, param.n_R, file_base='mean_std_ABC', yscale=['linear', 'log'], fct=fct)
+    fit_ABC = Results(param.par_name, n_n_S, param.n_R, file_base='mean_std_ABC', yscale=['linear', 'log'], fct={})
 
 
     # Create simulations/write observation
@@ -682,7 +671,7 @@ def main(argv=None):
     par = my_string_split(param.spar, num=2, verbose=param.verbose, stop=True)
     param.par = [float(p) for p in par]
 
-    if param.model in ['affine', 'affine_off_diag', 'affine_corr']:
+    if param.model == 'affine':
         delta = 200
         x1 = uniform.rvs(loc=-delta/2, scale=delta, size=param.n_D)        # exploratory variable
         x1.sort()
@@ -692,54 +681,56 @@ def main(argv=None):
         Parameters = read_input(filename)
         sig2 = float(Parameters['sig'][0])
 
-        if param.model == 'affine_corr':
-            step = float(Parameters['step'][0])
-            my_mode = [2]
-        else:
-            xcorr = float(Parameters['xcorr'][0])
-            if xcorr == 0:
-                my_mode = [-1, 2]
-            else:
-                my_mode = [2]
+        my_mode = [-1] #, 2]
 
         n_D = int(Parameters['nobs'][0])
         if n_D != param.n_D:
             raise('nobs in config file ({})) != n_D on command line ({})'.format(n_D, param.n_D))
         for mode in my_mode:
-            if param.model == 'affine_corr':
-                dpar_exact, det = Fisher_error_ana_corr(x1, sig2, step, delta, mode=mode)
-            else:
-                dpar_exact, det = Fisher_error_ana(x1, sig2, xcorr, delta, mode=mode)
-            print('input par and exact std:          ', end='')
+            dpar_exact, det = Fisher_error_ana(x1, sig2, delta, mode=mode)
+            print('input par and exact std:    ', end='')
             for i, p in enumerate(param.par):
-                print('{:.4f}  +- {:.5f} (mode={})            '.format(p, dpar_exact[i], mode), end='')
+                print('{:.4f}  {:.5f} (mode={})            '.format(p, dpar_exact[i], mode), end='')
             print('')
 
-        print('estim mean std(mean) [mean(std)]: ', end='')
-        std_estim = []
+        print('estim mean std [std(mean)]: ', end='')
         for p in param.par_name:
             mean, std, std2 = fit_ABC.get_mean_std_all(p)
-            std_estim.append(std)
-            print('{:.5f} +- {:.5f} [{:.5f}]'.format(mean, std, std2), end='   ')
+            print('{:.5f} {:.5f} [{:.5f}]'.format(mean, std2, std), end='   ')
         print('')
 
 
     elif param.model == 'quadratic':
-        for mode in ([0, 1]):
-            dpar_exact, det, n_D = Fisher_ana_quad_read_par(param.templ_dir, param.par, mode=mode)
-            print('input par and exact std:          ', end='')
-            for i, p in enumerate(param.par):
-                print('{:.4f}  +- {:.5f}             '.format(p, dpar_exact[i]), end='')
-            print('')
+        mean_all = {}
+        std_all = {}
+        std2_all = {}
+        key_all = ['inp', 'avg']
+        for i, n_S in enumerate(n_S_arr):
+            key = str(n_S)
+            key_all.append(key)
 
-        print('estim mean std(mean) [mean(std)]: ', end='')
-        std_estim = []
+        dpar_exact, det, n_D = Fisher_ana_quad_read_par(param.templ_dir, param.par, mode=0)
+        for i, p in enumerate(param.par_name):
+            mean_all[p] = {}
+            std_all[p] = {}
+            std2_all[p] = {}
+            mean_all[p]['inp'] = param.par[i]
+            std2_all[p]['inp'] = dpar_exact[i]
+
         for p in param.par_name:
-            mean, std, std2 = fit_ABC.get_mean_std_all(p)
-            std_estim.append(std)
-            print('{:.5f} +- {:.5f} [{:.5f}]'.format(mean, std, std2), end='   ')
-        print('')
+            mean_all[p]['avg'], std_all[p]['avg'], std2_all[p]['avg'] = fit_ABC.get_mean_std_all(p)
+            mean = fit_ABC.get_mean(p)
+            std = fit_ABC.get_std(p)
+            for i, n_S in enumerate(n_S_arr):
+                key = str(n_S)
+                mean_all[p][key] = mean[i]
+                std2_all[p][key] = std[i]
 
+        for key in key_all:
+            print('{:5s}'.format(key), end='')
+            for p in param.par_name:
+                print('{:.5f} {:.5f}'.format(mean_all[p][key], std2_all[p][key]), end='   ')
+            print('')
     else:
         raise ABCCovError('Unknown model \'{}\''.format(param.model))
 

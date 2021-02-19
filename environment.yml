@@ -1,0 +1,13 @@
+name: corrABC
+channels:
+  - default
+dependencies:
+  - python=2.7
+  - statsmodels
+  - astropy
+  - numpy
+  - scipy
+  - matplotlib
+  - pystan=2.18
+  - pip:
+    - cosmoabc

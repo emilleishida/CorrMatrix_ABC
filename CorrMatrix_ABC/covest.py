@@ -10,9 +10,6 @@ import shlex
 from astropy import units
 from astropy.io import ascii
 
-import matplotlib
-matplotlib.use("TkAgg")
-
 import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 
@@ -159,61 +156,6 @@ def std_fish_biased_TJK13(n, n_D, par):
     return [np.sqrt(2 * A(n_S, n_D) / alpha(n_S, n_D)**4 * (n_S - n_D - 1)) * par for n_S in n]
 
 
-def std_affine_corr(n, n_D, par, pname=None):
-    """Return RMS for affine model with non-zero off-diagonal covariance matrix.
-       ('corr' model).
-       For this toy model, n is identified with step, the decreae step.
-    """
-
-    delta = 200
-    x = uniform.rvs(loc=-delta/2, scale=delta, size=n_D)
-    x.sort()
-
-    sig2 = 5.0
-
-    std = []
-    for step in n:
-        (da, db), det = Fisher_error_ana_corr(x, sig2, step, delta, mode=2)
-
-        if pname == 'a':
-            d = da
-        elif pname == 'b':
-            d = db
-        else:
-            raise ValueError('Invalid parameter value/name {}/{}'.format(par, p))
-
-        std.append(d)
-
-    return std
-
-
-def std_affine_off_diag(n, n_D, par, pname=None):
-    """Return RMS for affine model with non-zero off-diagonal covariance matrix.
-       For this toy model, n is identified with r, the off-diagonal constant element.
-    """
-
-    delta = 200
-    x = uniform.rvs(loc=-delta/2, scale=delta, size=n_D)
-    x.sort()
-
-    sig2 = 5.0
-
-    std = []
-    for xcorr in n:
-        (da, db), det = Fisher_error_ana(x, sig2, xcorr, delta, mode=2)
-
-        if pname == 'a':
-            d = da
-        elif pname == 'b':
-            d = db
-        else:
-            raise ValueError('Invalid parameter value/name {}/{}'.format(par, p))
-
-        std.append(d)
-
-    return std
-
-
 def par_fish_SH(n, n_D, par):
     """Parameter RMS from Fisher matrix esimation of SH likelihood.
     """
@@ -326,8 +268,6 @@ def get_cov_SSC(ell, C_ell_obs, cov_SSC_fname, func='BKS17'):
     cov_SSC: matrix of double
         covariance matrix
     """
-
-    print('Reading cov_SSC from file \'{}\' using function \'{}\''.format(cov_SSC_fname, func))
 
     dat = ascii.read(cov_SSC_fname)
     n   = int(np.sqrt(len(dat)))
@@ -518,7 +458,6 @@ def get_cov_WL(model, ell, C_ell_obs, nbar, f_sky, sigma_eps, nsim):
             cov_SSC_base = 'cov_SSC_rel_lin'
         cov_SSC_path = '{}/{}.txt'.format('.', cov_SSC_base)
         func_SSC      = 'BKS17'
-        print('get_cov_WL: Reading {}'.format(cov_SSC_path))
         cov_SSC       = get_cov_SSC(ell, C_ell_obs, cov_SSC_path, func_SSC)
 
         # Writing covariances to files for testing/plotting
@@ -704,6 +643,18 @@ class Results:
             mean[i] = np.mean(self.mean[p][i])
 
         return mean
+
+
+    def get_std(self, p):
+        """Return std of the parameter per simulation, averaged over realisations
+        """
+
+        n_n_S = self.mean[self.par_name[0]].shape[0]
+        std = np.zeros(shape = n_n_S)
+        for i in range(n_n_S):
+            std[i] = np.mean(self.std[p][i])
+
+        return std
 
         
     def get_mean_std_all(self, p):
@@ -907,7 +858,7 @@ class Results:
         ylim: array of two floats, optional, default None
             y-limits
         model: string
-            model, one in 'affine', 'affine_off_diag', 'affine_corr', or 'quadratic'
+            model, one in 'affine', 'quadratic'
 
         Returns
         -------
@@ -1011,12 +962,7 @@ class Results:
                 plt.plot([n_D, n_D], [1e-5, 1e2], ':', linewidth=1)
 
                 # Main-axes settings
-                if model == 'affine_off_diag':
-                    plt.xlabel('$r$')
-                elif model == 'affine_corr':
-                    plt.xlabel('$s$')
-                else:
-                    plt.xlabel('$n_{{\\rm s}}$')
+                plt.xlabel('$n_{{\\rm s}}$')
                 plt.ylabel('<{}>'.format(which))
                 ax.set_yscale(self.yscale[j])
                 ax.legend(frameon=False)
@@ -1027,7 +973,7 @@ class Results:
                 ax.set_major_formatter(ScalarFormatter())
                 plt.ticklabel_format(axis='x', style='sci')
 
-	        # For MCMC: Remove second tick label due to text overlap if little space
+	            # For MCMC: Remove second tick label due to text overlap if little space
                 x_loc = []
                 x_lab = []
                 for i, n_S in enumerate(n):
@@ -1040,28 +986,27 @@ class Results:
                 plt.xticks(x_loc, x_lab, rotation=rotation)
                 ax.label.set_size(self.fs)
 
-	        # Second x-axis
-                if model not in ['affine_off_diag', 'affine_corr']:
-                    ax2 = plt.twiny()
-                    x2_loc = []
-                    x2_lab = []
-                    for i, n_S in enumerate(n):
-                        if n_S > 0:
-                            if n_panel == 1 or i != 1 or len(n)<10 or n_S<n_D:
-                                frac = float(n_D) / float(n_S)
-                                if frac > 100:
-                                    lab = '{:.3g}'.format(frac)
-                                else:
-                                    lab = '{:.2g}'.format(frac)
+	            # Second x-axis
+                ax2 = plt.twiny()
+                x2_loc = []
+                x2_lab = []
+                for i, n_S in enumerate(n):
+                    if n_S > 0:
+                        if n_panel == 1 or i != 1 or len(n)<10 or n_S<n_D:
+                            frac = float(n_D) / float(n_S)
+                            if frac > 100:
+                                lab = '{:.3g}'.format(frac)
                             else:
-                                lab = ''
-                            x2_loc.append(flinlog(n_S))
-                            x2_lab.append(lab)
-                    plt.xticks(x2_loc, x2_lab)
-                    ax2.set_xlabel('$p / n_{\\rm s}$', size=self.fs)
-                    for tick in ax2.get_xticklabels():
-                        tick.set_rotation(90)
-                    plt.xlim(flinlog(xmin), flinlog(xmax))
+                                lab = '{:.2g}'.format(frac)
+                        else:
+                            lab = ''
+                        x2_loc.append(flinlog(n_S))
+                        x2_lab.append(lab)
+                plt.xticks(x2_loc, x2_lab)
+                ax2.set_xlabel('$p / n_{\\rm s}$', size=self.fs)
+                for tick in ax2.get_xticklabels():
+                    tick.set_rotation(90)
+                plt.xlim(flinlog(xmin), flinlog(xmax))
 
                 plot_sth = True
 
@@ -1070,21 +1015,11 @@ class Results:
                 if which == 'mean':
                     if model == 'affine':
                         plt.ylim(-2, 2)
-                    elif model == 'affine_off_diag':
-                        plt.ylim(-0.75, 1.25)
-                    elif model == 'affine_corr':
-                        plt.ylim(-0.1, 1.1)
                     else:
                         plt.ylim(0, 1)
                 if which == 'std':
                     if model == 'affine':
                         plt.ylim(1e-4, 3e-1)
-                    elif model == 'affine_off_diag':
-                        plt.ylim(3e-4, 5)
-                    elif model == 'affine_corr':
-                        #plt.ylim(1e-3, 1)
-                        # Temporarily increase lower plot bound
-                        plt.ylim(2e-4, 1)
                     else:
                         plt.ylim(5e-4, 2e-2)
 
@@ -1415,57 +1350,7 @@ def detF(n_D, sig2, delta):
     return det
 
 
-def cov_corr(sig2, step, n_D):
-
-    # Diagonal
-    cov = np.diag([sig2 for i in range(n_D)])
-    # Fill secondary diagonals with decreasing values
-    k = 0
-    val = sig2 - step
-    while val > 0 and k < n_D:
-        k = k + 1
-        cov = cov + np.diag([val for i in range(n_D-k)], k=k) \
-              + np.diag([val for i in range(n_D-k)], k=-k)
-        val = sig2 - (k+1)*step
-
-    return cov
-
-
-def Fisher_error_ana_corr(x, sig2, step, delta, mode=-1):
-    """Return Fisher matrix parameter errors (std), and Fisher matrix determinant, for affine function parameters (a, b),
-       and the 'affine_corr' model.
-    """
-
-    n_D = len(x)
-
-    # The four following ways to compute the Fisher matrix errors are statistically equivalent,
-    # for a digonal input covariance matrix cov = diag(sigma^2).
-    # Note that mode==-1,0 uses the statistical properties mean and variance of the uniform
-    # distribution, whereas mode=1,2 uses the actual sample x.
-
-    if mode not in [2]:
-        raise ABCCovError('For the \'affine_corr\' model, Fisher matrix can only be computed with mode=2')
-
-    if mode == 2:
-        # numerically using uniform vector x
-
-        cov = cov_corr(sig2, step, n_D)
-        # Numerical inverse. Will raise exception if inversion fails
-        Psi = np.linalg.inv(cov)
-
-        # Seems not to work well for a
-        F_11 = np.einsum('i,ij,j', x, Psi, x)
-        F_22 = np.einsum('i,ij,j', np.ones(shape=n_D), Psi, np.ones(shape=n_D))
-        F_12 = np.einsum('i,ij,j', x, Psi, np.ones(shape=n_D))
-
-        det = F_11 * F_22 - F_12**2
-        da2 = F_22 / det
-        db2 = F_11 / det
-
-    return np.sqrt([da2, db2]), det
-
-
-def Fisher_error_ana(x, sig2, xcorr, delta, mode=-1):
+def Fisher_error_ana(x, sig2, delta, mode=-1):
     """Return Fisher matrix parameter errors (std), and Fisher matrix determinant, for affine function parameters (a, b)
     """
 
@@ -1476,30 +1361,12 @@ def Fisher_error_ana(x, sig2, xcorr, delta, mode=-1):
     # Note that mode==-1,0 uses the statistical properties mean and variance of the uniform
     # distribution, whereas mode=1,2 uses the actual sample x.
 
-    if xcorr != 0 and mode not in (0, 2):
-        raise ABCCovError('For xcorr!=0, Fisher matrix can only be computed with mode=0,2')
-
     if mode != -1:
 
         if mode == 2:
             # numerically using uniform vector x
 
-            if xcorr == 0:
-                Psi = np.diag([1.0 / sig2 for i in range(n_D)])
-            else:
-                # Numerical inverse
-                #cov = np.diag([sig2 - xcorr for i in range(n_D)]) + xcorr
-                #try:
-                    #Psi = np.linalg.inv(cov)
-                #except LinAlgError:
-                    #print('Inverting true cov matrix failed')
-                    #raise
-
-                # Analytical inverse, see
-                # https://math.stackexchange.com/questions/1766089/inverse-of-a-matrix-with-uniform-off-diagonals
-                c = 1.0/xcorr + n_D/(sig2 - xcorr)
-                Psi = np.full((n_D, n_D), -1.0/c/(sig2 - xcorr)**2) \
-                        + np.diag([1.0/(sig2 - xcorr) for i in range(n_D)])
+            Psi = np.diag([1.0 / sig2 for i in range(n_D)])
 
             # Seems not to work well for a
             F_11 = np.einsum('i,ij,j', x, Psi, x)
@@ -1507,26 +1374,14 @@ def Fisher_error_ana(x, sig2, xcorr, delta, mode=-1):
             F_12 = np.einsum('i,ij,j', x, Psi, np.ones(shape=n_D))
 
         elif mode == 1:
-            if xcorr == 0:
-                F_11 = sum(x*x) / sig2
-                F_12 = sum(x) / sig2
-                F_22 = n_D / sig2
-            else:
-                pass
-                # Here we would need sum{i!=j} x_i x_j
+            F_11 = sum(x*x) / sig2
+            F_12 = sum(x) / sig2
+            F_22 = n_D / sig2
 
         elif mode == 0:
-            if xcorr == 0:
-                F_11 = n_D * delta**2 / 12.0 / sig2
-                F_12 = 0
-                F_22 = n_D / sig2
-            else:
-                t1 = 1.0 / (sig2 - xcorr)
-                c = 1.0/xcorr + n_D/(sig2 - xcorr)
-                t2 = 1.0 / c / (sig2 - xcorr)**2
-                F_11 = n_D * delta**2 / 12.0 * (t1 - t2) # sum i!=j -> 0
-                F_12 = 0
-                F_22 = n_D * (t1 - n_D * t2)
+            F_11 = n_D * delta**2 / 12.0 / sig2
+            F_12 = 0
+            F_22 = n_D / sig2
 
         det = F_11 * F_22 - F_12**2
         da2 = F_22 / det
@@ -1890,10 +1745,8 @@ def linear_dist_data_true_prec(d2, p):
 
     # Least squares weighted by covariance
     if 'cov_true_inv' in p:
-        #print('linear_dist_data: Using true inverse covariance matrix')
         cov_inv = p['cov_true_inv']
     else:
-        print('linear_dist_data: Reading cov_true_inv.txt from disk')
         cov_inv = np.loadtxt('cov_true_inv.txt')
 
     dist = np.einsum('i,ij,j', dC, cov_inv, dC)
