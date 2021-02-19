@@ -1,7 +1,6 @@
 #!/bin/env bash
 
-base_dir="$HOME/astro/ABC/CorrMatrix_ABC/scripts/ABC/WL"
-
+base_dir="$HOME/astro/repositories/github/CorrMatrix_ABC/scripts/ABC/WL"
 
 files=(cosmo.par cosmo_lens.par nofz_Euclid_1bin.par nofz_Euclid_1bin.txt)
 n=${#files[@]}

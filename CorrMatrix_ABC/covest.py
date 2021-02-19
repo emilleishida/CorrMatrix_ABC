@@ -269,8 +269,6 @@ def get_cov_SSC(ell, C_ell_obs, cov_SSC_fname, func='BKS17'):
         covariance matrix
     """
 
-    print('Reading cov_SSC from file \'{}\' using function \'{}\''.format(cov_SSC_fname, func))
-
     dat = ascii.read(cov_SSC_fname)
     n   = int(np.sqrt(len(dat)))
 
@@ -460,7 +458,6 @@ def get_cov_WL(model, ell, C_ell_obs, nbar, f_sky, sigma_eps, nsim):
             cov_SSC_base = 'cov_SSC_rel_lin'
         cov_SSC_path = '{}/{}.txt'.format('.', cov_SSC_base)
         func_SSC      = 'BKS17'
-        print('get_cov_WL: Reading {}'.format(cov_SSC_path))
         cov_SSC       = get_cov_SSC(ell, C_ell_obs, cov_SSC_path, func_SSC)
 
         # Writing covariances to files for testing/plotting
@@ -646,6 +643,18 @@ class Results:
             mean[i] = np.mean(self.mean[p][i])
 
         return mean
+
+
+    def get_std(self, p):
+        """Return std of the parameter per simulation, averaged over realisations
+        """
+
+        n_n_S = self.mean[self.par_name[0]].shape[0]
+        std = np.zeros(shape = n_n_S)
+        for i in range(n_n_S):
+            std[i] = np.mean(self.std[p][i])
+
+        return std
 
         
     def get_mean_std_all(self, p):
@@ -1341,7 +1350,7 @@ def detF(n_D, sig2, delta):
     return det
 
 
-def Fisher_error_ana(x, sig2, xcorr, delta, mode=-1):
+def Fisher_error_ana(x, sig2, delta, mode=-1):
     """Return Fisher matrix parameter errors (std), and Fisher matrix determinant, for affine function parameters (a, b)
     """
 
@@ -1352,30 +1361,12 @@ def Fisher_error_ana(x, sig2, xcorr, delta, mode=-1):
     # Note that mode==-1,0 uses the statistical properties mean and variance of the uniform
     # distribution, whereas mode=1,2 uses the actual sample x.
 
-    if xcorr != 0 and mode not in (0, 2):
-        raise ABCCovError('For xcorr!=0, Fisher matrix can only be computed with mode=0,2')
-
     if mode != -1:
 
         if mode == 2:
             # numerically using uniform vector x
 
-            if xcorr == 0:
-                Psi = np.diag([1.0 / sig2 for i in range(n_D)])
-            else:
-                # Numerical inverse
-                #cov = np.diag([sig2 - xcorr for i in range(n_D)]) + xcorr
-                #try:
-                    #Psi = np.linalg.inv(cov)
-                #except LinAlgError:
-                    #print('Inverting true cov matrix failed')
-                    #raise
-
-                # Analytical inverse, see
-                # https://math.stackexchange.com/questions/1766089/inverse-of-a-matrix-with-uniform-off-diagonals
-                c = 1.0/xcorr + n_D/(sig2 - xcorr)
-                Psi = np.full((n_D, n_D), -1.0/c/(sig2 - xcorr)**2) \
-                        + np.diag([1.0/(sig2 - xcorr) for i in range(n_D)])
+            Psi = np.diag([1.0 / sig2 for i in range(n_D)])
 
             # Seems not to work well for a
             F_11 = np.einsum('i,ij,j', x, Psi, x)
@@ -1383,26 +1374,14 @@ def Fisher_error_ana(x, sig2, xcorr, delta, mode=-1):
             F_12 = np.einsum('i,ij,j', x, Psi, np.ones(shape=n_D))
 
         elif mode == 1:
-            if xcorr == 0:
-                F_11 = sum(x*x) / sig2
-                F_12 = sum(x) / sig2
-                F_22 = n_D / sig2
-            else:
-                pass
-                # Here we would need sum{i!=j} x_i x_j
+            F_11 = sum(x*x) / sig2
+            F_12 = sum(x) / sig2
+            F_22 = n_D / sig2
 
         elif mode == 0:
-            if xcorr == 0:
-                F_11 = n_D * delta**2 / 12.0 / sig2
-                F_12 = 0
-                F_22 = n_D / sig2
-            else:
-                t1 = 1.0 / (sig2 - xcorr)
-                c = 1.0/xcorr + n_D/(sig2 - xcorr)
-                t2 = 1.0 / c / (sig2 - xcorr)**2
-                F_11 = n_D * delta**2 / 12.0 * (t1 - t2) # sum i!=j -> 0
-                F_12 = 0
-                F_22 = n_D * (t1 - n_D * t2)
+            F_11 = n_D * delta**2 / 12.0 / sig2
+            F_12 = 0
+            F_22 = n_D / sig2
 
         det = F_11 * F_22 - F_12**2
         da2 = F_22 / det
@@ -1766,10 +1745,8 @@ def linear_dist_data_true_prec(d2, p):
 
     # Least squares weighted by covariance
     if 'cov_true_inv' in p:
-        #print('linear_dist_data: Using true inverse covariance matrix')
         cov_inv = p['cov_true_inv']
     else:
-        print('linear_dist_data: Reading cov_true_inv.txt from disk')
         cov_inv = np.loadtxt('cov_true_inv.txt')
 
     dist = np.einsum('i,ij,j', dC, cov_inv, dC)

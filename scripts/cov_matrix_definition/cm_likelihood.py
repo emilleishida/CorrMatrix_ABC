@@ -88,7 +88,6 @@ def params_default():
         n_R = 50,
         spar = '1.0 0.0',
         sig2 = 5.0,
-        xcorr = 0.0,
         mode  = 's',
         do_fit_stan = False,
         do_fish_ana = False,
@@ -133,8 +132,6 @@ def parse_options(p_def):
         help='list of parameter values, default=\'{}\''.format(p_def.spar))
     parser.add_option('-s', '--sig2', dest='sig2', type='float', default=p_def.sig2,
         help='variance of Gaussian, default=\'{}\''.format(p_def.sig2))
-    parser.add_option('-x', '--xcorr', dest='xcorr', type='float', default=p_def.xcorr,
-        help='cross-correlation on off-diagonal covariance, default=\'{}\''.format(p_def.xcorr))
 
     parser.add_option('', '--fit_stan', dest='do_fit_stan', action='store_true',
         help='Run stan for MCMC fitting, default={}'.format(p_def.do_fit_stan))
@@ -720,8 +717,6 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_an
         print('Creating {} simulations with {} runs each'.format(len(n_S_arr), options.n_R))
 
     cov = np.diag([options.sig2 for i in range(options.n_D)])            # *** cov of the data in the same catalog! ***
-    if options.xcorr != 0:
-        cov = cov + np.full((options.n_D,options.n_D), options.xcorr) - np.diag([options.xcorr for i in range(options.n_D)])
 
     # Go through number of simulations
     for i, n_S in enumerate(n_S_arr):
@@ -1008,11 +1003,8 @@ def main(argv=None):
                        fit_norm_num, fit_norm_deb, fit_SH, param)
 
 
-    if options.xcorr == 0:
-        mode = -1
-    else:
-        mode = 2
-    dpar_exact, det = Fisher_error_ana(x1, options.sig2, options.xcorr, delta, mode=mode)
+    mode = -1
+    dpar_exact, det = Fisher_error_ana(x1, options.sig2, delta, mode=mode)
 
 
     # Make plots
@@ -1053,11 +1045,7 @@ def main(argv=None):
     sigma_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [options.sig2]}, boxwidth=param.boxwidth, ylim=[4.9, 5.1])
 
     # Precision matrix trace
-    if options.xcorr == 0:
-        f_mean = 1/options.sig2
-    else:
-        c = 1.0/options.xcorr + options.n_D/(options.sig2 - options.xcorr)
-        f_mean = 1/(options.sig2 - options.xcorr) - 1/c/(options.sig2 - options.xcorr)**2
+    f_mean = 1/options.sig2
 
     sigma_m1_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [f_mean]}, boxwidth=param.boxwidth)
     sigma_m1_ML_deb.plot_mean_std(n_S_arr, options.n_D, par={'mean': [f_mean]}, boxwidth=param.boxwidth)
