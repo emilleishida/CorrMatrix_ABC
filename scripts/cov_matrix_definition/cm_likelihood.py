@@ -1,6 +1,8 @@
 #!/usr/bin/env python2
 
 import numpy as np
+import scipy
+import scipy.stats
 from scipy.stats import norm, uniform, multivariate_normal
 import pylab as plt
 import sys
