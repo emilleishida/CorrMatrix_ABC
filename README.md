@@ -45,7 +45,12 @@ In addition, plots of the trace of the covariance maximum-likelihood estimate
 
 #### Normal likelihood
 
-To run the sampling with `pystan`, we need to add the option `--fit_stan`, and specify the likelihood. Let's use the Gaussian  with debiased covariance (`-L norm_deb`). To save time, we reduce the number of runs, say to n_r=5.
+First, we need to install the additional `pystan` package:
+```
+conda install pystan=2.18
+```
+
+To run the sampling we add the option `--fit_stan`, and specify the likelihood. Let's use the Gaussian  with debiased covariance (`-L norm_deb`). To save time, we reduce the number of runs, say to n_r=5.
 
 First, we create the simulations (`-m s`), with results automatically written in text files on disk.
 ```bash
