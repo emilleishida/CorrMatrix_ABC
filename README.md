@@ -11,6 +11,7 @@ You can reproduce the plots and results from the paper.
 Use a `conda` environment:
 ```bash
 conda env create -f environment.yml
+conda activate corrABC
 python setup.py install
 ```
 
