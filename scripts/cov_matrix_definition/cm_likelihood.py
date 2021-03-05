@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 import numpy as np
 from scipy.stats import norm, uniform, multivariate_normal
@@ -666,7 +666,6 @@ def fit_corr_SH(x1, cov_true, cov_est_inv, n_jobs=3):
     """
 
 
-    sys.path.insert(0, '/sps/euclid/Users/mkilbing/.local/lib/python2.7/site-packages')
     import pystan
     start = time.time()
     fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=n_jobs, verbose=False, n_jobs=n_jobs)

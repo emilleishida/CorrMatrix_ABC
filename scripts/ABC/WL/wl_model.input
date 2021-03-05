@@ -19,15 +19,15 @@ sigma_8_prior_par_name       = pmin  pmax              # parameters for prior di
 sigma_8_prior_par_val        =  0.0  2.0                # values for prior distribution
 
 	
-Omega_m_lim                  = 0.05  1.5               # extreme limits for parametes
-sigma_8_lim                  = 0.0  2.0                # extreme limits for parametes
+Omega_m_lim                  = 0.1  1.0               # extreme limits for parametes
+sigma_8_lim                  = 0.2  1.2                # extreme limits for parametes
 	          
-Omega_m         = 0.27                             #  matter density parameter
-sigma_8         = 0.79                             #  normalisation
+Omega_m         = 0.306                            #  matter density parameter
+sigma_8         = 0.827                            #  normalisation
 nsim            = 100                              #  number of simulations for covariance matrix
 
 f_sky		= 0.3636			   # covered sky fraction of survey
-sigma_eps	= 0.22				   # intrinsic ellipticity dispersion per component
+sigma_eps	= 0.31				   # complex intrinsic ellipticity dispersion
 nbar            = 30				   # Number density of galaxies per arcmin^2
 
 # Wishart-Normal model
@@ -35,19 +35,12 @@ lmin = 2.0
 lmax = 2500
 nell = 50
 
-#path_to_nicaea = /Users/mkilbing/astro/nicaea/versions/github/nicaea
-path_to_nicaea = $NICAEA
-
-
-M 		= 100				   # number of particle in each particle system
-Mini            = 200                              # number of draws for 1st particle system
-#delta 		= 0.0025				   # convergence criteria
-delta		= 0.025
+M 		= 200				   # number of particle in each particle system
+Mini            = 400                              # number of draws for 1st particle system
+delta		= 0.05
 qthreshold 	= 0.75				   # quantile in distance threshold 
 
 file_root 	= linear_PS                        # root to output files names 
 screen          = 0			           # rather (1) or not (0) to screen outputs
 ncores          = -1				   # number of cores
 split_output    = 1                                # number of intermediate steps written to file
-
-

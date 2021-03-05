@@ -19,7 +19,7 @@ from CorrMatrix_ABC import covest
 from astropy.io import ascii
 
 
-def run_nicaea(lmin, lmax, nell, par_name=None, par_val=None):
+def run_nicaea(lmin, lmax, nell, par_name=None, par_val=None, verbose=False):
     """Calls nicaea.
 
     Parameters
@@ -33,7 +33,9 @@ def run_nicaea(lmin, lmax, nell, par_name=None, par_val=None):
     par_name: array of string, optional, default=None
         parameter names for on-the-fly updates
     par_val: array of float, optiona, default=None
-	parameter values corresponding to par_nam 
+	    parameter values corresponding to par_nam 
+    verbose : bool, optional, default=False
+        verbose output if True
 
     Returns
     -------
@@ -55,7 +57,6 @@ def run_nicaea(lmin, lmax, nell, par_name=None, par_val=None):
         out_suf     = ''
         out_suf_str = ''
 
-    verbose = False
     err = covest.run_cmd('lensingdemo -D 0 {} {} {} -q -H 1'.format(Lstr, parstr, out_suf_str), verbose=verbose, stop=True)
 
     C_ell_name = 'P_kappa{}'.format(out_suf)

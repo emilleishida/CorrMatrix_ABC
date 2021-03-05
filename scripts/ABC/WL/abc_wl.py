@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from cosmoabc.priors import flat_prior
 from cosmoabc.ABC_sampler import ABC
@@ -73,7 +73,7 @@ Parameters['distance_func']   = distance[distance_str]
 
 # Get 'observation' (fiducial model)
 # Call nicaea
-nicaea_ABC.run_nicaea(Parameters['lmin'], Parameters['lmax'], Parameters['nell'])
+nicaea_ABC.run_nicaea(Parameters['lmin'], Parameters['lmax'], Parameters['nell'], verbose=True)
 
 # Read nicaea output
 ell, C_ell_obs = nicaea_ABC.read_Cl('.', 'P_kappa')
@@ -172,10 +172,10 @@ op2.write('b_mean    ' + str(b_results.mean) + '\n')
 op2.write('b_std     ' + str(b_results.std_mean))
 op2.close()
 
-print 'Numerical results:'
-print 'a:    ' + str(a_results.mean) + ' +- ' + str(a_results.std_mean)
-print 'b:    ' + str(b_results.mean) + ' +- ' + str(b_results.std_mean)
-print ''
+print('Numerical results:')
+print('a:    ' + str(a_results.mean) + ' +- ' + str(a_results.std_mean))
+print('b:    ' + str(b_results.mean) + ' +- ' + str(b_results.std_mean))
+print('')
 
 
 try:

@@ -892,8 +892,6 @@ class Results:
             xmax = n[-1]*fac_xlim
 
         # Set the number of required subplots (1 or 2)
-
-        # MK 09/08, from test_ML need default
         n_panel = 1
 
         j_panel = {}
@@ -906,7 +904,7 @@ class Results:
 
         if len(j_panel) == 1:   # Only one plot to do: Use entire canvas
             n_panel = 1
-            j_panel[j_panel.keys()[0]] = 1
+            j_panel[list(j_panel.keys())[0]] = 1
 
         if xlog == True:
             width   = lambda p, box_width: 10**(np.log10(p)+box_width/2.)-10**(np.log10(p)-box_width/2.)
@@ -1118,7 +1116,7 @@ class Results:
         ax.legend(loc='best', numpoints=1, frameon=False)
         #ax.set_aspect(aspect=1)
 
-	# x-ticks
+	    # x-ticks
         ax = plt.gca().xaxis
         ax.set_major_formatter(ScalarFormatter())
         plt.ticklabel_format(axis='x', style='sci')
@@ -1127,7 +1125,7 @@ class Results:
         if xlog:
             plt.plot([n_D, n_D], [8e-9, 1e-1], ':', linewidth=1)
 
-	# Second x-axis
+	    # Second x-axis
         x_loc, x_lab = plt.xticks()
         ax2 = plt.twiny()
         x2_loc = []
@@ -1839,209 +1837,6 @@ def acf(C, norm=False, count_zeros=False, mean_std_t=False):
             xi = xi / xi[0]
 
     return xi
-
-
-def linear_dist_data_acf_zeros(d2, p, weight=False, mode_sum='square'):
-
-    return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=True)
-
-
-def linear_dist_data_acf_abs(d2, p, weight=False):
-
-    return linear_dist_data_acf(d2, p, weight=weight, mode_sum='abs')
-
-
-def linear_dist_data_acf_subtract_sim_int(d2, p, weight=False, mode_sum='square', count_zeros=False):
-
-    return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=count_zeros,
-                                subtract_sim='internal', mean_std_t=True)
-
-
-def linear_dist_data_acf_subtract_sim_ext(d2, p, weight=False, mode_sum='square', count_zeros=False):
-
-    return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=count_zeros,
-                                subtract_sim='external')
-
-
-def linear_dist_data_acf_subtract_mod(d2, p, weight=False, mode_sum='square', count_zeros=False):
-
-    return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=count_zeros,
-                                mean_std_t=True, subtract_sim='model')
-
-
-def linear_dist_data_acf_add_one(d2, p, weight=True, mode_sum='square', count_zeros=False):
-
-    return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=count_zeros, add=3)
-
-
-def linear_dist_data_acf_xisqrt(d2, p, weight=True, mode_sum='square', count_zeros=True):
-
-    return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=count_zeros, xipow=0.5)
-
-
-def linear_dist_data_acf_xipow4(d2, p, weight=True, mode_sum='square', count_zeros=True):
-
-    return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=count_zeros, xipow=4)
-
-
-def linear_dist_data_acf_xipow0(d2, p, weight=True, mode_sum='square', count_zeros=True):
-
-    return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=count_zeros, xipow=0)
-
-
-def linear_dist_data_acf_meanstdt(d2, p, weight=True, mode_sum='square', count_zeros=False):
-
-    return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=count_zeros, mean_std_t=True)
-
-
-def linear_dist_data_acf_xipos(d2, p, weight=True, mode_sum='square', count_zeros=False):
-
-    return linear_dist_data_acf(d2, p, weight=weight, mode_sum=mode_sum, count_zeros=count_zeros, xipos=True)
-
-
-def linear_dist_data_plus_acf(d2, p):
-
-    d1 = linear_dist_data_acf(d2, p)
-    # MKDEBUG: Rescaling by hand, should be improved, e.g. based on previous iteration range
-    d1 = (d1 - 40000) / 10
-    d2 = linear_dist_data(d2, p)
-
-    return d1 + d2
-
-
-def linear_dist_data_acf(d2, p, weight=False, mode_sum='square', count_zeros=False, subtract_sim=None,
-                         add=0, xipow=2, tmax=None, xipos=False, mean_std_t=False):
-    """Distance between observed and simulated catalogues using
-       the auto-correlation function of the observation
-
-    Parameters
-    ----------
-    d2: array(double, 2)
-        simulated catalogue
-    p: dictionary
-        input parameters
-    weight: bool, optional, default=True
-        if True, weigh data by inverse variance
-    mode_sum: string, optional, default='square'
-        mode of summands in distance
-    count_zeros: bool, optional, default=False
-        if True zero-pad shifted arrays before acf, effectively
-        counting zeros
-    subtract_sim: string, optional, default=None
-        if 'external', subtract xi(y_sim) from xi(y_obs). Leads to dist(y, y) = 0.
-        if 'internal', subtract y_sim from y_obs inside xi(.). Leads to dist(y, y) = 0.
-        if 'model', subtract a*y + b from y_obs, with (a, b) the sample point
-    add: float, optional, default=0
-        add to xi
-    xipow: float, optional, default=2
-        exponent of the ACF
-    tmax: int, optional, default=None
-        set xi(t>xmax) = 0
-    xipos: bool, optional, default=False
-        set xi>0
-    mean_std_t: bool, optional, default=False
-        if True, mean and std depend on t in acf
-
-    Returns
-    -------
-    dist: double
-        distance
-    """
-
-    C_ell_sim = d2[:,1]
-    C_ell_obs = p['dataset1'][:,1]
-
-    # Weighted data points
-    if weight:
-        if 'cov_est' in p:
-            print('cov_est from p')
-            cov_est = p['cov_est']
-        else:
-            cov_est = np.loadtxt('cov_est.txt')
-
-        C_ell_sim_w = C_ell_sim / np.sqrt(np.diag(cov_est))
-        C_ell_obs_w = C_ell_obs / np.sqrt(np.diag(cov_est))
-    else:
-        C_ell_sim_w = C_ell_sim
-        C_ell_obs_w = C_ell_obs
-
-    # Load from data structure if present; compute if not
-    if 'xi' in p:
-        xi = p['xi']
-    else:
-        if subtract_sim == 'internal':
-            dC = C_ell_obs - C_ell_sim
-            fout = open('d.txt', 'w')
-            for i in range(len(dC)):
-                fout.write('{} {} {} {}\n'.format(i, dC[i], C_ell_obs[i], C_ell_sim[i]))
-            fout.close()
-        elif subtract_sim == 'model':
-            x = p['dataset1'][:,0]
-            a = p['a']
-            b = p['b']
-            C_ell_mod = np.array(a*x + b)
-            dC = C_ell_obs - C_ell_mod
-            print('dist a, b: ', a, b)
-            #fout = open('dmod.txt', 'w')
-            #for i in range(len(dC)):
-                #fout.write('{} {} {} {}\n'.format(i, dC[i], C_ell_obs[i], C_ell_mod[i]))
-            #fout.close()
-        elif subtract_sim == 'internal':
-            raise ValueError('subtract_sim = internal not compatible with pre-'
-                             'computed xi')
-        else:
-            dC = C_ell_obs
-        xi = acf(dC, norm=True, count_zeros=count_zeros, mean_std_t=mean_std_t)
-
-        if not os.path.exists('xi.txt'):
-            fout = open('xi.txt', 'w')
-            for i, x in enumerate(xi):
-                fout.write('{} {}\n'.format(i, x))
-            fout.close()
-
-    if tmax:
-        raise ValueError('Warning: tmax!=0 in distance argument is obsolete')
-
-    # Subtract acf of simulation, omitting zero entries of xi due to earlier tmax
-    if subtract_sim == 'external':
-        xi_sim = acf(C_ell_sim, norm=True, count_zeros=count_zeros)
-        w = np.where(xi == 0)[0]
-        if len(w) > 0:
-            xi_sim[w] = 0
-        xi = xi - xi_sim
-
-    # Add constant
-    xi = xi + add
-
-    # Set xi positive
-    if xipos:
-        xi[xi < 0] = 0
-
-    xi = np.abs(xi)
-
-    d = 0
-    n_D = len(C_ell_obs)
-    for i in range(n_D):
-        for j in range(n_D):
-            xi_ij = xi[np.abs(i-j)]
-            if mode_sum == 'square':
-                term = (C_ell_sim_w[i] - C_ell_obs_w[j])**2 * xi_ij**xipow
-            elif mode_sum == 'abs':
-                term = np.abs(C_ell_sim_w[i] - C_ell_obs_w[j]) * xi_ij
-            elif mode_sum == 'ratio':
-                term = (C_ell_sim_w[i] / C_ell_obs_w[j])**2 * xi_ij**xipow
-            elif mode_sum == 'ratio_abs':
-                term = np.abs(C_ell_sim_w[i] / C_ell_obs_w[j]) * xi_ij
-            else:
-                raise ValueError('invalid mode_sum={}'.format(mode_sum))
-            d = d + term
-
-    if mode_sum not in ('abs', 'ratio_abs'):
-        d = np.sqrt(d)
-
-    d = np.atleast_1d(d)
-
-    return d
 
 
 def linear_dist_data_acf2_lin_diag(d2, p):

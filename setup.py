@@ -37,5 +37,5 @@ setup(
                   #'Programming Language :: Python',
                   #'Natural Language :: English',
                  #],
-    #scripts = ['bin/{}'.format(fn) for fn in ['fits2ascii.py', 'ascii2fits.py']],
+    scripts = ['scripts/cov_matrix_definition/cm_likelihood.py'],
 )
