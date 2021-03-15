@@ -16,7 +16,6 @@ as long as you respect the input/ouput requirements and
 
 """
 
-
 import numpy as np
 import os
 import re
@@ -27,7 +26,7 @@ import statsmodels.formula.api as smf
 import statsmodels.api as sm
 
 from CorrMatrix_ABC import nicaea_ABC
-
+from CorrMatrix_ABC.covest import linear_dist_data_acf2_lin
 
 
 def model_Cl(p):
@@ -116,72 +115,6 @@ def model_Cl_gamma(p):
     return np.array([[ell[i], C_ell_est[i]] for i in range(int(p['nell']))])
 
 
-def acf_one(C, di, mean):
-    """Return one value of the auto-correlation function xi(x) of C at argument x=di
-
-    Parameters
-    ----------
-    C: array(float)
-        observed power spectrum
-    di: int
-        difference of ell-mode indices
-    mean: float
-        mean value of C (can be 0 if un-centered acf is desired)
-
-    Returns
-    -------
-    xi: float
-        auto-correlation function value
-    """
-
-    n  = len(C)
-    # Shift signal and keep to same length (loose entries at high-ell end)
-    C1 = C[:n-di]
-    C2 = C[di:]
-
-    # Estimate ACF
-    xi = sum((C1 - mean) * (C2 - mean)) / float(n)
-
-    return xi
-
-
-def acf(C, norm=False, centered=False):
-    """Return auto-correlation function of C.
-
-    Parameters
-    ----------
-    C: array(float)
-        observed power spectrum
-    di: int
-        difference of ell-mode indices
-    norm: bool, optional, default=False
-        if True, acf is normalised by the variance
-    centered: bool, optional, default=False
-        if True, center acf by subtracting the mean
-
-    Returns
-    -------
-    xi: float
-        auto-correlation function value
-    """
-
-    if centered:
-        mean = 0
-    else:
-        mean = C.mean()
-
-    xi = []
-    for di in range(len(C)):
-        xi.append(acf_one(C, di, mean))
-
-    if norm:
-        # Var = < C_ell C_ell> = xi(0)
-        xi = xi / xi[0]
-
-    return xi 
-
-
-
 def linear_dist_data_diag(d2, p):
     """Distance between observed and simulated catalogues using
        one over estimated diagonal covariance elements.
@@ -254,61 +187,3 @@ def linear_dist_data(d2, p):
     dist = np.sqrt(dist)
 
     return np.atleast_1d(dist)
-
-
-
-def linear_dist_data_SVD(d2, p):
-    """Distance between observed and simulated catalogues using
-       SVD of estimated inverse covariance.
-
-    Parameters
-    ----------
-    d2: array(double, 2)
-        simulated catalogue
-    p: dictionary
-        input parameters
-
-    Returns
-    -------
-    dist: double
-        distance
-    """
-
-    C_ell_sim = d2[:,1]
-    C_ell_obs = p['dataset1'][:,1]
-
-    dC = C_ell_sim - C_ell_obs
-
-    # Pseudo-inverse of estimated covariance (from SVD)
-    if 'cov_est_inv_P' in p:
-        cov_est_inv_P = p['cov_est_inv_P']
-    else:
-        cov_est_inv_P = np.loadtxt('cov_est_inv_P.txt')
-
-    dist = np.einsum('i,ij,j', dC, cov_est_inv_P, dC)
-    dist = np.sqrt(dist)
-
-    return np.atleast_1d(dist)
-
-
-def linear_dist_data_acf(d2, p):
-    """Distance between observed and simulated catalogues using
-       the auto-correlation function of the observation
-
-    Parameters
-    ----------
-    d2: array(double, 2)
-        simulated catalogue
-    p: dictionary
-        input parameters
-
-    Returns
-    -------
-    dist: double
-        distance
-    """
-
-    C_ell_sim = d2[:,1]
-    C_ell_obs = p['dataset1'][:,1]
-
-

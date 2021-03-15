@@ -93,9 +93,6 @@ else:
     # Consistency check of input parameters
     path_to_obs = Parameters['path_to_obs']
     if path_to_obs != 'None':
-        # MKDEBUG New 11/2020: Load pre-computed observation from file
-        #print('Inconsistent parameters: input_is_true = False (sampled input) *and* path_to_obs not \'None\'')
-        #sys.exit(5)
         dat = np.loadtxt(path_to_obs)
         y_input = dat[:,1]
         # MKDEBUG TODO: Check whether logell are consistent
@@ -123,9 +120,8 @@ if distance_str == 'linear_dist_data':
     cov_true_inv = np.linalg.inv(cov)
     Parameters['cov_true_inv'] = cov_true_inv
     np.savetxt('cov_true_inv.txt', cov_true_inv)
-
-# Compute ACF of observation
-if distance_str == 'linear_dist_data_acf2_lin':
+elif distance_str == 'linear_dist_data_acf2_lin':
+    # Compute ACF of observation
     mean_std_t = True
     xi = acf(y_input, norm=True, count_zeros=False, mean_std_t=mean_std_t)
     Parameters['xi'] = xi
