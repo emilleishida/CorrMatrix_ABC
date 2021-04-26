@@ -16,7 +16,7 @@ from statsmodels.stats.weightstats import DescrStatsW
 
 from CorrMatrix_ABC import nicaea_ABC
 
-from CorrMatrix_ABC.covest import get_cov_ML, get_cov_Gauss, weighted_std, get_cov_WL, linear_dist_data_acf2_lin, acf
+from CorrMatrix_ABC.covest import get_cov_ML, get_cov_Gauss, weighted_std, get_cov_WL, linear_dist_data_acf2_lin, acf, get_ell_mode
 
 
 #user input file
@@ -37,11 +37,12 @@ Parameters['f_sky'] = float(Parameters['f_sky'][0])
 Parameters['sigma_eps'] = float(Parameters['sigma_eps'][0])
 Parameters['nbar'] = float(Parameters['nbar'][0])
 
-Parameters['lmin'] = float(Parameters['lmin'][0])
-Parameters['lmax'] = float(Parameters['lmax'][0])
+Parameters['logellmin'] = float(Parameters['logellmin'][0])
+Parameters['logellmax'] = float(Parameters['logellmax'][0])
 Parameters['nell'] = int(Parameters['nell'][0])
-Parameters['simulation_input']['lmin'] = Parameters['lmin']
-Parameters['simulation_input']['lmax'] = Parameters['lmax']
+Parameters['ellmode'] = Parameters['ellmode'][0]
+Parameters['simulation_input']['logellmin'] = Parameters['logellmin']
+Parameters['simulation_input']['logellmax'] = Parameters['logellmax']
 Parameters['simulation_input']['nell'] = Parameters['nell']
 
 ### Dictionaries for functions
@@ -63,23 +64,49 @@ Parameters['distance_func']   = distance[distance_str]
 
 # Get 'observation' (fiducial model)
 # Call nicaea
-nicaea_ABC.run_nicaea(Parameters['lmin'], Parameters['lmax'], Parameters['nell'], verbose=True)
+pars = ['Omega_m', 'sigma_8']
+par_val  = []
+par_sval = []
+par_name = []
 
-# Read nicaea output
-ell, C_ell_obs = nicaea_ABC.read_Cl('.', 'P_kappa')
+# Check which parameter is in input parameter list.
+for par in pars:
+    if par in Parameters:
+        par_name.append(par)
+        par_val.append(Parameters[par])
+nicaea_ABC.run_nicaea(10**Parameters['logellmin'], 10**Parameters['logellmax'],
+                      Parameters['nell'],
+                      par_name=par_name, par_val=par_val,
+                      verbose=True)
 
+# Read nicaea output'
+pkappa_name_list = ['P_kappa']
+for v in par_val:
+    pkappa_name_list.append(str(v))
+pkappa_name = '_'.join(pkappa_name_list)
+ell, C_ell_obs = nicaea_ABC.read_Cl('.', pkappa_name)
+logell = np.log10(ell)
+
+# Check linear binning
+if get_ell_mode(ell) != 'lin':
+    raise ValueError('ell bins not linear')
 
 # add to parameter dictionary
-Parameters['dataset1'] = np.array([[ell[i], C_ell_obs[i]] for i in range(Parameters['nell'])])
+Parameters['dataset1'] = np.array([[logell[i], C_ell_obs[i]] for i in range(Parameters['nell'])])
 
 # add observed catalog to simulation parameters
 Parameters['simulation_input']['dataset1'] = Parameters['dataset1']
+np.savetxt('dataset1.txt', Parameters['dataset1'], header='# log(ell) C_ell')
+
 
 ### Covariance
 
 Parameters['nsim'] = int(Parameters['nsim'][0])
-cov, cov_est = get_cov_WL('Gauss', ell, C_ell_obs, Parameters['nbar'], Parameters['f_sky'], Parameters['sigma_eps'], Parameters['nsim'])
-
+cov_model = Parameters['cov_model'][0]
+# d_SSC=0.55 is 23% increase of total cov diag
+#cov, cov_est = get_cov_WL(cov_model, ell, C_ell_obs, Parameters['nbar'], Parameters['f_sky'], Parameters['sigma_eps'], Parameters['nsim'], d_SSC=0.55)
+#cov, cov_est = get_cov_WL(cov_model, ell, C_ell_obs, Parameters['nbar'], Parameters['f_sky'], Parameters['sigma_eps'], Parameters['nsim'], d_SSC=0.34)
+cov, cov_est = get_cov_WL(cov_model, ell, C_ell_obs, Parameters['nbar'], Parameters['f_sky'], Parameters['sigma_eps'], Parameters['nsim'], d_SSC=0.0)
 
 # add covariance to user input parameters, to be used in model
 Parameters['cov'] = cov_est

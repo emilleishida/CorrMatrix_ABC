@@ -27,5 +27,4 @@ done
 
 mv nofz_Euclid_1bin.par nofz.par
 
-
-
+ln -sf $base_dir/Cov_SSC/cov_SSC_rel_lin_10.txt cov_SSC_rel_lin.txt

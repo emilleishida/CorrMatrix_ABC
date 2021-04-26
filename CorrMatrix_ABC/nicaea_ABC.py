@@ -57,7 +57,7 @@ def run_nicaea(lmin, lmax, nell, par_name=None, par_val=None, verbose=False):
         out_suf     = ''
         out_suf_str = ''
 
-    err = covest.run_cmd('lensingdemo -D 0 {} {} {} -q -H 1'.format(Lstr, parstr, out_suf_str), verbose=verbose, stop=True)
+    err = covest.run_cmd('lensingdemo -D 0 {} {} {} -q -H 1 --linlog LIN'.format(Lstr, parstr, out_suf_str), verbose=verbose, stop=True)
 
     C_ell_name = 'P_kappa{}'.format(out_suf)
 

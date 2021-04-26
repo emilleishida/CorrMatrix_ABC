@@ -413,7 +413,7 @@ def get_ell_mode(ell):
         raise ValueError('Bins neither logarithmic nor linear')
 
 
-def get_cov_WL(model, ell, C_ell_obs, nbar, f_sky, sigma_eps, nsim):
+def get_cov_WL(model, ell, C_ell_obs, nbar, f_sky, sigma_eps, nsim, d_SSC=0.75):
     """Compute true and estimated WL covariance.
 
     Parameters
@@ -432,6 +432,8 @@ def get_cov_WL(model, ell, C_ell_obs, nbar, f_sky, sigma_eps, nsim):
         ellipticity dispersion
     nsim: int
         number of simulations for covariance estimation
+    d_SSC: double, optional, default=0.75
+        if >0, increases SSC diagonal by d_SSC
 
     Returns
     -------
@@ -464,13 +466,14 @@ def get_cov_WL(model, ell, C_ell_obs, nbar, f_sky, sigma_eps, nsim):
         np.savetxt('cov_G.txt', cov_G)
         np.savetxt('cov_SSC.txt', cov_SSC)
 
-        d_SSC = 0.75
         if d_SSC > 0:
             d = np.diag(cov_SSC) * d_SSC
             cov_SSC = cov_SSC + np.diag(d)
 
             print('diag factor d_SSC = {}'.format(d_SSC))
             print('Mean increase of diagonal wrt tot = {}'.format(np.mean(d/np.diag(cov_G+cov_SSC))))
+        else:
+            print('No d_SSC correction factor')
 
         cov = cov_G + cov_SSC
 
@@ -479,12 +482,20 @@ def get_cov_WL(model, ell, C_ell_obs, nbar, f_sky, sigma_eps, nsim):
        error('Invalid covariance mode \'{}\''.format(mode))
 
     size = cov.shape[0]
+
+    # if nu=nsim-1<p, or scale matrix is singular: create normal mrv
+    # and compute cov.
+    # Otherwise: sample cov from Wishart.
+
     if nsim - 1 >= size:
-        # Estimate covariance as sample from Wishart distribution
-        cov_est = sample_cov_Wishart(cov, nsim)
+        try:
+            cov_est = sample_cov_Wishart(cov, nsim)
+        except np.linalg.LinAlgError:
+            cov_est = get_cov_ML(C_ell_obs, cov, size)
+        except:
+            print('Warning: scale matrix not positive, sampling from normal instead of Wishart')
+            raise
     else:
-        # Cannot easily sample from Wishart distribution if dof<cov dimension,
-        # but can always create Gaussian rv and compute cov
         cov_est = get_cov_ML(C_ell_obs, cov, size)
 
     return cov, cov_est

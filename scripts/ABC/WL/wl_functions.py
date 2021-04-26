@@ -47,12 +47,9 @@ def model_Cl(p):
             par_val.append(p[par])
             par_name.append(par) 
 
-    # This is necessary for plot_ABC.py, which has not already performed the substitution in abc_wl.py
-    #p['path_to_nicaea'] = re.sub('(\$\w*)', os.environ['NICAEA'], p['path_to_nicaea'])
-
     # Run nicaea to produce model Cl
-    err, C_ell_name = nicaea_ABC.run_nicaea(p['lmin'], p['lmax'], p['nell'], \
-                                par_name = par_name, par_val = par_val)
+    err, C_ell_name = nicaea_ABC.run_nicaea(10**p['logellmin'], 10**p['logellmax'],
+                                            p['nell'], par_name=par_name, par_val=par_val)
 
     if err != 0:
 
@@ -73,8 +70,14 @@ def model_Cl(p):
             #print('Reading cov_est.txt from disk')
             cov_est = np.loadtxt('cov_est.txt')
 
-    return ell, C_ell, cov_est
+    if p['ellmode'] == 'lin':
+        x = ell
+    elif p['ellmode'] == 'log':
+        x = np.log10(ell)
+    else:
+        raise ValueError('Invalid ellmode \'{}\''.format(p['ellmode']))
 
+    return x, C_ell, cov_est
 
 
 def model_Cl_norm(p):
@@ -147,7 +150,6 @@ def linear_dist_data_diag(d2, p):
     dist = np.sqrt(sum(dC**2/np.diag(cov)))
 
     return np.atleast_1d(dist)
-
 
 
 def linear_dist_data(d2, p):

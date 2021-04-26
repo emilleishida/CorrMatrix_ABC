@@ -104,7 +104,7 @@ np.savetxt('y_input.txt', np.array([10**logell, y_input]).transpose())
 
 # add to parameter dictionary
 Parameters['dataset1'] = np.array([[logell[i], y_input[i]] for i in range(nell)])
-np.savetxt('dataset1.txt', Parameters['dataset1'], header='# ell C_ell')
+np.savetxt('dataset1.txt', Parameters['dataset1'], header='# log(ell) C_ell')
 
 # add observed catalog to simulation parameters
 Parameters['simulation_input']['dataset1'] = Parameters['dataset1']

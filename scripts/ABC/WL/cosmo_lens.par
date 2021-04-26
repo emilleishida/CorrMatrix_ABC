@@ -26,7 +26,7 @@ stomo		tomo_auto_only
 #  limber2_la08_hyb     2nd-order extended Limber, flat sky, hybrid             [ExtL2FlHyb]
 #  limber2_la08_sph     2nd-order Limber (LA08) with spherical prefactor 	[ExtL2Sph]
 #  full                 Full projection						[Full]
-sprojection	limber_la08_sph
+sprojection	limber_la08_hyb
 
 # Reduced-shear correction
 #  none			No correction
@@ -39,5 +39,8 @@ sreduced 	none
 # Intrinsic alignment
 # none			No contribution
 # HS04			Hirata & Seljak (2004) linear model
-sia		none
+sia		HS04
 
+sia_terms	only_GI
+
+A_ia		2.0
