@@ -24,6 +24,7 @@ def diagnostics_draws():
     for f in files:
 
         m = re.findall('linear_PS\d+.dat', f)
+        #m = re.findall('quad_PS\d+.dat', f)
         if len(m) == 0:
             continue
 
@@ -43,7 +44,7 @@ def main(argv=None):
 
     Mtot, nd, nit = diagnostics_draws()
 
-    #print('# Mtot nd ratio nit')
+    print('# Mtot nd ratio nit')
     if nd > 0:
         print('{} {} {:.4f} {}'.format(Mtot, nd, float(Mtot)/float(nd), nit))
     else:

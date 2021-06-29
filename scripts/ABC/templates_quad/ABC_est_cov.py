@@ -64,10 +64,6 @@ Parameters['simulation_func'] = model_cov
 ### Distance function
 distance = {'linear_dist_data_diag':      linear_dist_data_diag,
             'linear_dist_data':           linear_dist_data,
-            'linear_dist_data_acf':       linear_dist_data_acf,
-            'linear_dist_data_acf_abs':   linear_dist_data_acf_abs,
-            'linear_dist_data_acf_ratio': linear_dist_data_acf_ratio,
-            'linear_dist_data_acf_ratio_abs': linear_dist_data_acf_ratio_abs,
             'linear_dist_data_acf2_lin': linear_dist_data_acf2_lin,
            }
 distance_str                  = Parameters['distance_func'][0]
@@ -152,6 +148,8 @@ if len(sys.argv) > 1 and sys.argv[1] == '--only_observation':
 
 
 #############################################
+
+print('Starting ABC sampling...')
 
 #initiate ABC sampler
 sampler_ABC = ABC(params=Parameters)

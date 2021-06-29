@@ -26,7 +26,7 @@ sigma_8_lim                  = 0.2  1.2                # extreme limits for para
 	          
 Omega_m         = 0.306                            #  matter density parameter
 sigma_8         = 0.827                            #  normalisation
-nsim            = 100                              #  number of simulations for covariance matrix
+nsim            = 800                              #  number of simulations for covariance matrix
 
 f_sky		= 0.3636			   # covered sky fraction of survey
 sigma_eps	= 0.31				   # complex intrinsic ellipticity dispersion
@@ -41,6 +41,7 @@ M 		= 200				   # number of particle in each particle system
 Mini            = 400                              # number of draws for 1st particle system
 delta		= 0.05
 qthreshold 	= 0.75				   # quantile in distance threshold 
+nruns           = -1                               # Number of runs, if <0 run until convergence criterium is met
 
 file_root 	= linear_PS                        # root to output files names 
 screen          = 0			           # rather (1) or not (0) to screen outputs

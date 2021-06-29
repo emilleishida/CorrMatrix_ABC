@@ -21,6 +21,8 @@ def main(argv=None):
 
     err, C_ell_name = nicaea.run_nicaea(lmin, lmax, nell, verbose=True)
 
+    print(C_ell_name)
+
     ell, C_ell = nicaea.read_Cl('.', C_ell_name)
 
     plot_C_ell(ell, C_ell, output_name='{}.pdf'.format(C_ell_name))
