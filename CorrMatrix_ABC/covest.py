@@ -579,6 +579,50 @@ def model_quad(u, ampl, tilt):
     return y
 
 
+def par_symbol(par, eq=True):
+    """Par Symbol
+    Return parameter symbol for given parameter name
+
+    Parameters
+    ----------
+    par : string
+        parameter name
+    """
+
+    symbol = {
+        'tilt' : 't',
+        'ampl' : 'A',
+    }
+
+    if par in symbol:
+        res = symbol[par]
+    else:
+        res = par
+
+    if eq:
+        return f'${res}$'
+    else:
+        return res
+
+
+def stat_notation(stat):
+    """Stat Notation
+    Returns format notation of a given statistical function, e.g. mean, std
+
+    Parameters
+    ----------
+    stat : string
+        (informal) name of statistical function
+    """
+
+    if stat == 'mean':
+        return '$\\bar\\theta$'
+    elif stat == 'std':
+        return 'SD$(\\bar\\theta)$'
+    elif stat == 'std_var':
+        return 'SE$[$SD$(\\hat{\\theta})]$'
+    else:
+        raise ABCCovError(f'Invalid statistical function name f{stat}')
 
 class param:
     """General class to store (default) variables
@@ -821,7 +865,7 @@ class Results:
             True for success
         """
 
-        n_n_S, n_R         = self.mean[self.par_name[0]].shape
+        n_n_S, n_R = self.mean[self.par_name[0]].shape
         n_n_S_new, n_R_new = new.mean[new.par_name[0]].shape
         if n_n_S != n_n_S_new:
             error( \
@@ -896,10 +940,11 @@ class Results:
         else:
             fac_xlim   = 1.05
             # NEW 3/9/2019 for xcorr plots, n_S is actually r
-            if n[0] > 10:
-                xmin = (n[0]-5)/fac_xlim**5
-            else:
-                xmin = (n[0]-0.5)/fac_xlim**5
+            #if n[0] > 10:
+                #xmin = (n[0]-5)/fac_xlim**5
+            #else:
+                #xmin = (n[0]-0.5)/fac_xlim**5
+            xmin = (n[0]-5)/fac_xlim**5
             xmax = n[-1]*fac_xlim
 
         # Set the number of required subplots (1 or 2)
@@ -943,8 +988,6 @@ class Results:
                         ax.set_xscale('log')
 
                     if len(n) > 1:
-                        #n_fine = np.arange(n[0], n[-1], len(n)/10.0)
-                        # NEW 3/9/2019 for xcorr plots
                         n_fine = np.arange(n[0], n[-1]+len(n)/20.0, len(n)/20.0)
                     else:
                         x0 = n[0] / 4
@@ -957,8 +1000,8 @@ class Results:
                                  linestyle[i]), linewidth=2)
 
                     plt.plot(n_fine, no_bias(n_fine, n_D, my_par[i]), '{}{}'.format(color[i], linestyle[i]), \
-			                 label='{}$({})$'.format(which, p), linewidth=2)
-
+			                 label=par_symbol(p), linewidth=2)
+			                 #label='{}$({})$'.format(which, p), linewidth=2)
         # Finalize plot
         for j, which in enumerate(['mean', 'std']):
             if which in j_panel:
@@ -972,7 +1015,10 @@ class Results:
 
                 # Main-axes settings
                 plt.xlabel('$n_{{\\rm s}}$')
-                plt.ylabel('<{}>'.format(which))
+                #plt.ylabel('<{}>'.format(which))
+                ylabel = stat_notation(which)
+                print('MKDEBUG', ylabel)
+                plt.ylabel(ylabel)
                 ax.set_yscale(self.yscale[j])
                 ax.legend(frameon=False)
                 plt.xlim(xmin, xmax)
@@ -1122,7 +1168,8 @@ class Results:
 
         # Main-axes settings
         plt.xlabel('$n_{\\rm s}$')
-        plt.ylabel('std(var)')
+        #plt.ylabel('std(var)')
+        plt.ylabel(stat_notation('std_var'))
         ax.set_yscale('log')
         ax.legend(loc='best', numpoints=1, frameon=False)
         #ax.set_aspect(aspect=1)

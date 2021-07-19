@@ -728,6 +728,10 @@ def main(argv=None):
             print('')
 
     elif param.model == 'wl':
+
+        n_D = param.n_D
+        dpar_exact = np.array([0, 0])
+
         print('Printing parameter summaries Not yet implemented.')
 
     else:
