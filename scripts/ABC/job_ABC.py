@@ -740,7 +740,7 @@ def main(argv=None):
     fit_ABC.plot_mean_std(n_S_arr, n_D, par={'mean': param.par, 'std': dpar_exact},
                           boxwidth=param.boxwidth, xlog=param.xlog, model=param.model)
     dpar2 = dpar_exact**2
-    fit_ABC.plot_std_var(n_S_arr, n_D, par=dpar2, xlog=param.xlog)
+    fit_ABC.plot_std_var(n_S_arr, n_D, par=dpar2, xlog=param.xlog, model=param.model)
 
     return 0
 

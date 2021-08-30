@@ -587,11 +587,18 @@ def par_symbol(par, eq=True):
     ----------
     par : string
         parameter name
+
+    Returns
+    -------
+    res : string
+        parameter symbol
     """
 
     symbol = {
         'tilt' : 't',
         'ampl' : 'A',
+        'Omegam' : '\Omega_{\\rm m}',
+        'sigma8' : '\sigma_8',
     }
 
     if par in symbol:
@@ -973,7 +980,7 @@ class Results:
             for i, p in enumerate(self.par_name):
                 y = getattr(self, which)[p]   # mean or std for parameter p
                 if y.any():
-                    ax = plt.subplot(1, n_panel, j_panel[which])
+                    ax = plt.subplot(1, n_panel, j_panel[which]) #, label=f'{which}{p}')
 
                     if y.shape[1] > 1:
                         bplot = plt.boxplot(y.transpose(), positions=n, sym='.', widths=width(n, box_width))
@@ -1001,7 +1008,7 @@ class Results:
 
                     plt.plot(n_fine, no_bias(n_fine, n_D, my_par[i]), '{}{}'.format(color[i], linestyle[i]), \
 			                 label=par_symbol(p), linewidth=2)
-			                 #label='{}$({})$'.format(which, p), linewidth=2)
+
         # Finalize plot
         for j, which in enumerate(['mean', 'std']):
             if which in j_panel:
@@ -1017,7 +1024,6 @@ class Results:
                 plt.xlabel('$n_{{\\rm s}}$')
                 #plt.ylabel('<{}>'.format(which))
                 ylabel = stat_notation(which)
-                print('MKDEBUG', ylabel)
                 plt.ylabel(ylabel)
                 ax.set_yscale(self.yscale[j])
                 ax.legend(frameon=False)
@@ -1075,6 +1081,8 @@ class Results:
                 if which == 'std':
                     if model == 'affine':
                         plt.ylim(1e-4, 3e-1)
+                    elif model == 'wl':
+                        plt.ylim(1e-3, 1e-2)
                     else:
                         plt.ylim(5e-4, 2e-2)
 
@@ -1088,7 +1096,7 @@ class Results:
 
 
 
-    def plot_std_var(self, n, n_D, par=None, sig_var_noise=None, xlog=False, title=False):
+    def plot_std_var(self, n, n_D, par=None, sig_var_noise=None, xlog=False, title=False, model='affine'):
         """Plot standard deviation of parameter variance
 
         Parameters 
@@ -1103,6 +1111,8 @@ class Results:
             logarithmic x-axis, default False
         title: bool, optional, default=False
             if True, print title with n_d, n_r
+        model: string
+            model, one in 'affine', 'quadratic'
             
         Returns 
         -------     
@@ -1124,7 +1134,7 @@ class Results:
         for i, p in enumerate(self.par_name):
             y = self.get_std_var(p)
             if y.any():
-                plt.plot(n, y, marker=marker[i], color=color[i], label='$\sigma(\sigma^2_{{{}}})$'.format(p), linestyle='None')
+                plt.plot(n, y, marker=marker[i], color=color[i], label=par_symbol(p), linestyle='None')
                 cols.append(y)
                 names.append('sigma(sigma^2_{})'.format(p))
 
@@ -1168,7 +1178,6 @@ class Results:
 
         # Main-axes settings
         plt.xlabel('$n_{\\rm s}$')
-        #plt.ylabel('std(var)')
         plt.ylabel(stat_notation('std_var'))
         ax.set_yscale('log')
         ax.legend(loc='best', numpoints=1, frameon=False)
@@ -1185,6 +1194,8 @@ class Results:
 
 	    # Second x-axis
         x_loc, x_lab = plt.xticks()
+        if model == 'wl':
+            x_loc = [2, 5, 10, 20, 40]
         ax2 = plt.twiny()
         x2_loc = []
         x2_lab = []
@@ -1197,6 +1208,8 @@ class Results:
                 else:
                     lab = '{:.2g}'.format(frac)
                 x2_lab.append(lab)
+        ax = plt.gca().xaxis
+        # MKDEBUG: The following does not produce labels for model=='wl'
         plt.xticks(x2_loc, x2_lab)
         ax2.set_xlabel('$p / n_{\\rm s}$', size=self.fs)
         if xlog:
@@ -1204,7 +1217,10 @@ class Results:
             plt.xlim(n_D/xmin, n_D/xmax)
 
         # y-scale
-        plt.ylim(2e-8, 1.5e-2)
+        if model == 'wl':
+            plt.ylim(1e-6, 1e-4)
+        else:
+            plt.ylim(2e-8, 1.5e-2)
         # The following causes matplotlib error for xlog==True
         if not xlog:
             plt.axes().set_aspect((plt.xlim()[1] - plt.xlim()[0]) / (plt.ylim()[1] - plt.ylim()[0]))

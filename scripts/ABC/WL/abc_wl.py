@@ -46,6 +46,7 @@ ellmode = Parameters['ellmode']
 if ellmode == 'log':
     # Equidistant in log ell
     logell = np.linspace(logellmin, logellmax, nell)
+    ell = 10**logell
 elif ellmode == 'lin':
     # Equidistant in ell
     ellmin = 10**logellmin
@@ -98,7 +99,15 @@ pkappa_name_list = ['P_kappa']
 for v in par_val:
     pkappa_name_list.append(str(v))
 pkappa_name = '_'.join(pkappa_name_list)
-ell, C_ell_obs = nicaea_ABC.read_Cl('.', pkappa_name)
+ell_pk, C_ell_obs = nicaea_ABC.read_Cl('.', pkappa_name)
+
+# Check ell
+eps_ell = 0.1
+for ell1, ell2 in zip(ell, ell_pk):
+    if np.abs(ell1 - ell2) > eps_ell:
+        raise ValueError(
+            f'Different ell ({ell1} != {ell2}) between config and P_kappa'
+        )
 #logell = np.log10(ell)
 y_true = C_ell_obs
 
@@ -112,9 +121,6 @@ cov, cov_est = get_cov_WL(cov_model, ell, C_ell_obs, Parameters['nbar'], Paramet
 if get_ell_mode(ell) != 'lin':
     raise ValueError('ell bins not linear')
 
-# add to parameter dictionary
-#Parameters['dataset1'] = np.array([[logell[i], C_ell_obs[i]] for i in range(Parameters['nell'])])
-
 input_is_true = False
 if input_is_true:
     y_input = y_true
@@ -126,7 +132,14 @@ else:
     if path_to_obs != 'None':
         dat = np.loadtxt(path_to_obs)
         y_input = dat[:,1]
-        # MKDEBUG TODO: Check whether logell are consistent
+
+        # Check ell
+        for ell1, ell2 in zip(ell, 10**dat[:,0]):
+            if np.abs(ell1 - ell2) > eps_ell:
+                raise ValueError(
+                    f'Different ell ({ell1} != {ell2}) between config and observation'
+                )
+
     else:
         y_input  = multivariate_normal.rvs(mean=y_true, cov=cov)
 
@@ -216,14 +229,14 @@ b_std = weighted_std(b_samples, weights)
 
 # store numerical results
 op2 = open('num_res.dat', 'w')
-op2.write('a_mean    ' + str(a_results.mean) + '\n')
-op2.write('a_std     ' + str(a_std) + '\n\n\n')
-op2.write('b_mean    ' + str(b_results.mean) + '\n')
-op2.write('b_std     ' + str(b_std))
+op2.write('Omegam_mean    ' + str(a_results.mean) + '\n')
+op2.write('Omegam_std     ' + str(a_std) + '\n\n\n')
+op2.write('sigma8_mean    ' + str(b_results.mean) + '\n')
+op2.write('sigma8_std     ' + str(b_std))
 op2.close()
 
 print('Numerical results:')
-print('a:    ' + str(a_results.mean) + ' +- ' + str(a_std))
+print('Omegam:    ' + str(a_results.mean) + ' +- ' + str(a_std))
 print('b:    ' + str(b_results.mean) + ' +- ' + str(b_std))
 print()
 

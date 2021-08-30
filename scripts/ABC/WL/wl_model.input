@@ -34,7 +34,7 @@ nbar            = 30				   # Number density of galaxies per arcmin^2
 
 logellmin 	= 1.39794
 logellmax 	= 3.60206
-ellmode   	= log
+ellmode   	= log				   # For WL (this case): use ellmode=log
 nell      	= 10
 
 M 		= 200				   # number of particle in each particle system
