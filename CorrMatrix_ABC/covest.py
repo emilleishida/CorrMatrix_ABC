@@ -1077,7 +1077,7 @@ class Results:
                     if model == 'affine':
                         plt.ylim(-2, 2)
                     else:
-                        plt.ylim(0, 1)
+                        plt.ylim(0.2, 0.9)
                 if which == 'std':
                     if model == 'affine':
                         plt.ylim(1e-4, 3e-1)
@@ -1175,6 +1175,11 @@ class Results:
             flinlog = lambda x: np.log(x)
         else:
             flinlog = lambda x: x
+            add_xlim = 10
+            xmin = max(n[0] - add_xlim, 0)
+            xmax = n[-1] + add_xlim
+        # Check whether this is still ok for xlog=True
+        plt.xlim(xmin, xmax)
 
         # Main-axes settings
         plt.xlabel('$n_{\\rm s}$')
@@ -1189,8 +1194,8 @@ class Results:
         plt.ticklabel_format(axis='x', style='sci')
 
         # Dashed vertical line at n_S = n_D
-        if xlog:
-            plt.plot([n_D, n_D], [8e-9, 1e-1], ':', linewidth=1)
+        #if xlog:
+        plt.plot([n_D, n_D], [8e-9, 1e-1], ':', linewidth=1)
 
 	    # Second x-axis
         x_loc, x_lab = plt.xticks()
@@ -1219,11 +1224,13 @@ class Results:
         # y-scale
         if model == 'wl':
             plt.ylim(1e-6, 1e-4)
+        elif model == 'quadratic':
+            plt.ylim(1e-6, 1e-4)
         else:
             plt.ylim(2e-8, 1.5e-2)
         # The following causes matplotlib error for xlog==True
-        if not xlog:
-            plt.axes().set_aspect((plt.xlim()[1] - plt.xlim()[0]) / (plt.ylim()[1] - plt.ylim()[0]))
+        #if not xlog:
+            #plt.axes().set_aspect((plt.xlim()[1] - plt.xlim()[0]) / (plt.ylim()[1] - plt.ylim()[0]))
 
 
         ### Output

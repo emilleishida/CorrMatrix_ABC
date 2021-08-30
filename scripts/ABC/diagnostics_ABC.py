@@ -23,8 +23,8 @@ def diagnostics_draws():
     nit = 0
     for f in files:
 
-        m = re.findall('linear_PS\d+.dat', f)
-        #m = re.findall('quad_PS\d+.dat', f)
+        #m = re.findall('linear_PS\d+.dat', f)
+        m = re.findall('quad_PS\d+.dat', f)
         if len(m) == 0:
             continue
 
