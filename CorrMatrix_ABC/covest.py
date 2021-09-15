@@ -1082,7 +1082,7 @@ class Results:
                     if model == 'affine':
                         plt.ylim(1e-4, 3e-1)
                     elif model == 'wl':
-                        plt.ylim(1e-3, 1e-2)
+                        plt.ylim(2e-3, 2e-2)
                     else:
                         plt.ylim(5e-4, 2e-2)
 
@@ -1553,18 +1553,43 @@ def Fisher_ana_quad(ell, f_sky, sigma_eps, nbar_rad2, tilt_fid, ampl_fid, cov_mo
         cov = np.diag(D) + cov_SSC
         Psi = np.linalg.inv(cov)
 
+    [da2, db2], det = Fisher_num(dy_dt, dy_dA, Psi)
+
+    return np.sqrt([da2, db2]), det
+
+
+def Fisher_num(y1, y2, Psi):
+    """Fisher numerical
+
+    Return Fisher matrix.
+
+    Parameters
+    ----------
+    y1 : array of float
+        d[y_obs] / d[theta_1]
+    y2 :  array of float
+        d[y_obs] / d[theta_2] 
+    Psi : matrix of float
+        precision matrix
+
+    Returns
+    da2_db2 : array(2) of float
+        variance for theta_1, theta_2
+    det : double
+        Fisher matrix determinant
+    """
+
     # Fisher matrix elements
-    F_11   = np.einsum('i,ij,j', dy_dt, Psi, dy_dt)
-    F_22   = np.einsum('i,ij,j', dy_dA, Psi, dy_dA)
-    F_12   = np.einsum('i,ij,j', dy_dt, Psi, dy_dA)
+    F_11   = np.einsum('i,ij,j', y1, Psi, y1)
+    F_22   = np.einsum('i,ij,j', y2, Psi, y2)
+    F_12   = np.einsum('i,ij,j', y1, Psi, y2)
 
     # Cramer-Rao, invert Fisher
     det = F_11 * F_22 - F_12**2
     da2 = F_22 / det
     db2 = F_11 / det
 
-    return np.sqrt([da2, db2]), det
-
+    return [da2, db2], det
 
 
 def my_string_split(string, num=-1, verbose=False, stop=False):

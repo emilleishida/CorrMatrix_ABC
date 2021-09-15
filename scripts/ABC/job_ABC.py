@@ -20,6 +20,7 @@ import numpy as np
 from scipy.stats import norm, uniform
 
 from CorrMatrix_ABC.covest import *
+from CorrMatrix_ABC.nicaea_ABC import Fisher_ana_wl
 
 from cosmoabc.ABC_functions import read_input
 
@@ -571,7 +572,7 @@ def read_from_ABC_dirs(n_S_arr, par_name, fit_ABC, options):
 
 
 
-def Fisher_ana_quad_read_par(templ_dir, par, mode=1):
+def Fisher_ana_quad_wl_read_par(templ_dir, par, mode=1, model='quadratic'):
     """Read parameters from config file and return Fisher matrix errors
        on parameters of quadratic model.
     """
@@ -603,8 +604,12 @@ def Fisher_ana_quad_read_par(templ_dir, par, mode=1):
 
     ampl_fid, tilt_fid = par
 
-    dpar, det = Fisher_ana_quad(10**logell, f_sky, sigma_eps, nbar_rad2, ampl_fid, tilt_fid, cov_model,
-                                ellmode=ellmode, mode=mode, templ_dir=templ_dir)
+    if model == 'quadratic':
+        dpar, det = Fisher_ana_quad(10**logell, f_sky, sigma_eps, nbar_rad2, ampl_fid, tilt_fid, cov_model,
+                                    ellmode=ellmode, mode=mode, templ_dir=templ_dir)
+    else:
+        dpar, det = Fisher_ana_wl(10**logell, f_sky, sigma_eps, nbar_rad2, ampl_fid, tilt_fid, cov_model,
+                                  ellmode=ellmode, templ_dir=templ_dir)
     return dpar, det, nell
 
 
@@ -692,7 +697,7 @@ def main(argv=None):
             print('{:.5f} {:.5f} [{:.5f}]'.format(mean, std2, std), end='   ')
         print('')
 
-    elif param.model == 'quadratic':
+    elif param.model in ['quadratic', 'wl']:
 
         # For the quadratic model we compute the parameter means, std, and std(std)
         # averaged over all n_S
@@ -704,7 +709,7 @@ def main(argv=None):
             key = str(n_S)
             key_all.append(key)
 
-        dpar_exact, det, n_D = Fisher_ana_quad_read_par(param.templ_dir, param.par, mode=0)
+        dpar_exact, det, n_D = Fisher_ana_quad_wl_read_par(param.templ_dir, param.par, mode=0, model=param.model)
         for i, p in enumerate(param.par_name):
             mean_all[p] = {}
             std_all[p] = {}
@@ -727,12 +732,12 @@ def main(argv=None):
                 print('{:.5f} {:.5f}'.format(mean_all[p][key], std2_all[p][key]), end='   ')
             print('')
 
-    elif param.model == 'wl':
+    #elif param.model == 'wl':
 
-        n_D = param.n_D
-        dpar_exact = np.array([0, 0])
+        #n_D = param.n_D
+        #dpar_exact = np.array([0, 0])
 
-        print('Printing parameter summaries Not yet implemented.')
+        #print('Printing parameter summaries Not yet implemented.')
 
     else:
         raise ABCCovError('Unknown model \'{}\''.format(param.model))
