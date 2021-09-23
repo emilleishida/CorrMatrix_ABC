@@ -579,6 +579,57 @@ def model_quad(u, ampl, tilt):
     return y
 
 
+def par_symbol(par, eq=True):
+    """Par Symbol
+    Return parameter symbol for given parameter name
+
+    Parameters
+    ----------
+    par : string
+        parameter name
+
+    Returns
+    -------
+    res : string
+        parameter symbol
+    """
+
+    symbol = {
+        'tilt' : 't',
+        'ampl' : 'A',
+        'Omegam' : '\Omega_{\\rm m}',
+        'sigma8' : '\sigma_8',
+    }
+
+    if par in symbol:
+        res = symbol[par]
+    else:
+        res = par
+
+    if eq:
+        return f'${res}$'
+    else:
+        return res
+
+
+def stat_notation(stat):
+    """Stat Notation
+    Returns format notation of a given statistical function, e.g. mean, std
+
+    Parameters
+    ----------
+    stat : string
+        (informal) name of statistical function
+    """
+
+    if stat == 'mean':
+        return '$\\bar\\theta$'
+    elif stat == 'std':
+        return 'SD$(\\bar\\theta)$'
+    elif stat == 'std_var':
+        return 'SE$[$SD$(\\hat{\\theta})]$'
+    else:
+        raise ABCCovError(f'Invalid statistical function name f{stat}')
 
 class param:
     """General class to store (default) variables
@@ -821,7 +872,7 @@ class Results:
             True for success
         """
 
-        n_n_S, n_R         = self.mean[self.par_name[0]].shape
+        n_n_S, n_R = self.mean[self.par_name[0]].shape
         n_n_S_new, n_R_new = new.mean[new.par_name[0]].shape
         if n_n_S != n_n_S_new:
             error( \
@@ -896,10 +947,11 @@ class Results:
         else:
             fac_xlim   = 1.05
             # NEW 3/9/2019 for xcorr plots, n_S is actually r
-            if n[0] > 10:
-                xmin = (n[0]-5)/fac_xlim**5
-            else:
-                xmin = (n[0]-0.5)/fac_xlim**5
+            #if n[0] > 10:
+                #xmin = (n[0]-5)/fac_xlim**5
+            #else:
+                #xmin = (n[0]-0.5)/fac_xlim**5
+            xmin = (n[0]-5)/fac_xlim**5
             xmax = n[-1]*fac_xlim
 
         # Set the number of required subplots (1 or 2)
@@ -928,7 +980,7 @@ class Results:
             for i, p in enumerate(self.par_name):
                 y = getattr(self, which)[p]   # mean or std for parameter p
                 if y.any():
-                    ax = plt.subplot(1, n_panel, j_panel[which])
+                    ax = plt.subplot(1, n_panel, j_panel[which]) #, label=f'{which}{p}')
 
                     if y.shape[1] > 1:
                         bplot = plt.boxplot(y.transpose(), positions=n, sym='.', widths=width(n, box_width))
@@ -943,8 +995,6 @@ class Results:
                         ax.set_xscale('log')
 
                     if len(n) > 1:
-                        #n_fine = np.arange(n[0], n[-1], len(n)/10.0)
-                        # NEW 3/9/2019 for xcorr plots
                         n_fine = np.arange(n[0], n[-1]+len(n)/20.0, len(n)/20.0)
                     else:
                         x0 = n[0] / 4
@@ -957,7 +1007,7 @@ class Results:
                                  linestyle[i]), linewidth=2)
 
                     plt.plot(n_fine, no_bias(n_fine, n_D, my_par[i]), '{}{}'.format(color[i], linestyle[i]), \
-			                 label='{}$({})$'.format(which, p), linewidth=2)
+			                 label=par_symbol(p), linewidth=2)
 
         # Finalize plot
         for j, which in enumerate(['mean', 'std']):
@@ -972,7 +1022,9 @@ class Results:
 
                 # Main-axes settings
                 plt.xlabel('$n_{{\\rm s}}$')
-                plt.ylabel('<{}>'.format(which))
+                #plt.ylabel('<{}>'.format(which))
+                ylabel = stat_notation(which)
+                plt.ylabel(ylabel)
                 ax.set_yscale(self.yscale[j])
                 ax.legend(frameon=False)
                 plt.xlim(xmin, xmax)
@@ -1025,10 +1077,12 @@ class Results:
                     if model == 'affine':
                         plt.ylim(-2, 2)
                     else:
-                        plt.ylim(0, 1)
+                        plt.ylim(0.2, 0.9)
                 if which == 'std':
                     if model == 'affine':
                         plt.ylim(1e-4, 3e-1)
+                    elif model == 'wl':
+                        plt.ylim(2e-3, 2e-2)
                     else:
                         plt.ylim(5e-4, 2e-2)
 
@@ -1042,7 +1096,7 @@ class Results:
 
 
 
-    def plot_std_var(self, n, n_D, par=None, sig_var_noise=None, xlog=False, title=False):
+    def plot_std_var(self, n, n_D, par=None, sig_var_noise=None, xlog=False, title=False, model='affine'):
         """Plot standard deviation of parameter variance
 
         Parameters 
@@ -1057,6 +1111,8 @@ class Results:
             logarithmic x-axis, default False
         title: bool, optional, default=False
             if True, print title with n_d, n_r
+        model: string
+            model, one in 'affine', 'quadratic'
             
         Returns 
         -------     
@@ -1078,7 +1134,7 @@ class Results:
         for i, p in enumerate(self.par_name):
             y = self.get_std_var(p)
             if y.any():
-                plt.plot(n, y, marker=marker[i], color=color[i], label='$\sigma(\sigma^2_{{{}}})$'.format(p), linestyle='None')
+                plt.plot(n, y, marker=marker[i], color=color[i], label=par_symbol(p), linestyle='None')
                 cols.append(y)
                 names.append('sigma(sigma^2_{})'.format(p))
 
@@ -1119,10 +1175,15 @@ class Results:
             flinlog = lambda x: np.log(x)
         else:
             flinlog = lambda x: x
+            add_xlim = 10
+            xmin = max(n[0] - add_xlim, 0)
+            xmax = n[-1] + add_xlim
+        # Check whether this is still ok for xlog=True
+        plt.xlim(xmin, xmax)
 
         # Main-axes settings
         plt.xlabel('$n_{\\rm s}$')
-        plt.ylabel('std(var)')
+        plt.ylabel(stat_notation('std_var'))
         ax.set_yscale('log')
         ax.legend(loc='best', numpoints=1, frameon=False)
         #ax.set_aspect(aspect=1)
@@ -1133,11 +1194,13 @@ class Results:
         plt.ticklabel_format(axis='x', style='sci')
 
         # Dashed vertical line at n_S = n_D
-        if xlog:
-            plt.plot([n_D, n_D], [8e-9, 1e-1], ':', linewidth=1)
+        #if xlog:
+        plt.plot([n_D, n_D], [8e-9, 1e-1], ':', linewidth=1)
 
 	    # Second x-axis
         x_loc, x_lab = plt.xticks()
+        if model == 'wl':
+            x_loc = [2, 5, 10, 20, 40]
         ax2 = plt.twiny()
         x2_loc = []
         x2_lab = []
@@ -1150,6 +1213,8 @@ class Results:
                 else:
                     lab = '{:.2g}'.format(frac)
                 x2_lab.append(lab)
+        ax = plt.gca().xaxis
+        # MKDEBUG: The following does not produce labels for model=='wl'
         plt.xticks(x2_loc, x2_lab)
         ax2.set_xlabel('$p / n_{\\rm s}$', size=self.fs)
         if xlog:
@@ -1157,10 +1222,15 @@ class Results:
             plt.xlim(n_D/xmin, n_D/xmax)
 
         # y-scale
-        plt.ylim(2e-8, 1.5e-2)
+        if model == 'wl':
+            plt.ylim(1e-6, 1e-4)
+        elif model == 'quadratic':
+            plt.ylim(1e-6, 1e-4)
+        else:
+            plt.ylim(2e-8, 1.5e-2)
         # The following causes matplotlib error for xlog==True
-        if not xlog:
-            plt.axes().set_aspect((plt.xlim()[1] - plt.xlim()[0]) / (plt.ylim()[1] - plt.ylim()[0]))
+        #if not xlog:
+            #plt.axes().set_aspect((plt.xlim()[1] - plt.xlim()[0]) / (plt.ylim()[1] - plt.ylim()[0]))
 
 
         ### Output
@@ -1483,18 +1553,43 @@ def Fisher_ana_quad(ell, f_sky, sigma_eps, nbar_rad2, tilt_fid, ampl_fid, cov_mo
         cov = np.diag(D) + cov_SSC
         Psi = np.linalg.inv(cov)
 
+    [da2, db2], det = Fisher_num(dy_dt, dy_dA, Psi)
+
+    return np.sqrt([da2, db2]), det
+
+
+def Fisher_num(y1, y2, Psi):
+    """Fisher numerical
+
+    Return Fisher matrix.
+
+    Parameters
+    ----------
+    y1 : array of float
+        d[y_obs] / d[theta_1]
+    y2 :  array of float
+        d[y_obs] / d[theta_2] 
+    Psi : matrix of float
+        precision matrix
+
+    Returns
+    da2_db2 : array(2) of float
+        variance for theta_1, theta_2
+    det : double
+        Fisher matrix determinant
+    """
+
     # Fisher matrix elements
-    F_11   = np.einsum('i,ij,j', dy_dt, Psi, dy_dt)
-    F_22   = np.einsum('i,ij,j', dy_dA, Psi, dy_dA)
-    F_12   = np.einsum('i,ij,j', dy_dt, Psi, dy_dA)
+    F_11   = np.einsum('i,ij,j', y1, Psi, y1)
+    F_22   = np.einsum('i,ij,j', y2, Psi, y2)
+    F_12   = np.einsum('i,ij,j', y1, Psi, y2)
 
     # Cramer-Rao, invert Fisher
     det = F_11 * F_22 - F_12**2
     da2 = F_22 / det
     db2 = F_11 / det
 
-    return np.sqrt([da2, db2]), det
-
+    return [da2, db2], det
 
 
 def my_string_split(string, num=-1, verbose=False, stop=False):

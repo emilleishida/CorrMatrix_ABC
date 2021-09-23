@@ -9,7 +9,8 @@ arg="$1"
 case "$arg" in
 	"ABC")
 		files[$n]=wl_functions.py
-		cp $base_dir/wl_model.input .
+        n=$((n+1))
+        file[$n]=abc_wl.py
 		;;
 	"PMC")
 		;;
@@ -28,3 +29,10 @@ done
 mv nofz_Euclid_1bin.par nofz.par
 
 ln -sf $base_dir/Cov_SSC/cov_SSC_rel_lin_10.txt cov_SSC_rel_lin.txt
+
+if [[ "$arg" == "ABC" ]]; then
+    mv wl_functions.py toy_model_functions.py
+    mv abc_wl.py ABC_est_cov.py
+    echo "Now create, update, or copy toy model input file, e.g."
+	echo "cp $base_dir/wl_model.input ./toy_model.input"
+fi

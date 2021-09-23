@@ -1,5 +1,5 @@
-#path_to_obs		= dataset1.txt   	           # path to observed data 
-path_to_obs		= None
+path_to_obs		= observation_xy.txt   	           # path to observed data 
+#path_to_obs		= None
 
 param_to_fit 		= tilt ampl                 # parameters to fit
 param_to_sim    	= tilt ampl logellmin logellmax ellmode nell f_sky sigma_eps nbar # parameters needed for simulation
@@ -10,7 +10,8 @@ prior_func	        = flat_prior flat_prior    # one prior function for each para
 simulation_func = model_cov                        # simulation function
 cov_model	= Gauss+SSC_BKS17		   # Covariance
 #cov_model	= Gauss
-distance_func	= linear_dist_data            # distance function
+#distance_func	= linear_dist_data            # distance function
+distance_func   = linear_dist_data_acf2_lin
 
 dist_dim = 1
 
@@ -26,24 +27,24 @@ tilt_prior_par_val        = 0.2  0.4               # values for prior distributi
 ampl_prior_par_name       = pmin pmax              # parameters for prior distribution  
 ampl_prior_par_val        = 0.7  0.9               # values for prior distribution   
 
-tilt_lim                  = 0.2 0.4                # limits for parameters 
+tilt_lim                  = 0.2 0.4                # limits for parameters
 ampl_lim                  = 0.7 0.9                #
 
 # log10 of ell
 logellmin = 1.39794
 logellmax = 3.60206
-ellmode   = lin
+ellmode   = lin					   # quadratic model: use ellmode=lin to match with covariance
 nell      = 10
 
 f_sky           = 0.3636                           # covered sky fraction of survey
-sigma_eps       = 0.31                             # intrinsic complex ellipticity dispersion
+sigma_eps       = 0.31 	  			   # intrinsic complex ellipticity dispersion
 nbar            = 30                               # Number density of galaxies per arcmin^2
 
 nsim            = 800                              #  number of simulations for covariance matrix
 
 M 		= 100				   # number of particle in each particle system
 Mini            = 200                              # number of draws for 1st particle system
-delta 		= 0.0025			   # convergence criteria
+delta 		= 0.00025 			   # convergence criteria
 qthreshold 	= 0.75				   # quantile in distance threshold 
 nruns           = -1                               # Number of runs, if <0 run until convergence criterium is met
 

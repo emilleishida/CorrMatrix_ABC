@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import matplotlib
 
 # The following line is required for the non-framework version of OSX python
@@ -17,7 +19,7 @@ import sys
 
 from scipy.stats import uniform, multivariate_normal
 from statsmodels.stats.weightstats import DescrStatsW
-from covest import *
+from CorrMatrix_ABC.covest import *
 
 from astropy import units
 
@@ -50,6 +52,7 @@ ellmode = Parameters['ellmode'][0]
 if ellmode == 'log':
     # Equidistant in log ell
     logell = np.linspace(logellmin, logellmax, nell)
+    ell = 10**logell
 elif ellmode == 'lin':
     # Equidistant in ell
     ellmin = 10**logellmin
@@ -64,10 +67,6 @@ Parameters['simulation_func'] = model_cov
 ### Distance function
 distance = {'linear_dist_data_diag':      linear_dist_data_diag,
             'linear_dist_data':           linear_dist_data,
-            'linear_dist_data_acf':       linear_dist_data_acf,
-            'linear_dist_data_acf_abs':   linear_dist_data_acf_abs,
-            'linear_dist_data_acf_ratio': linear_dist_data_acf_ratio,
-            'linear_dist_data_acf_ratio_abs': linear_dist_data_acf_ratio_abs,
             'linear_dist_data_acf2_lin': linear_dist_data_acf2_lin,
            }
 distance_str                  = Parameters['distance_func'][0]
@@ -79,8 +78,17 @@ y_true  = model_quad(u, Parameters['ampl'], Parameters['tilt'])
 
 # Covariance
 Parameters['nsim'] = int(Parameters['nsim'][0])
-cov_model          = Parameters['cov_model'][0]
-cov, cov_est       = get_cov_WL(cov_model, 10**logell, y_true, Parameters['nbar'], Parameters['f_sky'], Parameters['sigma_eps'], Parameters['nsim'])
+cov_model = Parameters['cov_model'][0]
+cov, cov_est = get_cov_WL(
+    cov_model,
+    ell,
+    y_true,
+    Parameters['nbar'],
+    Parameters['f_sky'],
+    Parameters['sigma_eps'],
+    Parameters['nsim'],
+    d_SSC=0.75
+)
 
 L = np.linalg.cholesky(cov)
 
@@ -95,7 +103,15 @@ else:
     if path_to_obs != 'None':
         dat = np.loadtxt(path_to_obs)
         y_input = dat[:,1]
-        # MKDEBUG TODO: Check whether logell are consistent
+
+        # Check ell
+        eps_ell = 0.1
+        for ell1, ell2 in zip(ell, 10**dat[:,0]):
+            if np.abs(ell1 - ell2) > eps_ell:
+                raise ValueError(
+                    f'Different ell ({ell1} != {ell2}) between config and observation'
+                )
+
     else:
         y_input  = multivariate_normal.rvs(mean=y_true, cov=cov)
 
@@ -129,7 +145,7 @@ elif distance_str == 'linear_dist_data_acf2_lin':
     # write to disk
     fout = open('xi.txt', 'w')
     for i, x in enumerate(xi):
-        print >>fout, '{} {}'.format(i, x)
+        print('{} {}'.format(i, x), file=fout)
     fout.close()
 
 # Write to disk.
@@ -152,6 +168,8 @@ if len(sys.argv) > 1 and sys.argv[1] == '--only_observation':
 
 
 #############################################
+
+print('Starting ABC sampling...')
 
 #initiate ABC sampler
 sampler_ABC = ABC(params=Parameters)
@@ -178,20 +196,20 @@ weights = np.loadtxt(Parameters['file_root'] + str(sampler_ABC.T) + 'weights.dat
 a_results = DescrStatsW(a_samples, weights=weights, ddof=0)
 b_results = DescrStatsW(b_samples, weights=weights, ddof=0)
 
-a_results.std_mean = weighted_std(a_samples, weights)
-b_results.std_mean = weighted_std(b_samples, weights)
+a_std = weighted_std(a_samples, weights)
+b_std = weighted_std(b_samples, weights)
 
 # store numerical results
 op2 = open('num_res.dat', 'w')
 op2.write('tilt_mean    ' + str(a_results.mean) + '\n')
-op2.write('tilt_std     ' + str(a_results.std_mean) + '\n\n\n')
+op2.write('tilt_std     ' + str(a_std) + '\n\n\n')
 op2.write('ampl_mean    ' + str(b_results.mean) + '\n')
-op2.write('ampl_std     ' + str(b_results.std_mean) + '\n')
+op2.write('ampl_std     ' + str(b_std) + '\n')
 op2.close()
 
-print 'Numerical results:'
-print 'tilt:    ' + str(a_results.mean) + ' +- ' + str(a_results.std_mean)
-print 'ampl:    ' + str(b_results.mean) + ' +- ' + str(b_results.std_mean)
+print('Numerical results:')
+print('tilt:    ' + str(a_results.mean) + ' +- ' + str(a_std))
+print('ampl:    ' + str(b_results.mean) + ' +- ' + str(b_std))
 
 # Write best-fit model to file
 y_bestfit   = model_quad(u, b_results.mean, a_results.mean)

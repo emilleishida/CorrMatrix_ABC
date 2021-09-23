@@ -13,6 +13,7 @@ Functions are copied from ~/python/nicaea.py
 :Package: ABC
 """
 
+import numpy as np
 
 from CorrMatrix_ABC import covest
 
@@ -67,7 +68,6 @@ def run_nicaea(lmin, lmax, nell, par_name=None, par_val=None, verbose=False):
     return err, C_ell_name
 
 
-
 def read_Cl(path, fname):
     """Read and return theoretical power spectrum.
 
@@ -91,7 +91,6 @@ def read_Cl(path, fname):
     c_ell = dat['P_k^00(l)'].data
 
     return ell, c_ell
-
 
 
 def create_link(dst, path_cosmo):
@@ -120,7 +119,6 @@ def create_link(dst, path_cosmo):
             stuff.error('File {} not found at dir {}'.format(dst, path_cosmo))
 
 
-
 def create_links_to_cosmo(path_to_cosmo):
     """Create links to all cosmo files.
 
@@ -142,4 +140,63 @@ def create_links_to_cosmo(path_to_cosmo):
     for dst in files:
         create_link(os.path.basename(dst), path_cosmo)
 
+
+def Fisher_ana_wl(ell, f_sky, sigma_eps, nbar_rad2, Omega_m_fid, sigma_8_fid, cov_model,
+                    ellmode='log', templ_dir='.'):
+    """Return Fisher matrix for weak-lensing model with parameters Omega_m and sigma_8.
+    """
+
+    par_name = ['Omega_m', 'sigma_8']
+    lmin = ell[0]
+    lmax = ell[-1]
+    nell = len(ell)
+
+    h = 0.01
+
+    # Perturbed models for derivatives
+    par_val = [Omega_m_fid, sigma_8_fid + h]
+    err, path_Cell_ps8 = run_nicaea(lmin, lmax, nell, par_name=par_name, par_val=par_val, verbose=True)
+    ell, Cell_ps8 = read_Cl('.', path_Cell_ps8)
+
+    par_val = [Omega_m_fid, sigma_8_fid - h]
+    err, path_Cell_ms8 = run_nicaea(lmin, lmax, nell, par_name=par_name, par_val=par_val, verbose=True)
+    ell, Cell_ms8 = read_Cl('.', path_Cell_ms8)
+
+    par_val = [Omega_m_fid + h, sigma_8_fid]
+    err, path_Cell_pOm = run_nicaea(lmin, lmax, nell, par_name=par_name, par_val=par_val, verbose=True)
+    ell, Cell_pOm = read_Cl('.', path_Cell_pOm)
+
+    par_val = [Omega_m_fid - h, sigma_8_fid]
+    err, path_Cell_mOm = run_nicaea(lmin, lmax, nell, par_name=par_name, par_val=par_val, verbose=True)
+    ell, Cell_mOm = read_Cl('.', path_Cell_mOm)
+
+    # Derivatives
+    dCell_dOm = (Cell_pOm - Cell_mOm) / (2 * h)
+    dCell_ds8 = (Cell_ps8 - Cell_ms8) / (2 * h)
+
+    # Fiducial model for Gaussian covariance
+    par_val = [Omega_m_fid, sigma_8_fid]
+    err, path_Cell = run_nicaea(lmin, lmax, nell, par_name=par_name, par_val=par_val, verbose=True)
+    ell, Cell = read_Cl('.', path_Cell)
+    D = covest.get_cov_Gauss(ell, Cell, f_sky, sigma_eps, nbar_rad2)
+    D = np.diag(D)
+
+    # MKDEBUG TODO: clean up this duplicate code, see Fisher_ana_quad...
+    if cov_model == 'Gauss':
+        Psi = np.diag([1.0 / d for d in D])
+    elif cov_model == 'Gauss+SSC_BKS17':
+        ell_mode = covest.get_ell_mode(ell)
+        if ell_mode == 'log':
+            cov_SSC_base = 'cov_SSC_rel_log'
+        elif ell_mode == 'lin':
+            cov_SSC_base = 'cov_SSC_rel_lin'
+        cov_SSC_path = '{}/{}.txt'.format(templ_dir, cov_SSC_base)
+        func_SSC = 'BKS17'
+        cov_SSC = covest.get_cov_SSC(ell, Cell, cov_SSC_path, 'BKS17')
+        cov = np.diag(D) + cov_SSC
+        Psi = np.linalg.inv(cov)
+
+    [da2, db2], det = covest.Fisher_num(dCell_dOm, dCell_ds8, Psi)
+
+    return np.sqrt([da2, db2]), det
 
