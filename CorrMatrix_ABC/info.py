@@ -23,7 +23,7 @@ __url__ = 'https://github.com/emilleishida/CorrMatrix_ABC'
 __description__ = 'Correlation matrix and ABC'
 
 # Dependencies
-__requires__ = ['numpy', 'scipy', 'astropy', 'statsmodels', 'astropy', 'pystan']
+__requires__ = ['numpy', 'scipy', 'astropy', 'statsmodels', 'pystan']
 
 # Default package properties
 __license__ = 'GNU General Public License (GPL>=3)'

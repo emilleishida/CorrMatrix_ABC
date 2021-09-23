@@ -2,7 +2,6 @@
 .. module :: CorrMatrix_ABC
 
 .. moduleauthor :: Martin Kilbinger
-
 """
 
 __all__ = []
