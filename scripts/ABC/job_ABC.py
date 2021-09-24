@@ -503,7 +503,7 @@ def simulate(n_S_arr, param):
 
                         # Check consistency bw cmd line and cfg file
                         if obs_path_dst == 'None':
-                            raise('path_to_obs is \'None\' but obs_dir given on command line') 
+                            raise ABCCovError('path_to_obs is \'None\' but obs_dir given on command line') 
 
                         # Check existing sub-directory and observation file
                         obs_run_dir = '{}/nr_{}'.format(param.obs_dir, run)
@@ -641,7 +641,16 @@ def main(argv=None):
         return 0
 
     # Initialisation of results
-    fit_ABC = Results(param.par_name, n_n_S, param.n_R, file_base='mean_std_ABC', yscale=['linear', 'log'], fct={})
+    fit_ABC = Results(
+        param.par_name,
+        n_n_S,
+        param.n_R,
+        file_base='mean_std_ABC',
+        yscale=['linear', 'log'],
+        fct={},
+        n_D=param.n_D,
+        n_S_arr=n_S_arr
+    )
 
 
     # Create simulations/write observation
@@ -683,7 +692,7 @@ def main(argv=None):
 
         n_D = int(Parameters['nobs'][0])
         if n_D != param.n_D:
-            raise('nobs in config file ({})) != n_D on command line ({})'.format(n_D, param.n_D))
+            raise ABCCovError('nobs in config file ({})) != n_D on command line ({})'.format(n_D, param.n_D))
         for mode in my_mode:
             dpar_exact, det = Fisher_error_ana(x1, sig2, delta, mode=mode)
             print('input par and exact std:    ', end='')
@@ -691,10 +700,10 @@ def main(argv=None):
                 print('{:.4f}  {:.5f} (mode={})            '.format(p, dpar_exact[i], mode), end='')
             print('')
 
-        print('estim mean std [std(mean)]: ', end='')
+        print('estim mean std [std(mean)] [std(se)]: ', end='')
         for p in param.par_name:
-            mean, std, std2 = fit_ABC.get_mean_std_all(p)
-            print('{:.5f} {:.5f} [{:.5f}]'.format(mean, std2, std), end='   ')
+            mean, std, std2, std_ste = fit_ABC.get_mean_std_all(p, ste=True)
+            print('{:.5f} {:.5f} [{:.5f}] [{:.5f}]'.format(mean, std2, std, std_ste), end='   ')
         print('')
 
     elif param.model in ['quadratic', 'wl']:
@@ -704,48 +713,65 @@ def main(argv=None):
         mean_all = {}
         std_all = {}
         std2_all = {}
-        key_all = ['inp', 'avg']
+        std_ste_all = {}
+        key_all = ['F', 'F_T^2', 'all', 'n_S<=n_D', 'n_S>n_D']
         for i, n_S in enumerate(n_S_arr):
             key = str(n_S)
             key_all.append(key)
 
         dpar_exact, det, n_D = Fisher_ana_quad_wl_read_par(param.templ_dir, param.par, mode=0, model=param.model)
+        if n_D != param.n_D:
+            raise ABCCovError('nobs in config file ({})) != n_D on command line ({})'.format(n_D, param.n_D))
         for i, p in enumerate(param.par_name):
             mean_all[p] = {}
             std_all[p] = {}
             std2_all[p] = {}
-            mean_all[p]['inp'] = param.par[i]
-            std2_all[p]['inp'] = dpar_exact[i]
+            std_ste_all[p] = {}
+
+            # Fisher matrix for mv normal
+            mean_all[p]['F'] = param.par[i]
+            std2_all[p]['F'] = dpar_exact[i]
+            # MKDEBUG TODO:
+            std_ste_all[p]['F'] = 0
+
+            # Fisher matrix for Hotelling T^2, nu->infinity
+            mean_all[p]['F_T^2'] = param.par[i]
+            std2_all[p]['F_T^2'] = dpar_exact[i] * np.sqrt(2)
+            std_ste_all[p]['F_T^2'] = 0
 
         for p in param.par_name:
-            mean_all[p]['avg'], std_all[p]['avg'], std2_all[p]['avg'] = fit_ABC.get_mean_std_all(p)
+            # averages
+            for key_avg in key_all[2:5]:
+                (
+                    mean_all[p][key_avg],
+                    std_all[p][key_avg],
+                    std2_all[p][key_avg],
+                    std_ste_all[p][key_avg]
+                ) = fit_ABC.get_mean_std_all(p, ste=True, n_S_range=key_avg)
+
+            # individual n_S
             mean = fit_ABC.get_mean(p)
             std = fit_ABC.get_std(p)
+            std_ste = fit_ABC.get_std_var(p, ste=True)
             for i, n_S in enumerate(n_S_arr):
                 key = str(n_S)
                 mean_all[p][key] = mean[i]
                 std2_all[p][key] = std[i]
+                std_ste_all[p][key] = std_ste[i]
 
         for key in key_all:
-            print('{:5s}'.format(key), end='')
+            print('{:10s}'.format(key), end='')
             for p in param.par_name:
-                print('{:.5f} {:.5f}'.format(mean_all[p][key], std2_all[p][key]), end='   ')
+                print('{:.4f} {:.4f} {:.5f}'.format(mean_all[p][key], std2_all[p][key], std_ste_all[p][key]), end='   ')
             print('')
-
-    #elif param.model == 'wl':
-
-        #n_D = param.n_D
-        #dpar_exact = np.array([0, 0])
-
-        #print('Printing parameter summaries Not yet implemented.')
 
     else:
         raise ABCCovError('Unknown model \'{}\''.format(param.model))
 
-    fit_ABC.plot_mean_std(n_S_arr, n_D, par={'mean': param.par, 'std': dpar_exact},
+    fit_ABC.plot_mean_std(par={'mean': param.par, 'std': dpar_exact},
                           boxwidth=param.boxwidth, xlog=param.xlog, model=param.model)
     dpar2 = dpar_exact**2
-    fit_ABC.plot_std_var(n_S_arr, n_D, par=dpar2, xlog=param.xlog, model=param.model)
+    fit_ABC.plot_std_var(par=dpar2, xlog=param.xlog, model=param.model, ste=True)
 
     return 0
 
