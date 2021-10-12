@@ -148,12 +148,29 @@ def A(n_S, n_D):
     return A
 
 
+def std_fish_biased_TJ14(n, n_D, par):
+    """Error on variance from the Fisher matrix. From TJ14 (12), with division by the de-biasing factor alpha.
+    """
+
+    n_P = 2  # Number of parameters
+
+    return [np.sqrt(2 * (n_S - n_D + n_P - 1) / (n_S - n_D - 2)**2) / alpha(n_S, n_D) * par for n_S in n]
+
+
 def std_fish_biased_TJK13(n, n_D, par):
     """0th-order error on variance from Fisher matrix with biased inverse covariance estimate.
        From TJK13 (49) with A (27) instead of A_corr (28) in (49).
     """
 
     return [np.sqrt(2 * A(n_S, n_D) / alpha(n_S, n_D)**4 * (n_S - n_D - 1)) * par for n_S in n]
+
+
+def std_fish_deb(n, n_D, par):
+    """Error on variance from Fisher matrix with debiased inverse covariance estimate.
+       Square root of TJK13 (49, 50).
+    """
+
+    return [np.sqrt(2.0 / (n_S - n_D - 4.0)) * par for n_S in n]
 
 
 def par_fish_SH(n, n_D, par):
@@ -325,9 +342,7 @@ def get_cov_Gauss(ell, C_ell, f_sky, sigma_eps, nbar):
     # Total (signal + shot noise) E-mode power spectrum.
     # (The factor of 2 in the shot noise indicates one of two
     # components for the power spectrum, see Joachimi et al. (2008).
-    # MKDEDEBUG 10/05: removed factor 2
 
-    #C_ell_tot = C_ell + sigma_eps**2 / (2 * nbar)
     C_ell_tot = C_ell + sigma_eps**2 / nbar
 
 
@@ -1207,15 +1222,18 @@ class Results:
             y = self.get_std_var(p, ste=ste)
             if y.any():
                 if par is not None:
-                    n_fine = np.arange(n[0], n[-1], len(n)/10.0)
+                    n0 = self.n_D + 2
+                    n_fine = np.arange(n0, n[-1], len(n)/40.0)
                     if 'std_var_TJK13' in self.fct:
-                        plot_add_legend(i==0, n_fine, self.fct['std_var_TJK13'](n_fine, self.n_D, par[i]), \
+                        yy = self.fct['std_var_TJK13'](n_fine, self.n_D, par[i])
+                        plot_add_legend(i==0, n_fine, yy, \
                                         ':', color=color[i], label='TJK13')
                         cols.append(self.fct['std_var_TJK13'](n, self.n_D, par[i]))
                         names.append('TJK13({})'.format(p))
 
                     if 'std_var_TJ14' in self.fct:
-                        plot_add_legend(i==0, n_fine, self.fct['std_var_TJ14'](n_fine, self.n_D, par[i]), \
+                        yy = self.fct['std_var_TJ14'](n_fine, self.n_D, par[i])
+                        plot_add_legend(i==0, n_fine, yy, \
                                         '-.', color=color[i], label='TJ14', linewidth=2)
                         cols.append(self.fct['std_var_TJ14'](n, self.n_D, par[i]))
                         names.append('TJ14({})'.format(p))
@@ -1255,7 +1273,6 @@ class Results:
         plt.ticklabel_format(axis='x', style='sci')
 
         # Dashed vertical line at n_S = n_D
-        #if xlog:
         plt.plot([self.n_D, self.n_D], [8e-9, 1e-1], ':', linewidth=1)
 
 	    # Second x-axis
@@ -1284,7 +1301,7 @@ class Results:
 
         # y-scale
         if model == 'wl':
-            plt.ylim(1e-6, 1e-4)
+            plt.ylim(1e-6, 1e-2)
         elif model == 'quadratic':
             if ste:
                 plt.ylim(1e-5, 1e-2)
@@ -1293,10 +1310,6 @@ class Results:
                 plt.ylim(1e-6, 1e-4)
         else:
             plt.ylim(2e-8, 1.5e-2)
-        # The following causes matplotlib error for xlog==True
-        #if not xlog:
-            #plt.axes().set_aspect((plt.xlim()[1] - plt.xlim()[0]) / (plt.ylim()[1] - plt.ylim()[0]))
-
 
         ### Output
         if ste:

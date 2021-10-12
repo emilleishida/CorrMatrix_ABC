@@ -647,9 +647,9 @@ def main(argv=None):
         param.n_R,
         file_base='mean_std_ABC',
         yscale=['linear', 'log'],
-        fct={},
         n_D=param.n_D,
-        n_S_arr=n_S_arr
+        n_S_arr=n_S_arr,
+        fct={'std_var_TJ14' : std_fish_deb_TJ14}
     )
 
 
@@ -702,7 +702,7 @@ def main(argv=None):
 
         print('estim mean std [std(mean)] [std(se)]: ', end='')
         for p in param.par_name:
-            mean, std, std2, std_ste = fit_ABC.get_mean_std_all(p, ste=True)
+            mean, std, std2, std_ste = fit_ABC.get_mean_std_all(p, ste=False)
             print('{:.5f} {:.5f} [{:.5f}] [{:.5f}]'.format(mean, std2, std, std_ste), end='   ')
         print('')
 
@@ -731,8 +731,13 @@ def main(argv=None):
             # Fisher matrix for mv normal
             mean_all[p]['F'] = param.par[i]
             std2_all[p]['F'] = dpar_exact[i]
-            # MKDEBUG TODO:
-            std_ste_all[p]['F'] = 0
+
+            # Find smallest n_S>n_D
+            for n_S in n_S_arr:
+                if n_S > n_D:
+                    break
+            x = std_fish_deb_TJ14([n_S], n_D, dpar_exact[i]**2)
+            std_ste_all[p]['F'] = x[0]
 
             # Fisher matrix for Hotelling T^2, nu->infinity
             mean_all[p]['F_T^2'] = param.par[i]
@@ -747,12 +752,12 @@ def main(argv=None):
                     std_all[p][key_avg],
                     std2_all[p][key_avg],
                     std_ste_all[p][key_avg]
-                ) = fit_ABC.get_mean_std_all(p, ste=True, n_S_range=key_avg)
+                ) = fit_ABC.get_mean_std_all(p, ste=False, n_S_range=key_avg)
 
             # individual n_S
             mean = fit_ABC.get_mean(p)
             std = fit_ABC.get_std(p)
-            std_ste = fit_ABC.get_std_var(p, ste=True)
+            std_ste = fit_ABC.get_std_var(p, ste=False)
             for i, n_S in enumerate(n_S_arr):
                 key = str(n_S)
                 mean_all[p][key] = mean[i]
@@ -762,7 +767,7 @@ def main(argv=None):
         for key in key_all:
             print('{:10s}'.format(key), end='')
             for p in param.par_name:
-                print('{:.4f} {:.4f} {:.5f}'.format(mean_all[p][key], std2_all[p][key], std_ste_all[p][key]), end='   ')
+                print('{:.4f} {:.4f} {:.1e}'.format(mean_all[p][key], std2_all[p][key], std_ste_all[p][key]), end='   ')
             print('')
 
     else:
@@ -771,7 +776,7 @@ def main(argv=None):
     fit_ABC.plot_mean_std(par={'mean': param.par, 'std': dpar_exact},
                           boxwidth=param.boxwidth, xlog=param.xlog, model=param.model)
     dpar2 = dpar_exact**2
-    fit_ABC.plot_std_var(par=dpar2, xlog=param.xlog, model=param.model, ste=True)
+    fit_ABC.plot_std_var(par=dpar2, xlog=param.xlog, model=param.model, ste=False)
 
     return 0
 

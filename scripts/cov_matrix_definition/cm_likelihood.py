@@ -51,23 +51,6 @@ def par_fish(n, n_D, par):
     return [np.sqrt(alpha_new(n_S, n_D)) * par for n_S in n]
  
 
-def std_fish_deb(n, n_D, par):
-    """Error on variance from Fisher matrix with debiased inverse covariance estimate.
-       Square root of TJK13 (49, 50).
-    """
-
-    return [np.sqrt(2.0 / (n_S - n_D - 4.0)) * par for n_S in n]
-
-
-def std_fish_biased_TJ14(n, n_D, par):
-    """Error on variance from the Fisher matrix. From TJ14 (12), with division by the de-biasing factor alpha.
-    """
-
-    n_P = 2  # Number of parameters
-
-    return [np.sqrt(2 * (n_S - n_D + n_P - 1) / (n_S - n_D - 2)**2) / alpha(n_S, n_D) * par for n_S in n]
-
-
 def params_default():
     """Set default parameter values.
 
