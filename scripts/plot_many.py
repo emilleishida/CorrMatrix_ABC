@@ -13,15 +13,10 @@ import re
 import subprocess
 import copy
 
-import shlex
-from shutil import copy2
-
 from optparse import OptionParser
-from optparse import OptionGroup
 
 import numpy as np
 import collections
-from scipy.stats import norm, uniform
 
 from CorrMatrix_ABC.covest import *
 
@@ -431,21 +426,21 @@ def main(argv=None):
     if options.verbose:
         log_command(argv, name='sys.stderr')
 
-
+    # Read sampling results
     fit_ABC = read_fit(param.par_name, param.ABC, 'ABC',
                        fct={'mean': no_bias}, flab={'mean': 'true value'}, verbose=param.verbose)
     fit_MCMC_norm = read_fit(param.par_name, param.MCMC_norm, 'MCMC $N$',
                              fct={'std': no_bias, 'std_var': std_fish_deb_TJ14},
-                             flab={'std': 'Fisher($N$) ', 'std_var': 'TJ14'}, verbose=param.verbose)
+                             flab={'std': 'Fisher($\\cal N$) ', 'std_var': 'TJ14'}, verbose=param.verbose)
     fit_MCMC_T2 = read_fit(param.par_name, param.MCMC_T2, 'MCMC $T^2$',
                            fct={'std': par_fish_SH}, flab={'std': 'Fisher$(T^2)$'}, verbose=param.verbose)
 
     mode = -1
     delta = 200
     dpar_exact, det = Fisher_error_ana(np.zeros(param.n_D), param.sig2, delta, mode=mode)
-    print('input par and exact std:          ', end='')
+    print('input par and normal std:          ', end='')
     for i, p in enumerate(param.par):
-        print('{:.4f}  +- {:.5f} (mode={})            '.format(p, dpar_exact[i], mode), end='')
+        print('{:.4f}  +- {:.5f}     '.format(p, dpar_exact[i], mode), end='')
     print('')
 
     fits = [fit_ABC, fit_MCMC_norm, fit_MCMC_T2]
