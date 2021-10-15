@@ -1,1 +1,0 @@
-../../../scripts/ABC/templates/ABC_est_cov.py

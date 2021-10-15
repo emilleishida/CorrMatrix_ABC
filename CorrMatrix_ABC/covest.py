@@ -224,7 +224,7 @@ def get_n_S_R_from_fit_file(file_base, npar=2):
             raise
 
     n_S = dat['n_S']
-    n_R   = (len(dat.dtype) - 1) / 2 / npar
+    n_R   = int((len(dat.dtype) - 1) / 2 / npar)
 
     return n_S, n_R
 

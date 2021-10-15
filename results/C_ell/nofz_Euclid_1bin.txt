@@ -1,1 +1,0 @@
-/local/home/mkilbing/astro/repositories/github/CorrMatrix_ABC/scripts/ABC/WL/nofz_Euclid_1bin.txt
