@@ -89,10 +89,13 @@ for par in pars:
     if par in Parameters:
         par_name.append(par)
         par_val.append(Parameters[par])
-nicaea_ABC.run_nicaea(10**logellmin, 10**logellmax,
-                      nell,
-                      par_name=par_name, par_val=par_val,
-                      verbose=True)
+nicaea_ABC.run_nicaea(
+    10**logellmin,
+    10**logellmax,
+    nell,
+    par_name=par_name,
+    par_val=par_val,
+    verbose=True)
 
 # Read nicaea output'
 pkappa_name_list = ['P_kappa']
@@ -148,7 +151,7 @@ np.savetxt('y_input.txt', np.array([10**logell, y_input]).transpose())
 
 # add to parameter dictionary
 Parameters['dataset1'] = np.array([[logell[i], y_input[i]] for i in range(nell)])
-np.savetxt('dataset1.txt', Parameters['dataset1'], header='# log(ell) C_ell')
+np.savetxt('dataset1.txt', Parameters['dataset1']) #, header='# log(ell) C_ell')
 
 # add observed catalog to simulation parameters
 Parameters['simulation_input']['dataset1'] = Parameters['dataset1']
@@ -171,6 +174,7 @@ elif distance_str == 'linear_dist_data_acf2_lin':
 
     # write to disk
     fout = open('xi.txt', 'w')
+    print('# log(ell) C_ell', file=fout)
     for i, x in enumerate(xi):
         print('{} {}'.format(i, x), file=fout)
     fout.close()

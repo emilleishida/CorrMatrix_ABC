@@ -429,11 +429,13 @@ def main(argv=None):
     # Read sampling results
     fit_ABC = read_fit(param.par_name, param.ABC, 'ABC',
                        fct={'mean': no_bias}, flab={'mean': 'true value'}, verbose=param.verbose)
+                             # fct={'std': no_bias, 'std_var': std_fish_deb_TJ14},
     fit_MCMC_norm = read_fit(param.par_name, param.MCMC_norm, 'MCMC $N$',
-                             fct={'std': no_bias, 'std_var': std_fish_deb_TJ14},
-                             flab={'std': 'Fisher($\\cal N$) ', 'std_var': 'TJ14'}, verbose=param.verbose)
+                             fct={'std': no_bias, 'std_var': std_fish_Gupta}, #std_fish_deb},
+                             flab={'std': r'$\hat{\bm{\mathrm{F}}}$', 'std_var': r'$\hat{\bm{\mathrm{F}}}$'},
+                             verbose=param.verbose)
     fit_MCMC_T2 = read_fit(param.par_name, param.MCMC_T2, 'MCMC $T^2$',
-                           fct={'std': par_fish_SH}, flab={'std': 'Fisher$(T^2)$'}, verbose=param.verbose)
+                           fct={'std': par_fish_SH}, flab={'std': r'$\hat{\bm{\mathrm{F}}}_{T^2}$'}, verbose=param.verbose)
 
     mode = -1
     delta = 200

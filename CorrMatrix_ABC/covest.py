@@ -173,11 +173,22 @@ def std_fish_deb(n, n_D, par):
     return [np.sqrt(2.0 / (n_S - n_D - 4.0)) * par for n_S in n]
 
 
+def std_fish_Gupta(n, n_D, par):
+    """Error on variance from Fisher matrix with debiased inverse covariance estimate.
+       Following Gupta & Nagar (2000), Theorem 3.3.13
+    """
+
+    n_P = 2
+
+    return [np.sqrt(2.0 / (n_S - n_D + n_P - 1)) * par for n_S in n]
+
+
+
 def par_fish_SH(n, n_D, par):
     """Parameter RMS from Fisher matrix esimation of SH likelihood.
     """
 
-    return [np.sqrt(alpha_new(n_S, n_D) * 2.0 * n / (n - 1.0)) * par for n_S in n]
+    return [np.sqrt(alpha_new(n_S, n_D) * 2.0 * n_S / (n_S - 1.0)) * par for n_S in n]
 
 
 def coeff_TJ14(n_S, n_D, n_P):
@@ -640,9 +651,9 @@ def stat_notation(stat):
     if stat == 'mean':
         return '$\\bar\\theta$'
     elif stat == 'std':
-        return 'SD$(\\bar\\theta)$'
+        return 'SE$(\\bar\\theta)$'
     elif stat == 'std_var':
-        return 'SE$[$SD$(\\hat{\\theta})]$'
+        return 'SD$[$Var$(\\hat{\\theta})]$'
     else:
         raise ABCCovError(f'Invalid statistical function name f{stat}')
 
@@ -1017,7 +1028,10 @@ class Results:
         plot_init(self.n_D, n_R, fs=self.fs)
 
         box_width = set_box_width(boxwidth, xlog, n)
-        rotation = 'vertical'
+        if model == 'affine':
+            rotation = 'vertical'
+        else:
+            rotation = 'horizontal'
 
         if xlog == True:
             fac_xlim = 1.6
@@ -1025,19 +1039,22 @@ class Results:
             xmax = n[-1]*fac_xlim
         else:
             fac_xlim   = 1.05
-            # NEW 3/9/2019 for xcorr plots, n_S is actually r
-            #if n[0] > 10:
-                #xmin = (n[0]-5)/fac_xlim**5
-            #else:
-                #xmin = (n[0]-0.5)/fac_xlim**5
             xmin = (n[0]-5)/fac_xlim**5
             xmax = n[-1]*fac_xlim
+
+        leg2 = {}
+        lab2 = {}
+        loc = {'mean': 'center', 'std': 'upper'}
 
         # Set the number of required subplots (1 or 2)
         n_panel = 1
 
         j_panel = {}
         for j, which in enumerate(['mean', 'std']):
+
+            leg2[which] = []
+            lab2[which] = []
+
             for i, p in enumerate(self.par_name):
                 y = getattr(self, which)[p]   # mean or std for parameter p
                 if y.any():
@@ -1062,17 +1079,22 @@ class Results:
                     ax = plt.subplot(1, n_panel, j_panel[which]) #, label=f'{which}{p}')
 
                     if y.shape[1] > 1:
-                        bplot = plt.boxplot(y.transpose(), positions=n, sym='.', widths=width(n, box_width))
+                        bplot = plt.boxplot(y.transpose(), positions=n, sym='.', widths=width(n, box_width), patch_artist=True)
                         for key in bplot:
                             plt.setp(bplot[key], color=color[i], linewidth=2)
                         plt.setp(bplot['whiskers'], linestyle='-', linewidth=2)
+                        plt.setp(bplot['boxes'], facecolor=lighten_color(color[i], amount=0.25))
+                        leg2[which].append(bplot['boxes'][0])
                     else:
-                        plt.plot(n, y.mean(axis=1), marker[i], ms=markersize[i], color=color[i],
-                                 linestyle=linestyle[i])
+                        pl = plt.plot(n, y.mean(axis=1), marker[i], ms=markersize[i], color=color[i],
+                                      linestyle=linestyle[i])
+                        leg2[which].append(pl)
+                    lab2[which].append(fr'$\bar {par_symbol(p, eq=False)}$')
 
                     if xlog == True:
                         ax.set_xscale('log')
 
+                    # Define high-resolution x array for smooth lines
                     if len(n) > 1:
                         n_fine = np.arange(n[0], n[-1]+len(n)/20.0, len(n)/20.0)
                     else:
@@ -1080,14 +1102,27 @@ class Results:
                         x1 = n[0] * 4
                         n_fine = np.arange(x0, x1, 10)
                     my_par = par[which]
+                    p_sym = par_symbol(p, eq=False)
+
+                    # True input or Fisher-matrix normal
+                    if which == 'mean':
+                        label = f'true ${p_sym}$'
+                    else:
+                        label=rf'$\hat{{\bm{{\mathrm F}}}}({p_sym})$'
+                    plt.plot(n_fine, no_bias(n_fine, self.n_D, my_par[i]), '{}{}'.format(color[i], linestyle[i]),
+			                 label=label, linewidth=2)
+
+                    # Additional theoretical line
                     if self.fct is not None and which in self.fct:
-                        # Define high-resolution array for smoother lines
-                        plt.plot(n_fine, self.fct[which](n_fine, self.n_D, my_par[i]), '{}{}'.format(color[i],
-                                 linestyle[i]), linewidth=2)
+                        plt.plot(
+                            n_fine,
+                            self.fct[which](n_fine, self.n_D, my_par[i]),
+                            '{}{}'.format(color[i], linestyle[i]),
+                            label=rf'$\hat{{\bm{{\mathrm F}}}}_{{T^2}}({p_sym})$',
+                            linewidth=1
+                        )
 
-                    plt.plot(n_fine, no_bias(n_fine, self.n_D, my_par[i]), '{}{}'.format(color[i], linestyle[i]), \
-			                 label=par_symbol(p), linewidth=2)
-
+                    
         # Finalize plot
         for j, which in enumerate(['mean', 'std']):
             if which in j_panel:
@@ -1101,11 +1136,14 @@ class Results:
 
                 # Main-axes settings
                 plt.xlabel('$n_{{\\rm s}}$')
-                #plt.ylabel('<{}>'.format(which))
                 ylabel = stat_notation(which)
                 plt.ylabel(ylabel)
                 ax.set_yscale(self.yscale[j])
-                ax.legend(frameon=False)
+                leg = ax.legend(loc=f'{loc[which]} right', frameon=False)
+                plt.gca().add_artist(leg)
+                if which in leg2:
+                    ax.legend(leg2[which], lab2[which], loc=f'{loc[which]} left', frameon=False)
+                
                 plt.xlim(xmin, xmax)
 
                 # x-ticks
@@ -1144,8 +1182,9 @@ class Results:
                         x2_lab.append(lab)
                 plt.xticks(x2_loc, x2_lab)
                 ax2.set_xlabel('$p / n_{\\rm s}$', size=self.fs)
-                for tick in ax2.get_xticklabels():
-                    tick.set_rotation(90)
+                if model == 'affine':
+                    for tick in ax2.get_xticklabels():
+                        tick.set_rotation(90)
                 plt.xlim(flinlog(xmin), flinlog(xmax))
 
                 plot_sth = True
@@ -1198,10 +1237,12 @@ class Results:
         n_R = self.mean[self.par_name[0]].shape[1]
 
         color = ['b', 'g']
+        linestyle = ['-', '--']
         marker = ['o', 's']
 
         plot_sth = False
-        plot_init(self.n_D, n_R, fs=self.fs, title=title)
+        fs = self.fs * 0.9
+        plot_init(self.n_D, n_R, fs=fs, title=title, figsize=(4, 4.6))
 
         # For output ascii file
         cols  = [n]
@@ -1226,15 +1267,15 @@ class Results:
                     n_fine = np.arange(n0, n[-1], len(n)/40.0)
                     if 'std_var_TJK13' in self.fct:
                         yy = self.fct['std_var_TJK13'](n_fine, self.n_D, par[i])
-                        plot_add_legend(i==0, n_fine, yy, \
-                                        ':', color=color[i], label='TJK13')
+                        plot_add_legend(True, n_fine, yy, ':', color=color[i], label='TJK13')
                         cols.append(self.fct['std_var_TJK13'](n, self.n_D, par[i]))
                         names.append('TJK13({})'.format(p))
 
                     if 'std_var_TJ14' in self.fct:
                         yy = self.fct['std_var_TJ14'](n_fine, self.n_D, par[i])
-                        plot_add_legend(i==0, n_fine, yy, \
-                                        '-.', color=color[i], label='TJ14', linewidth=2)
+                        p_sym = par_symbol(p, eq=False)
+                        plot_add_legend(True, n_fine, yy, linestyle=linestyle[i],
+                                        color=color[i], label=fr'$\hat{{\bm{{\mathrm F}}}}({p_sym})$', linewidth=2)
                         cols.append(self.fct['std_var_TJ14'](n, self.n_D, par[i]))
                         names.append('TJ14({})'.format(p))
 
@@ -1254,7 +1295,7 @@ class Results:
             flinlog = lambda x: np.log(x)
         else:
             flinlog = lambda x: x
-            add_xlim = 10
+            add_xlim = 5
             xmin = max(n[0] - add_xlim, 0)
             xmax = n[-1] + add_xlim
         # Check whether this is still ok for xlog=True
@@ -1301,13 +1342,13 @@ class Results:
 
         # y-scale
         if model == 'wl':
-            plt.ylim(1e-6, 1e-2)
+            plt.ylim(1e-6, 1e-3)
         elif model == 'quadratic':
             if ste:
                 plt.ylim(1e-5, 1e-2)
                 pass
             else:
-                plt.ylim(1e-6, 1e-4)
+                plt.ylim(1e-7, 1e-4)
         else:
             plt.ylim(2e-8, 1.5e-2)
 
@@ -1342,9 +1383,12 @@ def set_box_width(boxwidth, xlog, n):
     return box_width
 
 
-def plot_init(n_D, n_R, title=False, fs=16):
+def plot_init(n_D, n_R, title=False, fs=16, figsize=None):
 
-    fig = plt.figure()
+    if figsize:
+        fig = plt.figure(figsize=figsize)
+    else:
+        fig = plt.figure()
     fig.subplots_adjust(bottom=0.16)
 
     ax = plt.gca()
@@ -1353,6 +1397,12 @@ def plot_init(n_D, n_R, title=False, fs=16):
 
     plt.tick_params(axis='both', which='major', labelsize=fs)
 
+    rc_fonts = {
+    "text.usetex": True,
+    'mathtext.default': 'regular',
+    'text.latex.preamble': [r"""\usepackage{bm}"""],
+    }
+    plt.rcParams.update(rc_fonts)
     plt.rcParams.update({'figure.autolayout': True})
 
     if n_R>0 and title:
