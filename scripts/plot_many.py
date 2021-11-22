@@ -343,7 +343,7 @@ def plot_box(fits, n_D, par, dy, which, boxwidth=None, xlog=False, ylog=False,
                     pl = ax.plot(n_fine, fit.fct[which](n_fine, n_D, par[i]) + no_bias(n_fine, n_D, sig_var_noise[i]),
                             color=color[k], linestyle='dotted')
                     leg2.append(pl[0])
-                    labels2.append('{} + $\\sigma_{{\\mathrm{{n}}}}$'.format(fit.flab[which]))
+                    labels2.append('{} + $\\sigma_{{\\mathrm{{noise}}}}$'.format(fit.flab[which]))
 
 
         # Dashed vertical line at n_S = n_D
