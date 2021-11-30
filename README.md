@@ -17,6 +17,13 @@ python setup.py install
 
 The following sections shows how to produce results from the paper (in parts), and to reproduce some of the figures.
 
+## Covariance and precision matrix estimators
+
+Fig. 2 illustrates the biases and their prediction from (inverse) Wishart distributions of the (inverse) covariance matrix estimators.
+This figure is reproduces with the jupyter notebook [wishart.ipynb](cov_matrix_definition/wishart.ipynb).
+
+The following three examples correspond to the results in Sections 4.2, 4.3, and 4.4.
+
 ## Example 1
 
 Affine function with diagonal covariance matrix.
