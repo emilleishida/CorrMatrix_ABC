@@ -15,9 +15,7 @@ conda activate corrABC
 python setup.py install
 ```
 
-The main program for Fisher-matrix computation and MCMC sampling of the first
-two example models
-from the paper is `cm_likelihood.py`. Run `cm_likelihood.py --help` to see the options.
+The following sections shows how to produce results from the paper (in parts), and to reproduce some of the figures.
 
 ## Example 1
 
