@@ -1638,7 +1638,6 @@ def Fisher_ana_quad(ell, f_sky, sigma_eps, nbar_rad2, tilt_fid, ampl_fid, cov_mo
 
             Delta_ln_ell = np.diff(ell) / (ell[:-1]/2 + ell[1:]/2)
             Delta_ln_ell = np.append(Delta_ln_ell, Delta_ln_ell[-1])
-            #Delta_ln_ell_bar = Delta_ln_ell.mean()
             Delta_ell = Delta_ln_ell * ell
         else:
             # Delta_ell = const
