@@ -13,17 +13,12 @@ import re
 import subprocess
 import copy
 
-import shlex
-from shutil import copy2
-
 from optparse import OptionParser
-from optparse import OptionGroup
 
 import numpy as np
 import collections
-from scipy.stats import norm, uniform
 
-from covest import *
+from CorrMatrix_ABC.covest import *
 
 
 def params_default():
@@ -49,6 +44,7 @@ def params_default():
         model = 'affine',
         sig2 = 5.0,
         verbose = True,
+        boxwidth = 0.15,
     )
 
     return p_def
@@ -81,7 +77,7 @@ def parse_options(p_def):
     parser.add_option('-P', '--par_name', dest='spar_name', type='string', default=p_def.spar_name,
         help='Parameter names, default=\'{}\''.format(p_def.spar_name))
     parser.add_option('-M', '--model', dest='model', type='string', default=p_def.model,
-        help='Model, one in \'affine\', \'affine_off_diag\', \'quadratic\', default=\'{}\''.format(p_def.model))
+        help='Model, one in \'affine\', \'quadratic\', default=\'{}\''.format(p_def.model))
     parser.add_option('-s', '--sig2', dest='sig2', type='float', default=p_def.sig2,
         help='sigma^2, diagonal on covariance matrix, default=\'{}\''.format(p_def.sig2))
 
@@ -95,8 +91,8 @@ def parse_options(p_def):
     parser.add_option('', '--sig_var_noise', dest='sig_var_noise', type='string',
         help='MCMC \'noise\' to be subtracted from sigma(var) plots for fits, default=None')
 
-    parser.add_option('-b', '--boxwidth', dest='boxwidth', type='float', default=None,
-        help='box width for box plot, default=None, determined from n_S array')
+    parser.add_option('-b', '--boxwidth', dest='boxwidth', type='float', default=p_def.boxwidth,
+        help=f'box width for box plot, default={p_def.boxwidth}, determined from n_S array')
 
     parser.add_option('-v', '--verbose', dest='verbose', action='store_true', help='verbose output')
 
@@ -198,7 +194,7 @@ def read_fit(par_name, fbase, label, fct=None, flab=None, verbose=False):
     return fit
 
 
-def plot_box(fits, n_D, par, dpar, which, boxwidth=None, xlog=False, ylog=False,
+def plot_box(fits, n_D, par, dy, which, boxwidth=None, xlog=False, ylog=False,
              sig_var_noise=None, model='affine', verbose=False):
     """Create box plot of various fits as function of number of realisations
 
@@ -210,7 +206,7 @@ def plot_box(fits, n_D, par, dpar, which, boxwidth=None, xlog=False, ylog=False,
         dimension of data vector
     par: array of float
         input parameter values
-    par: array of float
+    dy: array of float
         input parameter y range around mean
     boxwidth: float, optional
         box width for box plots, default: None, width is determined from n
@@ -219,7 +215,7 @@ def plot_box(fits, n_D, par, dpar, which, boxwidth=None, xlog=False, ylog=False,
     ylog: bool, optional
         logarithmic y-axis, default False
     model: string, optional, default='affine'
-        model, one in 'affine', 'affine_off_diag', or 'quadratic'
+        model, one in 'affine'  or 'quadratic'
     verbose: bool, optional, default=False
         verbose output if True
 
@@ -275,7 +271,7 @@ def plot_box(fits, n_D, par, dpar, which, boxwidth=None, xlog=False, ylog=False,
 
             # Get x- and y-values
             n = np.array(fit.n_S_arr)
-            if which is not 'std_var':
+            if which != 'std_var':
                 y = np.array(getattr(fit, which)[p])
             else:
                 y = fit.get_std_var(p)
@@ -290,13 +286,12 @@ def plot_box(fits, n_D, par, dpar, which, boxwidth=None, xlog=False, ylog=False,
             dn = np.array(dn)
 
             # Exclude points to increase visibility
-            if 1:
-                cnd = (n!=1257) & (n!=2703) & (n!=5811)
-                idxl = np.where(cnd)
-                rem = n[np.where(np.invert(cnd))]
-                n = n[idxl]
-                y = y[idxl]
-                dn = dn[idxl]
+            cnd = (n!=1257) & (n!=2703) & (n!=5811)
+            idxl = np.where(cnd)
+            rem = n[np.where(np.invert(cnd))]
+            n = n[idxl]
+            y = y[idxl]
+            dn = dn[idxl]
 
             if i==0 and which=='mean' and verbose:
                 print('{}: '.format(fit.label), end='')
@@ -305,7 +300,7 @@ def plot_box(fits, n_D, par, dpar, which, boxwidth=None, xlog=False, ylog=False,
                 print('{} removed: '.format(fit.label), end='')
                 print(rem)
 
-            if which is not 'std_var':
+            if which != 'std_var':
                 bplot = ax.boxplot(y.transpose(), 0, '{}.'.format(color[k]), positions=n*dn, widths=width(n, box_width), patch_artist=True)
                 for key in bplot:
                     plt.setp(bplot[key], color=color[k], linewidth=1)
@@ -348,7 +343,7 @@ def plot_box(fits, n_D, par, dpar, which, boxwidth=None, xlog=False, ylog=False,
                     pl = ax.plot(n_fine, fit.fct[which](n_fine, n_D, par[i]) + no_bias(n_fine, n_D, sig_var_noise[i]),
                             color=color[k], linestyle='dotted')
                     leg2.append(pl[0])
-                    labels2.append('{} + $\\sigma_{{\\mathrm{{n}}}}$'.format(fit.flab[which]))
+                    labels2.append('{} + $\\sigma_{{\\mathrm{{noise}}}}$'.format(fit.flab[which]))
 
 
         # Dashed vertical line at n_S = n_D
@@ -356,18 +351,15 @@ def plot_box(fits, n_D, par, dpar, which, boxwidth=None, xlog=False, ylog=False,
         ax.plot([n_D, n_D], [1e-5, 1e2], 'k:', linewidth=1)
 
         # Labels
-        if model != 'affine_off_diag':
-            ax.set_xlabel('$n_{{\\rm s}}$', fontsize=fit.fs)
-        else:
-            ax.set_xlabel('$r$')
+        ax.set_xlabel('$n_{{\\rm s}}$', fontsize=fit.fs)
         if which == 'mean':
-            s = '${}$'.format(p)
+            s = rf'$\bar {p}$'
         elif which == 'std':
-            s  = '$\sigma_{{{}}}$'.format(p)
+            s = rf'SE$({p})$'
         else:
-            s = '$\sigma(\sigma^2_{{{}}})$'.format(p)
+            s = rf'SD$[$Var$({p})]$'
         plt.ylabel(s, fontsize=fit.fs)
-        Leg2 = plt.legend(leg2, labels2, frameon=False, loc='best')
+        Leg2 = plt.legend(leg2, labels2, frameon=False, loc='upper right')
         plt.gca().add_artist(Leg2)
         ax.legend(leg, labels, loc='upper left', frameon=False)
 
@@ -386,13 +378,13 @@ def plot_box(fits, n_D, par, dpar, which, boxwidth=None, xlog=False, ylog=False,
 
         if not ylog:
             ax.set_yscale('linear')
-            miny = par[i] - dpar[i]
+            miny = par[i] - dy[i]
             if which == 'std':
                 miny = max(miny, 0)
-            ax.set_ylim(miny, par[i] + dpar[i])
+            ax.set_ylim(miny, par[i] + dy[i])
         else:
             ax.set_yscale('log')
-            ax.set_ylim(par[i] / dpar[i], par[i] * dpar[i])
+            ax.set_ylim(par[i] / dy[i], par[i] * dy[i])
 
         plt.xticks(x_loc, x_lab, rotation=rotation)
 
@@ -402,29 +394,23 @@ def plot_box(fits, n_D, par, dpar, which, boxwidth=None, xlog=False, ylog=False,
         x2_loc = []
         x2_lab = []
         for i, n_S in enumerate(x_loc):
-            #if n_S < n_D or i%2==0:
-            if 1:
-                x2_loc.append(flinlog(n_S))
-                frac = float(n_D) / float(n_S)
-                if frac > 100:
-                    lab = '{:.0f}'.format(frac)
-                else:
-                    lab = '{:.2g}'.format(frac)
-                x2_lab.append(lab)
+            x2_loc.append(flinlog(n_S))
+            frac = float(n_D) / float(n_S)
+            if frac > 100:
+                lab = '{:.0f}'.format(frac)
+            else:
+                lab = '{:.2g}'.format(frac)
+            x2_lab.append(lab)
         ax2.set_xticks(x2_loc)
         ax2.set_xticklabels(x2_lab)
         ax2.set_xlabel('$p / n_{\\rm s}$', size=fit.fs)
         if xlog:
-            ax2.set_xlim(flinlog(x_loc[0] / fac_xlim), flinlog(x_loc[-1] * fac_xlim)) #x2_loc[0] / 1.3, x2_loc[-1] * 1.3)
+            ax2.set_xlim(flinlog(x_loc[0] / fac_xlim), flinlog(x_loc[-1] * fac_xlim))
 
         fig.savefig('{}_{}.pdf'.format(which, p))
 
 
-# Main program
 def main(argv=None):
-    """Main program.
-    """
-
 
     p_def = params_default()
 
@@ -440,21 +426,23 @@ def main(argv=None):
     if options.verbose:
         log_command(argv, name='sys.stderr')
 
-
+    # Read sampling results
     fit_ABC = read_fit(param.par_name, param.ABC, 'ABC',
                        fct={'mean': no_bias}, flab={'mean': 'true value'}, verbose=param.verbose)
-    fit_MCMC_norm = read_fit(param.par_name, param.MCMC_norm, 'MCMC normal',
-                             fct={'std': no_bias, 'std_var': std_fish_deb_TJ14},
-                             flab={'std': 'Fisher(normal) ', 'std_var': 'TJ14'}, verbose=param.verbose)
+                             # fct={'std': no_bias, 'std_var': std_fish_deb_TJ14},
+    fit_MCMC_norm = read_fit(param.par_name, param.MCMC_norm, 'MCMC $N$',
+                             fct={'std': no_bias, 'std_var': std_fish_Gupta}, #std_fish_deb},
+                             flab={'std': r'$\hat{\bm{\mathrm{F}}}$', 'std_var': r'$\hat{\bm{\mathrm{F}}}$'},
+                             verbose=param.verbose)
     fit_MCMC_T2 = read_fit(param.par_name, param.MCMC_T2, 'MCMC $T^2$',
-                           fct={'std': par_fish_SH}, flab={'std': 'Fisher($T^2$'}, verbose=param.verbose)
+                           fct={'std': par_fish_SH}, flab={'std': r'$\hat{\bm{\mathrm{F}}}_{T^2}$'}, verbose=param.verbose)
 
     mode = -1
     delta = 200
-    dpar_exact, det = Fisher_error_ana(np.zeros(param.n_D), param.sig2, 0.0, delta, mode=mode)
-    print('input par and exact std:          ', end='')
+    dpar_exact, det = Fisher_error_ana(np.zeros(param.n_D), param.sig2, delta, mode=mode)
+    print('input par and normal std:          ', end='')
     for i, p in enumerate(param.par):
-        print('{:.4f}  +- {:.5f} (mode={})            '.format(p, dpar_exact[i], mode), end='')
+        print('{:.4f}  +- {:.5f}     '.format(p, dpar_exact[i], mode), end='')
     print('')
 
     fits = [fit_ABC, fit_MCMC_norm, fit_MCMC_T2]
@@ -462,19 +450,18 @@ def main(argv=None):
     xlog = True
     ylog = False
 
-    dpar = [0.03, 1]
-    plot_box(fits, param.n_D, param.par, dpar, 'mean', boxwidth=param.boxwidth, xlog=xlog,
+    dy = [0.03, 1]
+    plot_box(fits, param.n_D, param.par, dy, 'mean', boxwidth=param.boxwidth, xlog=xlog,
               ylog=False, model=param.model, verbose=param.verbose)
 
-    #dpar = [10, 10]
-    dpar = [0.005, 0.13]
-    plot_box(fits, param.n_D, dpar_exact, dpar, 'std', boxwidth=param.boxwidth, xlog=xlog,
+    dy = [0.006, 0.2]
+    plot_box(fits, param.n_D, dpar_exact, dy, 'std', boxwidth=param.boxwidth, xlog=xlog,
               ylog=ylog, model=param.model, verbose=param.verbose)
 
     sig_var_noise = param.sig_var_noise
     dpar2 = dpar_exact ** 2
-    dpar = [100, 100]
-    plot_box(fits, param.n_D, dpar2, dpar, 'std_var', boxwidth=param.boxwidth, xlog=xlog,
+    dy = [100, 100]
+    plot_box(fits, param.n_D, dpar2, dy, 'std_var', boxwidth=param.boxwidth, xlog=xlog,
               ylog=True, sig_var_noise=sig_var_noise, model=param.model, verbose=param.verbose)
 
     return 0
@@ -482,5 +469,3 @@ def main(argv=None):
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
-
-

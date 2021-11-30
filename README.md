@@ -10,54 +10,14 @@ You can reproduce the plots and results from the paper.
 
 Use a `conda` environment:
 ```bash
-conda create -n ABC python=2.7
-conda activate ABC
-conda install statsmodels ipython astropy
+conda env create -f environment.yml
+conda activate corrABC
+python setup.py install
 ```
 
-The following packages should be installed by default, if not, install them by hand:
-```bash
-conda install numpy scipy matplotlib
-```
-Optionally get `jupyter` to open and run notebooks:
-```bash
-conda install -c conda-forge jupyterlab
-```
-
-Install `cosmoabc` with `pip`.
-```
-pip install cosmoabc
-```
-If this fails due to a python error, try to install `cosmoabc` from `github`:
-```bash
-git clone git@github.com:COINtoolbox/CosmoABC.git
-cd CosmoABC
-```
-Add square brackets to the line in `setup.py` as follows:
-`package_data = {'cosmoabc/data':['SPT_sample.dat']},`
-and install the package
-```bash
-python2 setup.py install
-```
-
-At the last installation steps, clone this package:
-```bash
-git clone git@github.com:emilleishida/CorrMatrix_ABC.git
-```
-and set the `PYTHONPATH`:
-```bash
-export PYTHONPATH=CorrMatrix_ABC/scripts
-```
-
-## Installation for MCMC sampling
-
-You need pystan to run the MCMC part, with a specific pystan version:
-```bash
-conda install pystan=2.18
-```
-
-The main program for MCMC sampling of the example models from the paper is `cm_likelihood.py`.
-Run `cm_likelihood.py --help` to see the options.
+The main program for Fisher-matrix computation and MCMC sampling of the first
+two example models
+from the paper is `cm_likelihood.py`. Run `cm_likelihood.py --help` to see the options.
 
 ## Toy example 1
 
@@ -85,7 +45,12 @@ In addition, plots of the trace of the covariance maximum-likelihood estimate
 
 #### Normal likelihood
 
-To run the sampling with `pystan`, we need to add the option `--fit_stan`, and specify the likelihood. Let's use the Gaussian  with debiased covariance (`-L norm_deb`). To save time, we reduce the number of runs, say to n_r=5.
+First, we need to install the additional `pystan` package:
+```
+conda install pystan=2.18
+```
+
+To run the sampling we add the option `--fit_stan`, and specify the likelihood. Let's use the Gaussian  with debiased covariance (`-L norm_deb`). To save time, we reduce the number of runs, say to n_r=5.
 
 First, we create the simulations (`-m s`), with results automatically written in text files on disk.
 ```bash
@@ -101,7 +66,7 @@ cm_likelihood.py -D 750 -p 1_0 -s 5 -v -m r -r -R 8 --fit_stan -L norm_deb --plo
 ```
 Since this does not run simulations, this step is fast.
 
-The 50 runs used for Figs. 2 and 4 from the paper are available with this package, to reproduce the plots:
+The 50 runs used for the paper are available with this package, to reproduce the plots:
 ```bash
 cd results/norm_deb_MCMC
 cm_likelihood.py -D 750 -p 1_0 -s 5 -v -m r -r -R 50 --fit_stan -L norm_deb --sig_var_noise 4.6e-08_0.000175 --plot_style paper
@@ -113,7 +78,6 @@ There are additional options: The raw Fisher-matrix-predicted parameter variance
 Hotelling (1931), also derived in Sellentin & Heavens (2016).
 Instead of `-L norm_deb`, use the flag `-L SH` for this modified normal likelihood that accounts for the uncertainty in the sample covariance. Otherwise run the script `cm_likelihood.py` as for the normal case above.
 
-To reproduce Figs. 3 and 5 from the paper:
 ```
 cd results/T2_MCMC
 cm_likelihood.py -D 750 -p 1_0 -s 5 -v -m r -R 50 --fit_stan -L SH --plot_style paper
@@ -143,7 +107,12 @@ cd results/norm_ABC
 job_ABC.py --n_S 2_5_26_15_58_125_755_1622_3488_7500 -v -m r --template_dir ../../scripts/ABC/templates -b 0.15 --xlog -R 50
 ```
 
-Fig. 8 corresponds to toy example 2. The plot is reproduced with pre-computed output files in `results/norm_xcorr_ABC/combined', with
+### Combined plots
+
+Figure 3 in the paper shows results for ABC, and MCMC sampling under the normal and Hotelling T^2 likelihood.
+To reproduce the figure without recomputing all sampling results, do the following steps:
 ```bash
-job_ABC.py --n_S 0_0.5_1_2_3_4 -R 25 -v -m r --template_dir . -b 0.2 -M affine_off_diag
+cd results
+../scripts/plot_many.py --ABC norm_ABC/mean_std_ABC --MCMC_norm norm_deb_MCMC/mean_std_fit_norm_deb --MCMC_T2 T2_MCMC/mean_std_fit_SH -b 0.03 --sig_var 4.6e-8_1.75e-4
 ```
+

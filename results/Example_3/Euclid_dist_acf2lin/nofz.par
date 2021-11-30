@@ -1,0 +1,5 @@
+### Redshift parameter file ###
+Nzbin           1
+snzmode         nz_read_from_files
+nzfile          nofz_Euclid_1bin.txt
+

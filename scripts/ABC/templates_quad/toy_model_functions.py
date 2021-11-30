@@ -24,8 +24,8 @@ from scipy.stats import uniform
 from scipy import stats
 import statsmodels.formula.api as smf
 import statsmodels.api as sm
-from covest import model_quad
-from covest import acf_one, acf, linear_dist_data_acf, linear_dist_data_true_prec, linear_dist_data
+from CorrMatrix_ABC.covest import model_quad
+from CorrMatrix_ABC.covest import acf_one, acf, linear_dist_data_acf2_lin, linear_dist_data_true_prec, linear_dist_data
 
 
 def model_cov(p):

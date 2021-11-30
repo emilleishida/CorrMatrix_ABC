@@ -1,7 +1,4 @@
-#!/usr/bin/env python
-
-# Compability with python2.x for x>6
-from __future__ import print_function
+#!/usr/bin/env python3
 
 # job_ABC.py
 # Martin Kilbinger (2017)
@@ -22,7 +19,10 @@ from optparse import OptionGroup
 import numpy as np
 from scipy.stats import norm, uniform
 
-from covest import *
+from CorrMatrix_ABC.covest import *
+from CorrMatrix_ABC.nicaea_ABC import Fisher_ana_wl
+
+from cosmoabc.ABC_functions import read_input
 
 
 def params_default():
@@ -95,7 +95,7 @@ def parse_options(p_def):
     parser.add_option('-P', '--par_name', dest='spar_name', type='string', default=p_def.spar_name,
         help='Parameter names, default=\'{}\''.format(p_def.spar_name))
     parser.add_option('-M', '--model', dest='model', type='string', default=p_def.model,
-        help='Model, one in \'affine\', \'affine_off_diag\', \'affine_corr\', \'quadratic\', default=\'{}\''.format(p_def.model))
+        help='Model, one in \'affine\', \'quadratic\', \'wl\', default=\'{}\''.format(p_def.model))
 
     parser.add_option('-m', '--mode', dest='mode', type='string', default=p_def.mode,
         help='Mode: \'s\'=simulate, \'r\'=read ABC dirs, \'R\'=read master file, '
@@ -173,11 +173,7 @@ def update_param(p_def, options):
         param.n_S = None
     else:
         str_n_S_list = my_string_split(options.str_n_S, verbose=False, stop=True)
-        if param.model in ['affine_off_diag', 'affine_corr']:
-            # Added 3/9/2019 for xcorr plots with non-int n_S (= r)
-            param.n_S = [float(str_n_S) for str_n_S in str_n_S_list]
-        else:
-            param.n_S = [int(str_n_S) for str_n_S in str_n_S_list]
+        param.n_S = [int(str_n_S) for str_n_S in str_n_S_list]
 
     param.par_name = my_string_split(options.spar_name, verbose=False, stop=True)
 
@@ -318,9 +314,7 @@ def check_error_stop(ex_list, verbose=True, stop=False):
         if stop is True:
             sys.exit(s)
 
-
     return s
-
 
 
 def print_color(color, txt, file=sys.stdout, end='\n'):
@@ -336,20 +330,15 @@ def print_color(color, txt, file=sys.stdout, end='\n'):
         output file handler, default=sys.stdout
     end: string
         end string, default='\n'
-
-    Returns
-    -------
-    None
     """
-
 
     try:
         import colorama
-        colors = {'red'    : colorama.Fore.RED,
-                  'green'  : colorama.Fore.GREEN,
-                  'blue'   : colorama.Fore.BLUE,
+        colors = {'red' : colorama.Fore.RED,
+                  'green' : colorama.Fore.GREEN,
+                  'blue' : colorama.Fore.BLUE,
                   'yellow' : colorama.Fore.YELLOW,
-                  'black'  : colorama.Fore.BLACK,
+                  'black' : colorama.Fore.BLACK,
                  }
 
         if colors[color] is None:
@@ -361,7 +350,6 @@ def print_color(color, txt, file=sys.stdout, end='\n'):
 
     except ImportError:
         print(txt, file=file, end=end)
-
 
 
 def substitute(dat, key, val_old, val_new):
@@ -399,7 +387,6 @@ def substitute(dat, key, val_old, val_new):
     return dat
 
 
-
 def run_ABC_in_dir(real_dir, n_S, templ_dir, nruns=-1, prev_run=-1, only_obs=False):
     """ Runs or continues ABC in given directory.
 
@@ -424,7 +411,9 @@ def run_ABC_in_dir(real_dir, n_S, templ_dir, nruns=-1, prev_run=-1, only_obs=Fal
     """
 
     files = ['ABC_est_cov.py', 'toy_model_functions.py']
-    files_opt = ['cov_SSC_rel_log.txt', 'cov_SSC_rel_lin.txt']
+    files_opt = ['cov_SSC_rel_log.txt', 'cov_SSC_rel_lin.txt',
+                 'cosmo.par', 'cosmo_lens.par', 'nofz.par',
+                 'nofz_Euclid_1bin.txt']
 
     for f in files:
         copy2('{}/{}'.format(templ_dir, f), '{}/{}'.format(real_dir, f))
@@ -514,7 +503,7 @@ def simulate(n_S_arr, param):
 
                         # Check consistency bw cmd line and cfg file
                         if obs_path_dst == 'None':
-                            raise('path_to_obs is \'None\' but obs_dir given on command line') 
+                            raise ABCCovError('path_to_obs is \'None\' but obs_dir given on command line') 
 
                         # Check existing sub-directory and observation file
                         obs_run_dir = '{}/nr_{}'.format(param.obs_dir, run)
@@ -552,7 +541,7 @@ def simulate(n_S_arr, param):
 def read_from_ABC_dirs(n_S_arr, par_name, fit_ABC, options):
 
     if options.verbose == True:
-        print('Reading simulation results (mean, std) from disk (ABC run directories)')
+        print('Reading simulation results (mean, std) from disk (ABC run directories)', file=sys.stderr)
 
     for i, n_S in enumerate(n_S_arr):
 
@@ -583,12 +572,11 @@ def read_from_ABC_dirs(n_S_arr, par_name, fit_ABC, options):
 
 
 
-def Fisher_ana_quad_read_par(templ_dir, par, mode=1):
+def Fisher_ana_quad_wl_read_par(templ_dir, par, mode=1, model='quadratic'):
     """Read parameters from config file and return Fisher matrix errors
        on parameters of quadratic model.
     """
 
-    from cosmoabc.ABC_functions import read_input
     filename = '{}/{}'.format(templ_dir, 'toy_model.input')
     Parameters = read_input(filename)
 
@@ -613,12 +601,15 @@ def Fisher_ana_quad_read_par(templ_dir, par, mode=1):
         logell = np.log10(ell)
 
     cov_model = Parameters['cov_model'][0]
-    print('Covariance used in Fisher matrix = {}'.format(cov_model))
 
     ampl_fid, tilt_fid = par
 
-    dpar, det = Fisher_ana_quad(10**logell, f_sky, sigma_eps, nbar_rad2, ampl_fid, tilt_fid, cov_model,
-                                ellmode=ellmode, mode=mode, templ_dir=templ_dir)
+    if model == 'quadratic':
+        dpar, det = Fisher_ana_quad(10**logell, f_sky, sigma_eps, nbar_rad2, ampl_fid, tilt_fid, cov_model,
+                                    ellmode=ellmode, mode=mode, templ_dir=templ_dir)
+    else:
+        dpar, det = Fisher_ana_wl(10**logell, f_sky, sigma_eps, nbar_rad2, ampl_fid, tilt_fid, cov_model,
+                                  ellmode=ellmode, templ_dir=templ_dir)
     return dpar, det, nell
 
 
@@ -650,13 +641,16 @@ def main(argv=None):
         return 0
 
     # Initialisation of results
-    if param.model in ['affine', 'quadratic']:
-        fct = {}
-    elif param.model == ['affine_off_diag']:
-        fct = {'std': std_affine_off_diag}
-    else:
-        fct = {'std': std_affine_corr}
-    fit_ABC = Results(param.par_name, n_n_S, param.n_R, file_base='mean_std_ABC', yscale=['linear', 'log'], fct=fct)
+    fit_ABC = Results(
+        param.par_name,
+        n_n_S,
+        param.n_R,
+        file_base='mean_std_ABC',
+        yscale=['linear', 'log'],
+        n_D=param.n_D,
+        n_S_arr=n_S_arr,
+        fct= {'std': par_fish_SH, 'std_var_TJ14' : std_fish_deb_TJ14}
+    )
 
 
     # Create simulations/write observation
@@ -682,74 +676,109 @@ def main(argv=None):
     par = my_string_split(param.spar, num=2, verbose=param.verbose, stop=True)
     param.par = [float(p) for p in par]
 
-    if param.model in ['affine', 'affine_off_diag', 'affine_corr']:
+    # Print parameter means, std, and std2(std), from ABC runs (read files from disk),
+    # and Fisher-matrix estimation
+
+    if param.model == 'affine':
         delta = 200
         x1 = uniform.rvs(loc=-delta/2, scale=delta, size=param.n_D)        # exploratory variable
         x1.sort()
 
-        from cosmoabc.ABC_functions import read_input
         filename = '{}/{}'.format(param.templ_dir, 'toy_model.input')
         Parameters = read_input(filename)
         sig2 = float(Parameters['sig'][0])
 
-        if param.model == 'affine_corr':
-            step = float(Parameters['step'][0])
-            my_mode = [2]
-        else:
-            xcorr = float(Parameters['xcorr'][0])
-            if xcorr == 0:
-                my_mode = [-1, 2]
-            else:
-                my_mode = [2]
+        my_mode = [-1] #, 2]
 
         n_D = int(Parameters['nobs'][0])
         if n_D != param.n_D:
-            raise('nobs in config file ({})) != n_D on command line ({})'.format(n_D, param.n_D))
+            raise ABCCovError('nobs in config file ({})) != n_D on command line ({})'.format(n_D, param.n_D))
         for mode in my_mode:
-            if param.model == 'affine_corr':
-                dpar_exact, det = Fisher_error_ana_corr(x1, sig2, step, delta, mode=mode)
-            else:
-                dpar_exact, det = Fisher_error_ana(x1, sig2, xcorr, delta, mode=mode)
-            print('input par and exact std:          ', end='')
+            dpar_exact, det = Fisher_error_ana(x1, sig2, delta, mode=mode)
+            print('input par and exact std:    ', end='')
             for i, p in enumerate(param.par):
-                print('{:.4f}  +- {:.5f} (mode={})            '.format(p, dpar_exact[i], mode), end='')
+                print('{:.4f}  {:.5f} (mode={})            '.format(p, dpar_exact[i], mode), end='')
             print('')
 
-        print('estim mean std(mean) [mean(std)]: ', end='')
-        std_estim = []
+        print('estim mean std [std(mean)] [std(se)]: ', end='')
         for p in param.par_name:
-            mean, std, std2 = fit_ABC.get_mean_std_all(p)
-            std_estim.append(std)
-            print('{:.5f} +- {:.5f} [{:.5f}]'.format(mean, std, std2), end='   ')
+            mean, std, std2, std_ste = fit_ABC.get_mean_std_all(p, ste=False)
+            print('{:.5f} {:.5f} [{:.5f}] [{:.5f}]'.format(mean, std2, std, std_ste), end='   ')
         print('')
 
+    elif param.model in ['quadratic', 'wl']:
 
-    elif param.model == 'quadratic':
-        for mode in ([0, 1]):
-            dpar_exact, det, n_D = Fisher_ana_quad_read_par(param.templ_dir, param.par, mode=mode)
-            print('input par and exact std:          ', end='')
-            for i, p in enumerate(param.par):
-                print('{:.4f}  +- {:.5f}             '.format(p, dpar_exact[i]), end='')
+        # For the quadratic model we compute the parameter means, std, and std(std)
+        # averaged over all n_S
+        mean_all = {}
+        std_all = {}
+        std2_all = {}
+        std_ste_all = {}
+        key_all = ['F', 'F_T^2', 'all', 'n_S<=n_D', 'n_S>n_D']
+        for i, n_S in enumerate(n_S_arr):
+            key = str(n_S)
+            key_all.append(key)
+
+        dpar_exact, det, n_D = Fisher_ana_quad_wl_read_par(param.templ_dir, param.par, mode=0, model=param.model)
+        if n_D != param.n_D:
+            raise ABCCovError('nobs in config file ({})) != n_D on command line ({})'.format(n_D, param.n_D))
+        for i, p in enumerate(param.par_name):
+            mean_all[p] = {}
+            std_all[p] = {}
+            std2_all[p] = {}
+            std_ste_all[p] = {}
+
+            # Fisher matrix for mv normal
+            mean_all[p]['F'] = param.par[i]
+            std2_all[p]['F'] = dpar_exact[i]
+
+            # Find smallest n_S>n_D
+            for n_S in n_S_arr:
+                if n_S > n_D:
+                    break
+            x = std_fish_deb_TJ14([n_S], n_D, dpar_exact[i]**2)
+            std_ste_all[p]['F'] = x[0]
+
+            # Fisher matrix for Hotelling T^2, nu->infinity
+            mean_all[p]['F_T^2'] = param.par[i]
+            std2_all[p]['F_T^2'] = dpar_exact[i] * np.sqrt(2)
+            std_ste_all[p]['F_T^2'] = 0
+
+        for p in param.par_name:
+            # averages
+            for key_avg in key_all[2:5]:
+                (
+                    mean_all[p][key_avg],
+                    std_all[p][key_avg],
+                    std2_all[p][key_avg],
+                    std_ste_all[p][key_avg]
+                ) = fit_ABC.get_mean_std_all(p, ste=False, n_S_range=key_avg)
+
+            # individual n_S
+            mean = fit_ABC.get_mean(p)
+            std = fit_ABC.get_std(p)
+            std_ste = fit_ABC.get_std_var(p, ste=False)
+            for i, n_S in enumerate(n_S_arr):
+                key = str(n_S)
+                mean_all[p][key] = mean[i]
+                std2_all[p][key] = std[i]
+                std_ste_all[p][key] = std_ste[i]
+
+        for key in key_all:
+            print('{:10s}'.format(key), end='')
+            for p in param.par_name:
+                print('{:.4f} {:.4f} {:.1e}'.format(mean_all[p][key], std2_all[p][key], std_ste_all[p][key]), end='   ')
             print('')
-
-        print('estim mean std(mean) [mean(std)]: ', end='')
-        std_estim = []
-        for p in param.par_name:
-            mean, std, std2 = fit_ABC.get_mean_std_all(p)
-            std_estim.append(std)
-            print('{:.5f} +- {:.5f} [{:.5f}]'.format(mean, std, std2), end='   ')
-        print('')
 
     else:
         raise ABCCovError('Unknown model \'{}\''.format(param.model))
 
-    fit_ABC.plot_mean_std(n_S_arr, n_D, par={'mean': param.par, 'std': dpar_exact},
+    fit_ABC.plot_mean_std(par={'mean': param.par, 'std': dpar_exact},
                           boxwidth=param.boxwidth, xlog=param.xlog, model=param.model)
     dpar2 = dpar_exact**2
-    fit_ABC.plot_std_var(n_S_arr, n_D, par=dpar2, xlog=param.xlog)
+    fit_ABC.plot_std_var(par=dpar2, xlog=param.xlog, model=param.model, ste=False)
 
     return 0
-
 
 
 if __name__ == "__main__":
