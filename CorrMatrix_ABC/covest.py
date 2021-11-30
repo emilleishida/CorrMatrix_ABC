@@ -148,6 +148,15 @@ def A(n_S, n_D):
     return A
 
 
+def std_fish_biased_TJ14(n, n_D, par):
+    """Error on variance from the Fisher matrix. From TJ14 (12), with division by the de-biasing factor alpha.
+    """
+
+    n_P = 2  # Number of parameters
+
+    return [np.sqrt(2 * (n_S - n_D + n_P - 1) / (n_S - n_D - 2)**2) / alpha(n_S, n_D) * par for n_S in n]
+
+
 def std_fish_biased_TJK13(n, n_D, par):
     """0th-order error on variance from Fisher matrix with biased inverse covariance estimate.
        From TJK13 (49) with A (27) instead of A_corr (28) in (49).
@@ -156,11 +165,30 @@ def std_fish_biased_TJK13(n, n_D, par):
     return [np.sqrt(2 * A(n_S, n_D) / alpha(n_S, n_D)**4 * (n_S - n_D - 1)) * par for n_S in n]
 
 
+def std_fish_deb(n, n_D, par):
+    """Error on variance from Fisher matrix with debiased inverse covariance estimate.
+       Square root of TJK13 (49, 50).
+    """
+
+    return [np.sqrt(2.0 / (n_S - n_D - 4.0)) * par for n_S in n]
+
+
+def std_fish_Gupta(n, n_D, par):
+    """Error on variance from Fisher matrix with debiased inverse covariance estimate.
+       Following Gupta & Nagar (2000), Theorem 3.3.13
+    """
+
+    n_P = 2
+
+    return [np.sqrt(2.0 / (n_S - n_D + n_P - 1)) * par for n_S in n]
+
+
+
 def par_fish_SH(n, n_D, par):
     """Parameter RMS from Fisher matrix esimation of SH likelihood.
     """
 
-    return [np.sqrt(alpha_new(n_S, n_D) * 2.0 * n / (n - 1.0)) * par for n_S in n]
+    return [np.sqrt(alpha_new(n_S, n_D) * 2.0 * n_S / (n_S - 1.0)) * par for n_S in n]
 
 
 def coeff_TJ14(n_S, n_D, n_P):
@@ -207,7 +235,7 @@ def get_n_S_R_from_fit_file(file_base, npar=2):
             raise
 
     n_S = dat['n_S']
-    n_R   = (len(dat.dtype) - 1) / 2 / npar
+    n_R   = int((len(dat.dtype) - 1) / 2 / npar)
 
     return n_S, n_R
 
@@ -623,9 +651,9 @@ def stat_notation(stat):
     if stat == 'mean':
         return '$\\bar\\theta$'
     elif stat == 'std':
-        return 'SD$(\\bar\\theta)$'
+        return 'SE$(\\bar\\theta)$'
     elif stat == 'std_var':
-        return 'SE$[$SD$(\\hat{\\theta})]$'
+        return 'SD$[$Var$(\\hat{\\theta})]$'
     else:
         raise ABCCovError(f'Invalid statistical function name f{stat}')
 
@@ -647,7 +675,7 @@ class Results:
     """Store results of Fisher matrix and MCMC sampling
     """
 
-    def __init__(self, par_name, n_n_S, n_R, file_base='mean_std', yscale='linear', fct=None):
+    def __init__(self, par_name, n_n_S, n_R, file_base='mean_std', yscale='linear', fct=None, n_D=-1, n_S_arr=[]):
         """Set arrays for mean and std storing all n_S simulation cases
            with n_R runs each
         """
@@ -671,6 +699,9 @@ class Results:
         self.F  = np.zeros(shape = (n_n_S, n_R, 2, 2))
         self.fs = 16
 
+        self.n_D = n_D
+        self.n_S_arr = n_S_arr
+
 
     def set(self, par, i, run, which='mean'):
         """Set mean or std for all parameteres for simulation #i and run #run
@@ -681,29 +712,57 @@ class Results:
             w[p][i][run] = par[j]
 
 
-    def get_std_var(self, p):
-        """Return standard deviation of the variance over all runs
+    def get_std_var(self, p, ste=False, n_S_range='all'):
+        """Return standard deviation (SD) of the variance or standard error over all runs
+
+        Parameters
+        ----------
+        p : string
+            parameter name
+        ste : bool, optional, default=False
+            if True (False), return SD of standard error (variance)
+        n_S_range : str, optional, default='all'
+            range of n_S for average, one in
+             'all' : entire range
+             'n_S>n_D' :  n_S>n_D, non-singular covariance
+             'n_S<=n_D' : n_S<=n_D, singular covariance
+
+        Returns
+        -------
+        std_var : numpy array of float
+            SD of SE or variance for each n_s
         """
 
-        n_n_S = self.mean[self.par_name[0]].shape[0]
-        std_var = np.zeros(shape = n_n_S)
-        for i in range(n_n_S):
-            std_var[i] = np.std(self.std[p][i]**2)
+        std_var = []
+        for i, n_S in enumerate(self.n_S_arr):
+            if (
+                (n_S_range == 'all')
+                or ( (n_S_range == 'n_S>n_D') and (n_S > self.n_D) )
+                or ( (n_S_range == 'n_S<=n_D') and (n_S <= self.n_D) )
+            ): 
+                if ste:
+                    s = np.std(self.std[p][i])
+                else:
+                    s = np.std(self.std[p][i]**2)
+                std_var.append(s)
 
-        return std_var
+        return np.array(std_var)
 
-
-    def get_mean(self, p):
+    def get_mean(self, p, n_S_range='all'):
         """Return mean parameter per simulation, averaged over realisations
         """
 
-        n_n_S = self.mean[self.par_name[0]].shape[0]
-        mean = np.zeros(shape = n_n_S)
-        for i in range(n_n_S):
-            mean[i] = np.mean(self.mean[p][i])
+        mean = []
+        for i, n_S in enumerate(self.n_S_arr):
+            m = np.mean(self.mean[p][i])
+            if (
+                (n_S_range == 'all')
+                or ( (n_S_range == 'n_S>n_D') and (n_S > self.n_D) )
+                or ( (n_S_range == 'n_S<=n_D') and (n_S <= self.n_D) )
+            ):
+                mean.append(m)
 
-        return mean
-
+        return np.array(mean)
 
     def get_std(self, p):
         """Return std of the parameter per simulation, averaged over realisations
@@ -716,31 +775,67 @@ class Results:
 
         return std
 
-        
-    def get_mean_std_all(self, p):
-        """Return mean, error of mean, and std, all averaged over simulations and runs
+    def get_mean_std_all(self, p, ste=False, n_S_range='all'):
+        """Get Mean Std All
+        Return mean, standard error (SE), std, and std of SE/variance,
+        all averaged over simulations and runs
+
+        Parameters
+        ----------
+        p : string
+            parameter name
+        ste : bool, optional, default=False
+            if True (False), return SD of standard error (variance)
+        n_S_range : str, optional, default='all'
+            range of n_S for average, one in
+             'all' : entire range
+             'n_S>n_D' :  n_S>n_D, non-singular covariance
+             'n_S<=n_D' : n_S<=n_D, singular covariance
+
+        Returns
+        -------
+        std_var : array of float
+            SD of SE or variance for each n_s
         """
 
-        mean = self.get_mean(p)
-        m    = np.mean(mean)
+        # Mean over all runs and simulations
+        mean = self.get_mean(p, n_S_range=n_S_range)
+        m = np.mean(mean)
 
-        # The above mean *m* is equal to mean over all sims and runs
+        # Create array of mean for each run and simulation 
         mean2 = []
         n_n_S, n_R = self.mean[self.par_name[0]].shape
-        for i in range(n_n_S):
+        for i, n_S in enumerate(self.n_S_arr):
             for run in range(n_R):
-                mean2.append(self.mean[p][i][run])
-        #m2 = np.mean(mean2)
+                this_m = self.mean[p][i][run]
+                if (
+                    (n_S_range == 'all')
+                    or ( (n_S_range == 'n_S>n_D') and (n_S > self.n_D) )
+                    or ( (n_S_range == 'n_S<=n_D') and (n_S <= self.n_D) )
+                ): 
+                    mean2.append(this_m)
+        # Compute SD of mean
         s = np.std(mean2)
 
+        # Get standard error (SE) for each run and simulation
         std = []
-        for i in range(n_n_S):
+        for i, n_S in enumerate(self.n_S_arr):
             for run in range(n_R):
                 this_s = self.std[p][i][run]
-                std.append(this_s)
+                if (
+                    (n_S_range == 'all')
+                    or ( (n_S_range == 'n_S>n_D') and (n_S > self.n_D) )
+                    or ( (n_S_range == 'n_S<=n_D') and (n_S <= self.n_D) )
+                ): 
+                    std.append(this_s)
+        # Compute mean standard error
         s2 = np.mean(std)
 
-        return m, s, s2
+        # Compute standard deviation of SE or SE^2
+        std_ste = self.get_std_var(p, ste=ste, n_S_range=n_S_range)
+        s_e = np.mean(std_ste)
+
+        return m, s, s2, s_e
 
 
     def read_mean_std(self, npar=2, update=False, verbose=False):
@@ -900,15 +995,11 @@ class Results:
         return True
 
 
-    def plot_mean_std(self, n, n_D, par=None, boxwidth=None, xlog=False, ylim=None, model='affine'):
+    def plot_mean_std(self, par=None, boxwidth=None, xlog=False, ylim=None, model='affine'):
         """Plot mean and std versus number of realisations n
 
         Parameters
         ----------
-        n: array of integer
-            number of realisations {n_S} for ML covariance
-        n_D: integer
-            dimension of data vector
         par: dictionary of array of float, optional
             input parameter values and errors, default=None
         boxwidth: float, optional
@@ -925,6 +1016,7 @@ class Results:
         None
         """
 
+        n = self.n_S_arr
         n_R = self.mean[self.par_name[0]].shape[1]
 
         marker = ['.', 'D']
@@ -933,10 +1025,13 @@ class Results:
         linestyle = ['-', '--']
 
         plot_sth = False
-        plot_init(n_D, n_R, fs=self.fs)
+        plot_init(self.n_D, n_R, fs=self.fs)
 
         box_width = set_box_width(boxwidth, xlog, n)
-        rotation = 'vertical'
+        if model == 'affine':
+            rotation = 'vertical'
+        else:
+            rotation = 'horizontal'
 
         if xlog == True:
             fac_xlim = 1.6
@@ -944,19 +1039,22 @@ class Results:
             xmax = n[-1]*fac_xlim
         else:
             fac_xlim   = 1.05
-            # NEW 3/9/2019 for xcorr plots, n_S is actually r
-            #if n[0] > 10:
-                #xmin = (n[0]-5)/fac_xlim**5
-            #else:
-                #xmin = (n[0]-0.5)/fac_xlim**5
             xmin = (n[0]-5)/fac_xlim**5
             xmax = n[-1]*fac_xlim
+
+        leg2 = {}
+        lab2 = {}
+        loc = {'mean': 'center', 'std': 'upper'}
 
         # Set the number of required subplots (1 or 2)
         n_panel = 1
 
         j_panel = {}
         for j, which in enumerate(['mean', 'std']):
+
+            leg2[which] = []
+            lab2[which] = []
+
             for i, p in enumerate(self.par_name):
                 y = getattr(self, which)[p]   # mean or std for parameter p
                 if y.any():
@@ -981,17 +1079,22 @@ class Results:
                     ax = plt.subplot(1, n_panel, j_panel[which]) #, label=f'{which}{p}')
 
                     if y.shape[1] > 1:
-                        bplot = plt.boxplot(y.transpose(), positions=n, sym='.', widths=width(n, box_width))
+                        bplot = plt.boxplot(y.transpose(), positions=n, sym='.', widths=width(n, box_width), patch_artist=True)
                         for key in bplot:
                             plt.setp(bplot[key], color=color[i], linewidth=2)
                         plt.setp(bplot['whiskers'], linestyle='-', linewidth=2)
+                        plt.setp(bplot['boxes'], facecolor=lighten_color(color[i], amount=0.25))
+                        leg2[which].append(bplot['boxes'][0])
                     else:
-                        plt.plot(n, y.mean(axis=1), marker[i], ms=markersize[i], color=color[i],
-                                 linestyle=linestyle[i])
+                        pl = plt.plot(n, y.mean(axis=1), marker[i], ms=markersize[i], color=color[i],
+                                      linestyle=linestyle[i])
+                        leg2[which].append(pl)
+                    lab2[which].append(fr'$\bar {par_symbol(p, eq=False)}$')
 
                     if xlog == True:
                         ax.set_xscale('log')
 
+                    # Define high-resolution x array for smooth lines
                     if len(n) > 1:
                         n_fine = np.arange(n[0], n[-1]+len(n)/20.0, len(n)/20.0)
                     else:
@@ -999,14 +1102,27 @@ class Results:
                         x1 = n[0] * 4
                         n_fine = np.arange(x0, x1, 10)
                     my_par = par[which]
+                    p_sym = par_symbol(p, eq=False)
+
+                    # True input or Fisher-matrix normal
+                    if which == 'mean':
+                        label = f'true ${p_sym}$'
+                    else:
+                        label=rf'$\hat{{\bm{{\mathrm F}}}}({p_sym})$'
+                    plt.plot(n_fine, no_bias(n_fine, self.n_D, my_par[i]), '{}{}'.format(color[i], linestyle[i]),
+			                 label=label, linewidth=2)
+
+                    # Additional theoretical line
                     if self.fct is not None and which in self.fct:
-                        # Define high-resolution array for smoother lines
-                        plt.plot(n_fine, self.fct[which](n_fine, n_D, my_par[i]), '{}{}'.format(color[i],
-                                 linestyle[i]), linewidth=2)
+                        plt.plot(
+                            n_fine,
+                            self.fct[which](n_fine, self.n_D, my_par[i]),
+                            '{}{}'.format(color[i], linestyle[i]),
+                            label=rf'$\hat{{\bm{{\mathrm F}}}}_{{T^2}}({p_sym})$',
+                            linewidth=1
+                        )
 
-                    plt.plot(n_fine, no_bias(n_fine, n_D, my_par[i]), '{}{}'.format(color[i], linestyle[i]), \
-			                 label=par_symbol(p), linewidth=2)
-
+                    
         # Finalize plot
         for j, which in enumerate(['mean', 'std']):
             if which in j_panel:
@@ -1014,17 +1130,20 @@ class Results:
                 # Get main axes
                 ax = plt.subplot(1, n_panel, j_panel[which])
 
-                # Dashed vertical line at n_S = n_D
-                plt.plot([n_D, n_D], [-1e2, 1e2], ':', linewidth=1)
-                plt.plot([n_D, n_D], [1e-5, 1e2], ':', linewidth=1)
+                # Dashed vertical line at n_S = self.n_D
+                plt.plot([self.n_D, self.n_D], [-1e2, 1e2], ':', linewidth=1)
+                plt.plot([self.n_D, self.n_D], [1e-5, 1e2], ':', linewidth=1)
 
                 # Main-axes settings
                 plt.xlabel('$n_{{\\rm s}}$')
-                #plt.ylabel('<{}>'.format(which))
                 ylabel = stat_notation(which)
                 plt.ylabel(ylabel)
                 ax.set_yscale(self.yscale[j])
-                ax.legend(frameon=False)
+                leg = ax.legend(loc=f'{loc[which]} right', frameon=False)
+                plt.gca().add_artist(leg)
+                if which in leg2:
+                    ax.legend(leg2[which], lab2[which], loc=f'{loc[which]} left', frameon=False)
+                
                 plt.xlim(xmin, xmax)
 
                 # x-ticks
@@ -1037,7 +1156,7 @@ class Results:
                 x_lab = []
                 for i, n_S in enumerate(n):
                     x_loc.append(n_S)
-                    if n_panel == 1 or i != 1 or len(n)<10 or n_S<n_D:
+                    if n_panel == 1 or i != 1 or len(n)<10 or n_S<self.n_D:
                         lab = '{}'.format(n_S)
                     else:
                         lab = ''
@@ -1051,8 +1170,8 @@ class Results:
                 x2_lab = []
                 for i, n_S in enumerate(n):
                     if n_S > 0:
-                        if n_panel == 1 or i != 1 or len(n)<10 or n_S<n_D:
-                            frac = float(n_D) / float(n_S)
+                        if n_panel == 1 or i != 1 or len(n)<10 or n_S<self.n_D:
+                            frac = float(self.n_D) / float(n_S)
                             if frac > 100:
                                 lab = '{:.3g}'.format(frac)
                             else:
@@ -1063,8 +1182,9 @@ class Results:
                         x2_lab.append(lab)
                 plt.xticks(x2_loc, x2_lab)
                 ax2.set_xlabel('$p / n_{\\rm s}$', size=self.fs)
-                for tick in ax2.get_xticklabels():
-                    tick.set_rotation(90)
+                if model == 'affine':
+                    for tick in ax2.get_xticklabels():
+                        tick.set_rotation(90)
                 plt.xlim(flinlog(xmin), flinlog(xmax))
 
                 plot_sth = True
@@ -1092,17 +1212,11 @@ class Results:
             plt.tight_layout(h_pad=5.0)
             plt.savefig('{}.pdf'.format(self.file_base), bbox_inches="tight")
 
-
-
-    def plot_std_var(self, n, n_D, par=None, sig_var_noise=None, xlog=False, title=False, model='affine'):
-        """Plot standard deviation of parameter variance
+    def plot_std_var(self, par=None, sig_var_noise=None, xlog=False, title=False, model='affine', ste=False):
+        """Plot standard deviation (SD) of parameter standard error or variance
 
         Parameters 
         ---------- 
-        n: array of integer
-            number of realisations {n_S} for ML covariance
-        n_D: integer
-            dimension of data vector
         par: dictionary of array of float, optional
             input parameter values and errors, default=None
         xlog: bool, optional
@@ -1111,26 +1225,31 @@ class Results:
             if True, print title with n_d, n_r
         model: string
             model, one in 'affine', 'quadratic'
+        ste : bool, optional, default=False
+            if True (False), plot SD of standard error (variance)
             
         Returns 
         -------     
         None    
         """         
 
+        n = self.n_S_arr
         n_R = self.mean[self.par_name[0]].shape[1]
 
         color = ['b', 'g']
+        linestyle = ['-', '--']
         marker = ['o', 's']
 
         plot_sth = False
-        plot_init(n_D, n_R, fs=self.fs, title=title)
+        fs = self.fs * 0.9
+        plot_init(self.n_D, n_R, fs=fs, title=title, figsize=(4, 4.6))
 
         # For output ascii file
         cols  = [n]
         names = ['# n_S']
 
         for i, p in enumerate(self.par_name):
-            y = self.get_std_var(p)
+            y = self.get_std_var(p, ste=ste)
             if y.any():
                 plt.plot(n, y, marker=marker[i], color=color[i], label=par_symbol(p), linestyle='None')
                 cols.append(y)
@@ -1141,20 +1260,23 @@ class Results:
                              label='$\sigma(\sigma^2_{0}) - \sigma_n(\sigma^2_{0})$'.format(p), linestyle='None')
 
         for i, p in enumerate(self.par_name):
-            y = self.get_std_var(p)
+            y = self.get_std_var(p, ste=ste)
             if y.any():
                 if par is not None:
-                    n_fine = np.arange(n[0], n[-1], len(n)/10.0)
+                    n0 = self.n_D + 2
+                    n_fine = np.arange(n0, n[-1], len(n)/40.0)
                     if 'std_var_TJK13' in self.fct:
-                        plot_add_legend(i==0, n_fine, self.fct['std_var_TJK13'](n_fine, n_D, par[i]), \
-                                        ':', color=color[i], label='TJK13')
-                        cols.append(self.fct['std_var_TJK13'](n, n_D, par[i]))
+                        yy = self.fct['std_var_TJK13'](n_fine, self.n_D, par[i])
+                        plot_add_legend(True, n_fine, yy, ':', color=color[i], label='TJK13')
+                        cols.append(self.fct['std_var_TJK13'](n, self.n_D, par[i]))
                         names.append('TJK13({})'.format(p))
 
                     if 'std_var_TJ14' in self.fct:
-                        plot_add_legend(i==0, n_fine, self.fct['std_var_TJ14'](n_fine, n_D, par[i]), \
-                                        '-.', color=color[i], label='TJ14', linewidth=2)
-                        cols.append(self.fct['std_var_TJ14'](n, n_D, par[i]))
+                        yy = self.fct['std_var_TJ14'](n_fine, self.n_D, par[i])
+                        p_sym = par_symbol(p, eq=False)
+                        plot_add_legend(True, n_fine, yy, linestyle=linestyle[i],
+                                        color=color[i], label=fr'$\hat{{\bm{{\mathrm F}}}}({p_sym})$', linewidth=2)
+                        cols.append(self.fct['std_var_TJ14'](n, self.n_D, par[i]))
                         names.append('TJ14({})'.format(p))
 
                     plot_sth = True
@@ -1173,7 +1295,7 @@ class Results:
             flinlog = lambda x: np.log(x)
         else:
             flinlog = lambda x: x
-            add_xlim = 10
+            add_xlim = 5
             xmin = max(n[0] - add_xlim, 0)
             xmax = n[-1] + add_xlim
         # Check whether this is still ok for xlog=True
@@ -1192,8 +1314,7 @@ class Results:
         plt.ticklabel_format(axis='x', style='sci')
 
         # Dashed vertical line at n_S = n_D
-        #if xlog:
-        plt.plot([n_D, n_D], [8e-9, 1e-1], ':', linewidth=1)
+        plt.plot([self.n_D, self.n_D], [8e-9, 1e-1], ':', linewidth=1)
 
 	    # Second x-axis
         x_loc, x_lab = plt.xticks()
@@ -1205,7 +1326,7 @@ class Results:
         for i, n_S in enumerate(x_loc):
             if n_S > 0:
                 x2_loc.append(flinlog(n_S))
-                frac = float(n_D) / float(n_S)
+                frac = float(self.n_D) / float(n_S)
                 if frac > 100:
                     lab = '{:.0f}'.format(frac)
                 else:
@@ -1217,22 +1338,25 @@ class Results:
         ax2.set_xlabel('$p / n_{\\rm s}$', size=self.fs)
         if xlog:
             ax2.set_xscale('log')
-            plt.xlim(n_D/xmin, n_D/xmax)
+            plt.xlim(self.n_D/xmin, self.n_D/xmax)
 
         # y-scale
         if model == 'wl':
-            plt.ylim(1e-6, 1e-4)
+            plt.ylim(1e-6, 1e-3)
         elif model == 'quadratic':
-            plt.ylim(1e-6, 1e-4)
+            if ste:
+                plt.ylim(1e-5, 1e-2)
+                pass
+            else:
+                plt.ylim(1e-7, 1e-4)
         else:
             plt.ylim(2e-8, 1.5e-2)
-        # The following causes matplotlib error for xlog==True
-        #if not xlog:
-            #plt.axes().set_aspect((plt.xlim()[1] - plt.xlim()[0]) / (plt.ylim()[1] - plt.ylim()[0]))
-
 
         ### Output
-        outbase = 'std_2{}'.format(self.file_base)
+        if ste:
+            outbase = 'std_1{}'.format(self.file_base)
+        else:
+            outbase = 'std_2{}'.format(self.file_base)
 
         if plot_sth == True:
             plt.savefig('{}.pdf'.format(outbase))
@@ -1259,9 +1383,12 @@ def set_box_width(boxwidth, xlog, n):
     return box_width
 
 
-def plot_init(n_D, n_R, title=False, fs=16):
+def plot_init(n_D, n_R, title=False, fs=16, figsize=None):
 
-    fig = plt.figure()
+    if figsize:
+        fig = plt.figure(figsize=figsize)
+    else:
+        fig = plt.figure()
     fig.subplots_adjust(bottom=0.16)
 
     ax = plt.gca()
@@ -1270,6 +1397,12 @@ def plot_init(n_D, n_R, title=False, fs=16):
 
     plt.tick_params(axis='both', which='major', labelsize=fs)
 
+    rc_fonts = {
+    "text.usetex": True,
+    'mathtext.default': 'regular',
+    'text.latex.preamble': [r"""\usepackage{bm}"""],
+    }
+    plt.rcParams.update(rc_fonts)
     plt.rcParams.update({'figure.autolayout': True})
 
     if n_R>0 and title:
