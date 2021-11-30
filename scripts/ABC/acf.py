@@ -65,13 +65,3 @@ results["autocorr"] = [pd.Series(cl).autocorr(lag) for lag in range(nlags)]
 
 dat =  pd.DataFrame(results)
 print(dat)
-
-
-#dat.plot(kind="bar", figsize=(10,5), grid=True)
-#plt.xlabel("lag")
-#plt.ylim([-1.2, 1.2])
-#plt.ylabel("value")
-#plt.show()
-
-
-
