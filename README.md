@@ -123,7 +123,7 @@ Weak-lensing inspired case.
 Figure 4 shows a weak-lensing power spectrum and the quadratic function fit. Three cases of three cosmological parametere are plotted.
 This figure is reproduced with the jupyter notebook [WL_Cell_fit.ipynb](scripts/ABC/WL_Cell_fit.ipynb).
 
-Figure 5 is the SSC covariance, which was taken from (Bareira et al. (2018))[https://arxiv.org/abs/1711.07467]. The digitization of the corresponding figure
+Figure 5 is the SSC covariance, which was taken from [Bareira et al. (2018)](https://arxiv.org/abs/1711.07467). The digitization of the corresponding figure
 and the plot are reproduced with the jupyter notebook [digitize_Cov_SSC.ipynb](scripts/ABC/WL/Cov_SSC/digitize_Cov_SSC.ipynb).
 
 Figure 6 displays ABC results with the acf distance. To reproduce this plot, type:
