@@ -6,8 +6,6 @@
 :Description: Python interface to nicaea.
 Functions are copied from ~/python/nicaea.py
 
-:Author: Martin Kilbinger <martin.kilbinger@cea.fr>
-
 :Date: 2017
 
 :Package: ABC

@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 # diagnostics_ABC.py
-# Martin Kilbinger (2017)
 
 # Compability with python2.x for x>6
 from __future__ import print_function

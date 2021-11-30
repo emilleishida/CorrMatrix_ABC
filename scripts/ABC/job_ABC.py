@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 # job_ABC.py
-# Martin Kilbinger (2017)
 
 
 import sys

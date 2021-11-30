@@ -4,7 +4,6 @@
 from __future__ import print_function
 
 # plot_many.py
-# Martin Kilbinger (2020)
 
 
 import sys

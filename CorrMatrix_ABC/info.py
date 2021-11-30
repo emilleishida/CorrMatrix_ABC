@@ -4,8 +4,6 @@
 
 Set the package information for `CorrMatrix_ABC'
 
-:Author: Martin Kilbinger, <martin.kilbinger@cea.fr>
-
 :Date: 25/01/2021
 
 :Package: CorrMatrix_ABC
@@ -16,8 +14,8 @@ version_info = (1, 1, 0)
 __version__ = '.'.join(str(c) for c in version_info)
 
 # Package details
-__author__ = 'Martin Kilbinger, Emille Ishida, Jessi Kehe'
-__email__ = 'martin.kilbinger@cea.fr'
+__author__ = 'Anonymous'
+__email__ = 'na'
 __year__ = 2021
 __url__ = 'https://github.com/emilleishida/CorrMatrix_ABC'
 __description__ = 'Correlation matrix and ABC'

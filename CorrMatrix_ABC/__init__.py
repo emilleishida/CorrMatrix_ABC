@@ -1,7 +1,7 @@
 """
 .. module :: CorrMatrix_ABC
 
-.. moduleauthor :: Martin Kilbinger
+.. moduleauthor :: Anonymous
 """
 
 __all__ = []
