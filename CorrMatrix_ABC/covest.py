@@ -325,9 +325,7 @@ def get_cov_Gauss(ell, C_ell, f_sky, sigma_eps, nbar):
     # Total (signal + shot noise) E-mode power spectrum.
     # (The factor of 2 in the shot noise indicates one of two
     # components for the power spectrum, see Joachimi et al. (2008).
-    # MKDEDEBUG 10/05: removed factor 2
 
-    #C_ell_tot = C_ell + sigma_eps**2 / (2 * nbar)
     C_ell_tot = C_ell + sigma_eps**2 / nbar
 
 
@@ -1507,7 +1505,6 @@ def Fisher_ana_quad(ell, f_sky, sigma_eps, nbar_rad2, tilt_fid, ampl_fid, cov_mo
 
             Delta_ln_ell = np.diff(ell) / (ell[:-1]/2 + ell[1:]/2)
             Delta_ln_ell = np.append(Delta_ln_ell, Delta_ln_ell[-1])
-            #Delta_ln_ell_bar = Delta_ln_ell.mean()
             Delta_ell = Delta_ln_ell * ell
         else:
             # Delta_ell = const
