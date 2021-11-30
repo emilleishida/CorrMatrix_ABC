@@ -44,7 +44,7 @@ nsim            = 800                              #  number of simulations for 
 
 M 		= 100				   # number of particle in each particle system
 Mini            = 200                              # number of draws for 1st particle system
-delta 		= 0.00025 			   # convergence criteria
+delta 		= 0.015 			   # convergence criteria
 qthreshold 	= 0.75				   # quantile in distance threshold 
 nruns           = -1                               # Number of runs, if <0 run until convergence criterium is met
 
