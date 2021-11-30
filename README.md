@@ -21,6 +21,8 @@ from the paper is `cm_likelihood.py`. Run `cm_likelihood.py --help` to see the o
 
 ## Example 1
 
+Affine function with diagonal covariance matrix.
+
 ### The model set-up
 
 This example is an affine function y=ax+b with fiducial parameter a=1, b=0. We use n_d = 750 (option `-D`) data points, drawn from a multi-variate normal with diagonal covariance with constant sigma=5 (`-s`) on the diagonal.
@@ -115,4 +117,28 @@ To reproduce the figure without recomputing all sampling results, do the followi
 cd results/Example_1
 ../../scripts/plot_many.py --ABC norm_ABC/mean_std_ABC --MCMC_norm norm_deb_MCMC/mean_std_fit_norm_deb --MCMC_T2 T2_MCMC/mean_std_fit_SH -b 0.03 --sig_var 4.6e-8_1.75e-4
 ```
+
+## Example 2
+
+Weak-lensing inspired case.
+
+Figure 4 shows a weak-lensing power spectrum and the quadratic function fit. Three cases of three cosmological parametere are plotted.
+This figure is reproduced with the jupyter notebook [WL_Cell_fit.ipynb](scripts/ABC/WL_Cell_fit.ipynb).
+
+Figure 6 displays ABC results with the acf distance. To reproduce this plot, type:
+```bash
+cd results/Example_2/Euclid_dist_acf2lin
+../../../scripts/ABC/job_ABC.py -M quadratic --template_dir ../../../scripts/ABC/templates_quad -m r --n_S 2_5_10_20_40 -R 25 --obs_dir nsim_2 -v -p 0.306_0.827 -P tilt_ampl -D 10
+```
+
+## Example 3
+
+Realistic weak-lensing case.
+
+Weak-lensing power spectrum models are produced with `nicaea`. This package has to be installed first, see https://github.com/martinkilbinger/nicaea .
+
+Figure 7 shows ABC results with the acf distance. To reproduce this figure, type:
+```bash
+cd results/Example_3/Euclid_dist_acf2lin
+../../../scripts/ABC/job_ABC.py -M wl --template_dir ../../../scripts/ABC/WL -m r --n_S 2_5_10_20_40 -R 10 --obs_dir nsim_2 -v -p 0.306_0.827 -P Omegam_sigma8 -D 10 
 
