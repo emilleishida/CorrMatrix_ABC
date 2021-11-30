@@ -19,7 +19,7 @@ The main program for Fisher-matrix computation and MCMC sampling of the first
 two example models
 from the paper is `cm_likelihood.py`. Run `cm_likelihood.py --help` to see the options.
 
-## Toy example 1
+## Example 1
 
 ### The model set-up
 
@@ -112,7 +112,7 @@ job_ABC.py --n_S 2_5_26_15_58_125_755_1622_3488_7500 -v -m r --template_dir ../.
 Figure 3 in the paper shows results for ABC, and MCMC sampling under the normal and Hotelling T^2 likelihood.
 To reproduce the figure without recomputing all sampling results, do the following steps:
 ```bash
-cd results
-../scripts/plot_many.py --ABC norm_ABC/mean_std_ABC --MCMC_norm norm_deb_MCMC/mean_std_fit_norm_deb --MCMC_T2 T2_MCMC/mean_std_fit_SH -b 0.03 --sig_var 4.6e-8_1.75e-4
+cd results/Example_1
+../../scripts/plot_many.py --ABC norm_ABC/mean_std_ABC --MCMC_norm norm_deb_MCMC/mean_std_fit_norm_deb --MCMC_T2 T2_MCMC/mean_std_fit_SH -b 0.03 --sig_var 4.6e-8_1.75e-4
 ```
 
