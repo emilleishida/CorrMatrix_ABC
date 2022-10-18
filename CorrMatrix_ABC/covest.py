@@ -1203,7 +1203,7 @@ class Results:
                     elif model == 'wl':
                         plt.ylim(2e-3, 2.9e-2)
                     else:
-                        plt.ylim(5e-4, 2e-2)
+                        plt.ylim(5e-4, 5e-2)
 
             if ylim is not None:
                 plt.ylim(ylim)
@@ -1319,7 +1319,7 @@ class Results:
 
 	    # Second x-axis
         x_loc, x_lab = plt.xticks()
-        if model == 'wl':
+        if model in ('quadratic', 'wl'):
             x_loc = [2, 5, 10, 20, 40]
         ax2 = plt.twiny()
         x2_loc = []
@@ -1347,9 +1347,8 @@ class Results:
         elif model == 'quadratic':
             if ste:
                 plt.ylim(1e-5, 1e-2)
-                pass
             else:
-                plt.ylim(1e-7, 1e-4)
+                plt.ylim(1e-7, 1e-3)
         else:
             plt.ylim(2e-8, 1.5e-2)
 
