@@ -1025,7 +1025,8 @@ class Results:
         linestyle = ['-', '--']
 
         plot_sth = False
-        plot_init(self.n_D, n_R, fs=self.fs)
+        fs = 13
+        plot_init(self.n_D, n_R, fs=fs)
 
         box_width = set_box_width(boxwidth, xlog, n)
         if model == 'affine':
@@ -1076,7 +1077,7 @@ class Results:
             for i, p in enumerate(self.par_name):
                 y = getattr(self, which)[p]   # mean or std for parameter p
                 if y.any():
-                    ax = plt.subplot(1, n_panel, j_panel[which]) #, label=f'{which}{p}')
+                    ax = plt.subplot(1, n_panel, j_panel[which])
 
                     if y.shape[1] > 1:
                         bplot = plt.boxplot(y.transpose(), positions=n, sym='.', widths=width(n, box_width), patch_artist=True)
@@ -1108,7 +1109,7 @@ class Results:
                     if which == 'mean':
                         label = f'true ${p_sym}$'
                     else:
-                        label=rf'$\hat{{\bm{{\mathrm F}}}}({p_sym})$'
+                        label=rf'$\mathbf{{\hat F}}({p_sym})$'
                     plt.plot(n_fine, no_bias(n_fine, self.n_D, my_par[i]), '{}{}'.format(color[i], linestyle[i]),
 			                 label=label, linewidth=2)
 
@@ -1118,7 +1119,7 @@ class Results:
                             n_fine,
                             self.fct[which](n_fine, self.n_D, my_par[i]),
                             '{}{}'.format(color[i], linestyle[i]),
-                            label=rf'$\hat{{\bm{{\mathrm F}}}}_{{T^2}}({p_sym})$',
+                            label=rf'$\mathbf{{\hat F}}_{{T^2}}({p_sym})$',
                             linewidth=1
                         )
 
@@ -1139,10 +1140,10 @@ class Results:
                 ylabel = stat_notation(which)
                 plt.ylabel(ylabel)
                 ax.set_yscale(self.yscale[j])
-                leg = ax.legend(loc=f'{loc[which]} right', frameon=False)
+                leg = ax.legend(loc=f'{loc[which]} right', frameon=False, handlelength=1.3)
                 plt.gca().add_artist(leg)
                 if which in leg2:
-                    ax.legend(leg2[which], lab2[which], loc=f'{loc[which]} left', frameon=False)
+                    ax.legend(leg2[which], lab2[which], loc=f'{loc[which]} left', frameon=False, handlelength=0.9)
                 
                 plt.xlim(xmin, xmax)
 
@@ -1162,7 +1163,7 @@ class Results:
                         lab = ''
                     x_lab.append(lab)
                 plt.xticks(x_loc, x_lab, rotation=rotation)
-                ax.label.set_size(self.fs)
+                ax.label.set_size(fs)
 
 	            # Second x-axis
                 ax2 = plt.twiny()
@@ -1181,7 +1182,7 @@ class Results:
                         x2_loc.append(flinlog(n_S))
                         x2_lab.append(lab)
                 plt.xticks(x2_loc, x2_lab)
-                ax2.set_xlabel('$p / n_{\\rm s}$', size=self.fs)
+                ax2.set_xlabel('$p / n_{\\rm s}$', size=fs)
                 if model == 'affine':
                     for tick in ax2.get_xticklabels():
                         tick.set_rotation(90)
@@ -1200,7 +1201,7 @@ class Results:
                     if model == 'affine':
                         plt.ylim(1e-4, 3e-1)
                     elif model == 'wl':
-                        plt.ylim(2e-3, 2e-2)
+                        plt.ylim(2e-3, 2.9e-2)
                     else:
                         plt.ylim(5e-4, 2e-2)
 
@@ -1241,8 +1242,8 @@ class Results:
         marker = ['o', 's']
 
         plot_sth = False
-        fs = self.fs * 0.9
-        plot_init(self.n_D, n_R, fs=fs, title=title, figsize=(4, 4.6))
+        fs = self.fs * 0.95
+        plot_init(self.n_D, n_R, fs=fs, title=title, figsize=(3.0, 4.8))
 
         # For output ascii file
         cols  = [n]
@@ -1275,7 +1276,7 @@ class Results:
                         yy = self.fct['std_var_TJ14'](n_fine, self.n_D, par[i])
                         p_sym = par_symbol(p, eq=False)
                         plot_add_legend(True, n_fine, yy, linestyle=linestyle[i],
-                                        color=color[i], label=fr'$\hat{{\bm{{\mathrm F}}}}({p_sym})$', linewidth=2)
+                                        color=color[i], label=fr'$\mathbf{{\hat F}}({p_sym})$', linewidth=2)
                         cols.append(self.fct['std_var_TJ14'](n, self.n_D, par[i]))
                         names.append('TJ14({})'.format(p))
 
@@ -1305,7 +1306,7 @@ class Results:
         plt.xlabel('$n_{\\rm s}$')
         plt.ylabel(stat_notation('std_var'))
         ax.set_yscale('log')
-        ax.legend(loc='best', numpoints=1, frameon=False)
+        ax.legend(loc='best', numpoints=1, frameon=False, handlelength=1.3)
         #ax.set_aspect(aspect=1)
 
 	    # x-ticks
@@ -1335,7 +1336,7 @@ class Results:
         ax = plt.gca().xaxis
         # MKDEBUG: The following does not produce labels for model=='wl'
         plt.xticks(x2_loc, x2_lab)
-        ax2.set_xlabel('$p / n_{\\rm s}$', size=self.fs)
+        ax2.set_xlabel('$p / n_{\\rm s}$', size=fs)
         if xlog:
             ax2.set_xscale('log')
             plt.xlim(self.n_D/xmin, self.n_D/xmax)
@@ -1359,7 +1360,7 @@ class Results:
             outbase = 'std_2{}'.format(self.file_base)
 
         if plot_sth == True:
-            plt.savefig('{}.pdf'.format(outbase))
+            plt.savefig('{}.pdf'.format(outbase), bbox_inches='tight')
 
         write_ascii(outbase, cols, names)
 
@@ -1383,7 +1384,7 @@ def set_box_width(boxwidth, xlog, n):
     return box_width
 
 
-def plot_init(n_D, n_R, title=False, fs=16, figsize=None):
+def plot_init(n_D, n_R, title=False, fs=9, figsize=None):
 
     if figsize:
         fig = plt.figure(figsize=figsize)
@@ -1395,19 +1396,12 @@ def plot_init(n_D, n_R, title=False, fs=16, figsize=None):
     ax.yaxis.label.set_size(fs)
     ax.xaxis.label.set_size(fs)
 
-    plt.tick_params(axis='both', which='major', labelsize=fs)
+    plt.rcParams['font.size'] = fs
 
-    rc_fonts = {
-    "text.usetex": True,
-    'mathtext.default': 'regular',
-    'text.latex.preamble': [r"""\usepackage{bm}"""],
-    }
-    plt.rcParams.update(rc_fonts)
-    plt.rcParams.update({'figure.autolayout': True})
+    plt.tick_params(axis='both', which='major', labelsize=fs)
 
     if n_R>0 and title:
         add_title(n_D, n_R, fs, raise_title=True)
-
 
 
 def add_title(n_D, n_R, fs, raise_title=False):
