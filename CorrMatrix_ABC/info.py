@@ -12,7 +12,7 @@ Set the package information for `CorrMatrix_ABC'
 """
 
 # Release version
-version_info = (1, 1, 0)
+version_info = (1, 2, 0)
 __version__ = '.'.join(str(c) for c in version_info)
 
 # Package details
