@@ -407,7 +407,7 @@ def plot_box(fits, n_D, par, dy, which, boxwidth=None, xlog=False, ylog=False,
         if xlog:
             ax2.set_xlim(flinlog(x_loc[0] / fac_xlim), flinlog(x_loc[-1] * fac_xlim))
 
-        fig.savefig('{}_{}.pdf'.format(which, p))
+        fig.savefig('{}_{}.pdf'.format(which, p), bbox_inches='tight')
 
 
 def main(argv=None):
@@ -432,10 +432,12 @@ def main(argv=None):
                              # fct={'std': no_bias, 'std_var': std_fish_deb_TJ14},
     fit_MCMC_norm = read_fit(param.par_name, param.MCMC_norm, 'MCMC $N$',
                              fct={'std': no_bias, 'std_var': std_fish_Gupta}, #std_fish_deb},
-                             flab={'std': r'$\hat{\bm{\mathrm{F}}}$', 'std_var': r'$\hat{\bm{\mathrm{F}}}$'},
+                             flab={'std': r'$\mathbf{\hat F}$', 'std_var': r'$\mathbf{\hat F}$'},
                              verbose=param.verbose)
+                             #flab={'std': r'$\hat{\bm{\mathrm{F}}}$', 'std_var': r'$\hat{\bm{\mathrm{F}}}$'},
     fit_MCMC_T2 = read_fit(param.par_name, param.MCMC_T2, 'MCMC $T^2$',
-                           fct={'std': par_fish_SH}, flab={'std': r'$\hat{\bm{\mathrm{F}}}_{T^2}$'}, verbose=param.verbose)
+                           fct={'std': par_fish_SH}, flab={'std': r'$\mathbf{\hat F}_{T^2}$'}, verbose=param.verbose)
+                           #fct={'std': par_fish_SH}, flab={'std': r'$\hat{\bm{\mathrm{F}}}_{T^2}$'}, verbose=param.verbose)
 
     mode = -1
     delta = 200

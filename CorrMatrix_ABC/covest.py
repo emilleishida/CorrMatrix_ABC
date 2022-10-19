@@ -697,7 +697,7 @@ class Results:
             self.std[p] = np.zeros(shape = (n_n_S, n_R))
 
         self.F  = np.zeros(shape = (n_n_S, n_R, 2, 2))
-        self.fs = 16
+        self.fs = 12
 
         self.n_D = n_D
         self.n_S_arr = n_S_arr
