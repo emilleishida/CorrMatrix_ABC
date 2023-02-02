@@ -188,7 +188,9 @@ def par_fish_SH(n, n_D, par):
     """Parameter RMS from Fisher matrix esimation of SH likelihood.
     """
 
-    return [np.sqrt(alpha_new(n_S, n_D) * 2.0 * n_S / (n_S - 1.0)) * par for n_S in n]
+    #return [np.sqrt(alpha_new(n_S, n_D) * 2.0 * n_S / (n_S - 1.0)) * par for n_S in n]
+    return [np.sqrt(alpha_new(n_S, n_D) * (n_S - 1.0) / n_S) * par for n_S in n]
+    #return [np.sqrt((n_S - 1.0) / n_S) * par for n_S in n]
 
 
 def coeff_TJ14(n_S, n_D, n_P):
@@ -697,7 +699,7 @@ class Results:
             self.std[p] = np.zeros(shape = (n_n_S, n_R))
 
         self.F  = np.zeros(shape = (n_n_S, n_R, 2, 2))
-        self.fs = 12
+        self.fs = 14
 
         self.n_D = n_D
         self.n_S_arr = n_S_arr
@@ -1025,7 +1027,7 @@ class Results:
         linestyle = ['-', '--']
 
         plot_sth = False
-        fs = 13
+        fs = 14
         plot_init(self.n_D, n_R, fs=fs)
 
         box_width = set_box_width(boxwidth, xlog, n)
@@ -1140,10 +1142,10 @@ class Results:
                 ylabel = stat_notation(which)
                 plt.ylabel(ylabel)
                 ax.set_yscale(self.yscale[j])
-                leg = ax.legend(loc=f'{loc[which]} right', frameon=False, handlelength=1.3)
+                leg = ax.legend(loc=f'{loc[which]} right', frameon=False, handlelength=1.3, fontsize=12)
                 plt.gca().add_artist(leg)
                 if which in leg2:
-                    ax.legend(leg2[which], lab2[which], loc=f'{loc[which]} left', frameon=False, handlelength=0.9)
+                    ax.legend(leg2[which], lab2[which], loc=f'{loc[which]} left', frameon=False, handlelength=0.9, fontsize=12)
                 
                 plt.xlim(xmin, xmax)
 
@@ -1276,7 +1278,7 @@ class Results:
                         yy = self.fct['std_var_TJ14'](n_fine, self.n_D, par[i])
                         p_sym = par_symbol(p, eq=False)
                         plot_add_legend(True, n_fine, yy, linestyle=linestyle[i],
-                                        color=color[i], label=fr'$\mathbf{{\hat F}}({p_sym})$', linewidth=2)
+                                        color=color[i], label=fr'$\mathbf{{\hat F}}({p_sym})$', linewidth=12)
                         cols.append(self.fct['std_var_TJ14'](n, self.n_D, par[i]))
                         names.append('TJ14({})'.format(p))
 
@@ -1306,7 +1308,7 @@ class Results:
         plt.xlabel('$n_{\\rm s}$')
         plt.ylabel(stat_notation('std_var'))
         ax.set_yscale('log')
-        ax.legend(loc='best', numpoints=1, frameon=False, handlelength=1.3)
+        ax.legend(loc='best', numpoints=1, frameon=False, handlelength=1.3, fontsize=12)
         #ax.set_aspect(aspect=1)
 
 	    # x-ticks

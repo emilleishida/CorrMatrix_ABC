@@ -649,8 +649,9 @@ def main(argv=None):
         yscale=['linear', 'log'],
         n_D=param.n_D,
         n_S_arr=n_S_arr,
-        fct= {'std': par_fish_SH, 'std_var_TJ14' : std_fish_deb_TJ14}
+        fct={},
     )
+       # fct={'std': par_fish_SH, 'std_var_TJ14' : std_fish_deb_TJ14}
 
 
     # Create simulations/write observation

@@ -482,7 +482,7 @@ def fit_corr_inv_true(x1, cov_true, sig2, n_jobs=3):
     toy_data['nobs'] = len(x1)     # sample size = n_D
     toy_data['x'] = x1             # explanatory variable
 
-    # cov = covariance of the data!
+    # cov = covariance of the data
     y = multivariate_normal.rvs(mean=x1, cov=cov_true, size=1)
     toy_data['y'] = y              # response variable, here one realisation
 
@@ -491,7 +491,6 @@ def fit_corr_inv_true(x1, cov_true, sig2, n_jobs=3):
     toy_data['cov_inv'] = cov_inv
 
     # STAN code
-    # the fitting code does not believe that observations are correlated!
     stan_code = """
     data {
         int<lower=0> nobs;
@@ -516,16 +515,9 @@ def fit_corr_inv_true(x1, cov_true, sig2, n_jobs=3):
     """
 
     import pystan
-    start = time.time()
     fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=n_jobs, verbose=False, n_jobs=n_jobs)
 
-    end = time.time()
-
-    #elapsed = end - start
-    #print 'elapsed time = ' + str(elapsed)
-
     return fit
-
 
 
 def fit_corr(x1, cov_true, cov_est, n_jobs=3):
@@ -577,21 +569,12 @@ def fit_corr(x1, cov_true, cov_est, n_jobs=3):
     """
 
     import pystan
-    start = time.time()
     fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=n_jobs, verbose=False, n_jobs=n_jobs)
-
-    # Testing: fast call to pystan
-    #fit = pystan.stan(model_code=stan_code, data=toy_data, iter=1, chains=1, verbose=False, n_jobs=n_jobs)
-
-    end = time.time()
-
-    #elapsed = end - start
-    #print 'elapsed time = ' + str(elapsed)
 
     return fit
 
 
-def fit_corr_SH(x1, cov_true, cov_est_inv, n_jobs=3):
+def fit_corr_SH(x1, cov_true, cov_est_inv, n_S, n_jobs=3):
     """
     Generates one draw from a multivariate student-t distribution
     (see Sellentin & Heavens 2015)
@@ -601,6 +584,7 @@ def fit_corr_SH(x1, cov_true, cov_est_inv, n_jobs=3):
     input:  x1, mean of multivariate normal distribution - vector of floats
             cov_true, square covariance matrix for the simulation
             cov_est_inv, inverse square covariance matrix for the fitting
+            n_S, number of simulations used for covariance
             n_jobs, number of parallel jobs
 
     output: fit, Stan fitting object
@@ -610,8 +594,9 @@ def fit_corr_SH(x1, cov_true, cov_est_inv, n_jobs=3):
     toy_data = {}                  # build data dictionary
     toy_data['nobs'] = len(x1)     # sample size = n_D
     toy_data['x'] = x1             # explanatory variable
+    toy_data['ns'] = n_S           # number of simulations used for covariance
 
-    # cov = covariance of the data!
+    # cov = covariance of the data
     y = multivariate_normal.rvs(mean=x1, cov=cov_true, size=1)
     toy_data['y'] = y              # response variable, here one realisation
 
@@ -619,10 +604,10 @@ def fit_corr_SH(x1, cov_true, cov_est_inv, n_jobs=3):
     toy_data['cov_est_inv'] = cov_est_inv
 
     # STAN code
-    # the fitting code does not believe that observations are correlated!
     stan_code = """
     data {
-        int<lower=0> nobs;                                 
+        int<lower=0> nobs;
+        int<lower=0> ns;
         vector[nobs] x;                       
         vector[nobs] y;   
         matrix[nobs, nobs] cov_est_inv;                    
@@ -637,28 +622,22 @@ def fit_corr_SH(x1, cov_true, cov_est_inv, n_jobs=3):
 
         mu = b + a * x;
 
-        # Sellentin & Heavens debiasing scheme:
-        # Replace normal likelihood with t-distribution
-        # y ~ (1 + (log_normal(mu, cov_est)) / (1 + n_S))^(-n_S/2)  
+        // Sellentin & Heavens debiasing scheme:
+        // Replace normal likelihood with t-distribution
+        // y ~ (1 + (log_normal(mu, cov_est)) / (n_S - 1))^(-n_S/2)  
 
         chi2 = (y - mu)' * cov_est_inv * (y - mu);
 
-        # target += log-likelihood
-        target += log(1.0 + chi2/(1.0 + nobs)) * -nobs/2.0;
+        // target += log-likelihood
+        target += log(1.0 + chi2/(ns - 1.0)) * -ns/2.0;
     }
     """
 
 
     import pystan
-    start = time.time()
     fit = pystan.stan(model_code=stan_code, data=toy_data, iter=2000, chains=n_jobs, verbose=False, n_jobs=n_jobs)
-    end = time.time()
-
-    #elapsed = end - start
-    #print 'elapsed time = ' + str(elapsed)
 
     return fit
-
 
 
 def set_fit_MCMC(fit, res, i, run):
@@ -774,7 +753,7 @@ def simulate(x1, yreal, n_S_arr, sigma_ML, sigma_m1_ML, sigma_m1_ML_deb, fish_an
                 if re.search('SH', options.likelihood) is not None:
                     if options.verbose == True:
                         print('Running MCMC with Sellentin&Heavens (SH) likelihood')
-                    res = fit_corr_SH(x1, cov, cov_est_inv, n_jobs=options.n_jobs)
+                    res = fit_corr_SH(x1, cov, cov_est_inv, n_S, n_jobs=options.n_jobs)
                     set_fit_MCMC(fit_SH, res, i, run)
 
                 
@@ -940,22 +919,22 @@ def main(argv=None):
 
 
     # Initialisation of results
-    sigma_ML = Results(tr_name, n_n_S, options.n_R, file_base='sigma_ML')
-    sigma_m1_ML = Results(tr_name, n_n_S, options.n_R, file_base='sigma_m1_ML', yscale='log', fct={'mean': tr_N_m1_ML})
-    sigma_m1_ML_deb = Results(tr_name, n_n_S, options.n_R, file_base='sigma_m1_ML_deb', fct={'mean': no_bias})
+    sigma_ML = Results(tr_name, n_n_S, options.n_R, file_base='sigma_ML', n_S_arr=n_S_arr)
+    sigma_m1_ML = Results(tr_name, n_n_S, options.n_R, file_base='sigma_m1_ML', yscale='log', fct={'mean': tr_N_m1_ML}, n_S_arr=n_S_arr)
+    sigma_m1_ML_deb = Results(tr_name, n_n_S, options.n_R, file_base='sigma_m1_ML_deb', fct={'mean': no_bias}, n_S_arr=n_S_arr)
 
-    fish_ana = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_ana', yscale='log', fct={'std': par_fish})
+    fish_ana = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_ana', yscale='log', fct={'std': par_fish}, n_S_arr=n_S_arr)
 
     fish_num = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_num', yscale='log', \
-                       fct={'std': par_fish, 'std_var_TJK13': std_fish_biased_TJK13, 'std_var_TJ14': std_fish_biased_TJ14})
+                       fct={'std': par_fish, 'std_var_TJK13': std_fish_biased_TJK13, 'std_var_TJ14': std_fish_biased_TJ14}, n_S_arr=n_S_arr)
     fish_deb = Results(par_name, n_n_S, options.n_R, file_base='std_Fisher_deb', yscale='log', \
-                       fct={'std': no_bias, 'std_var_TJK13': std_fish_deb, 'std_var_TJ14': std_fish_deb_TJ14})
+                       fct={'std': no_bias, 'std_var_TJK13': std_fish_deb, 'std_var_TJ14': std_fish_deb_TJ14}, n_S_arr=n_S_arr)
     fit_norm_num = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_norm', yscale=['linear', 'log'],
-                       fct={'std': par_fish, 'std_var_TJK13': std_fish_biased_TJK13, 'std_var_TJ14': std_fish_biased_TJ14})
+                       fct={'std': par_fish, 'std_var_TJK13': std_fish_biased_TJK13, 'std_var_TJ14': std_fish_biased_TJ14}, n_S_arr=n_S_arr)
     fit_norm_deb = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_norm_deb', yscale=['linear', 'log'],
-                       fct={'std': no_bias, 'std_var_TJ14': std_fish_deb_TJ14})
+                       fct={'std': no_bias, 'std_var_TJ14': std_fish_deb_TJ14}, n_S_arr=n_S_arr)
     fit_SH = Results(par_name, n_n_S, options.n_R, file_base='mean_std_fit_SH', yscale=['linear', 'log'],
-                       fct={'std': par_fish_SH})
+                       fct={'std': par_fish_SH}, n_S_arr=n_S_arr)
 
     # Data
     x1 = uniform.rvs(loc=-delta/2, scale=delta, size=options.n_D)        # exploratory variable
@@ -994,17 +973,17 @@ def main(argv=None):
         print('Creating plots')
 
     if options.do_fish_ana == True:
-        fish_ana.plot_mean_std(n_S_arr, options.n_D, par={'std': dpar_exact})
-    fish_num.plot_mean_std(n_S_arr, options.n_D, par={'std': dpar_exact})
-    fish_deb.plot_mean_std(n_S_arr, options.n_D, par={'std': dpar_exact})
+        fish_ana.plot_mean_std(par={'std': dpar_exact})
+    fish_num.plot_mean_std(par={'std': dpar_exact})
+    fish_deb.plot_mean_std(par={'std': dpar_exact})
 
     if options.do_fit_stan == True:
         if re.search('norm_biased', options.likelihood) is not None:
-            fit_norm_num.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact}, boxwidth=param.boxwidth)
+            fit_norm_num.plot_mean_std(par={'mean': options.par, 'std': dpar_exact}, boxwidth=param.boxwidth)
         if re.search('norm_deb', options.likelihood) is not None:
-            fit_norm_deb.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact}, boxwidth=param.boxwidth)
+            fit_norm_deb.plot_mean_std(par={'mean': options.par, 'std': dpar_exact}, boxwidth=param.boxwidth)
         if re.search('SH', options.likelihood) is not None:
-            fit_SH.plot_mean_std(n_S_arr, options.n_D, par={'mean': options.par, 'std': dpar_exact}, boxwidth=param.boxwidth)
+            fit_SH.plot_mean_std(par={'mean': options.par, 'std': dpar_exact}, boxwidth=param.boxwidth)
 
     dpar2 = dpar_exact**2
 
@@ -1013,24 +992,24 @@ def main(argv=None):
     else:
         title = False
 
-    fish_num.plot_std_var(n_S_arr, options.n_D, par=dpar2, title=title)
+    fish_num.plot_std_var(par=dpar2, title=title)
 
-    fish_deb.plot_std_var(n_S_arr, options.n_D, par=dpar2, title=title)
+    fish_deb.plot_std_var(par=dpar2, title=title)
     if options.do_fit_stan == True:
         if re.search('norm_biased', options.likelihood) is not None:
-            fit_norm_num.plot_std_var(n_S_arr, options.n_D, par=dpar2, sig_var_noise=param.sig_var_noise, title=title)
+            fit_norm_num.plot_std_var(par=dpar2, sig_var_noise=param.sig_var_noise, title=title)
         if re.search('norm_deb', options.likelihood) is not None:
-            fit_norm_deb.plot_std_var(n_S_arr, options.n_D, par=dpar2, sig_var_noise=param.sig_var_noise, title=title)
+            fit_norm_deb.plot_std_var(par=dpar2, sig_var_noise=param.sig_var_noise, title=title)
         if re.search('SH', options.likelihood) is not None:
-            fit_SH.plot_std_var(n_S_arr, options.n_D, par=dpar2, sig_var_noise=param.sig_var_noise, title=title)
+            fit_SH.plot_std_var(par=dpar2, sig_var_noise=param.sig_var_noise, title=title)
 
-    sigma_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [options.sig2]}, boxwidth=param.boxwidth, ylim=[4.9, 5.1])
+    sigma_ML.plot_mean_std(par={'mean': [options.sig2]}, boxwidth=param.boxwidth, ylim=[4.9, 5.1])
 
     # Precision matrix trace
     f_mean = 1/options.sig2
 
-    sigma_m1_ML.plot_mean_std(n_S_arr, options.n_D, par={'mean': [f_mean]}, boxwidth=param.boxwidth)
-    sigma_m1_ML_deb.plot_mean_std(n_S_arr, options.n_D, par={'mean': [f_mean]}, boxwidth=param.boxwidth)
+    sigma_m1_ML.plot_mean_std(par={'mean': [f_mean]}, boxwidth=param.boxwidth)
+    sigma_m1_ML_deb.plot_mean_std(par={'mean': [f_mean]}, boxwidth=param.boxwidth)
 
     ### End main program
 

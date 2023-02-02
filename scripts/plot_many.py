@@ -317,9 +317,10 @@ def plot_box(fits, n_D, par, dy, which, boxwidth=None, xlog=False, ylog=False,
 
             # xticks
             for n_S in n:
-                x_loc.append(n_S)
-                lab = '{}'.format(n_S)
-                x_lab.append(lab)
+                if n_S not in (974, 2094, 4502):
+                    x_loc.append(n_S)
+                    lab = '{}'.format(n_S)
+                    x_lab.append(lab)
 
             # Curves for predicted values
             if fit.fct is not None and which in fit.fct:
@@ -398,6 +399,8 @@ def plot_box(fits, n_D, par, dy, which, boxwidth=None, xlog=False, ylog=False,
             frac = float(n_D) / float(n_S)
             if frac > 100:
                 lab = '{:.0f}'.format(frac)
+            elif frac < 1:
+                lab = '{:.1g}'.format(frac)
             else:
                 lab = '{:.2g}'.format(frac)
             x2_lab.append(lab)
@@ -429,15 +432,13 @@ def main(argv=None):
     # Read sampling results
     fit_ABC = read_fit(param.par_name, param.ABC, 'ABC',
                        fct={'mean': no_bias}, flab={'mean': 'true value'}, verbose=param.verbose)
-                             # fct={'std': no_bias, 'std_var': std_fish_deb_TJ14},
     fit_MCMC_norm = read_fit(param.par_name, param.MCMC_norm, 'MCMC $N$',
                              fct={'std': no_bias, 'std_var': std_fish_Gupta}, #std_fish_deb},
                              flab={'std': r'$\mathbf{\hat F}$', 'std_var': r'$\mathbf{\hat F}$'},
                              verbose=param.verbose)
-                             #flab={'std': r'$\hat{\bm{\mathrm{F}}}$', 'std_var': r'$\hat{\bm{\mathrm{F}}}$'},
     fit_MCMC_T2 = read_fit(param.par_name, param.MCMC_T2, 'MCMC $T^2$',
-                           fct={'std': par_fish_SH}, flab={'std': r'$\mathbf{\hat F}_{T^2}$'}, verbose=param.verbose)
-                           #fct={'std': par_fish_SH}, flab={'std': r'$\hat{\bm{\mathrm{F}}}_{T^2}$'}, verbose=param.verbose)
+                           fct={}, flab={}, verbose=param.verbose)
+                           #fct={'std': par_fish_SH}, flab={'std': r'$\mathbf{\hat F}_{T^2}$'}, verbose=param.verbose)
 
     mode = -1
     delta = 200
